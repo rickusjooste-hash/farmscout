@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase-auth'
 import PestTrendChart from '@/app/components/PestTrendChart'
+import { useRouter } from 'next/navigation'
+
 
 interface Orchard {
   id: string
@@ -32,12 +34,19 @@ interface Stats {
 }
 
 export default function DashboardPage() {
+  const supabase = createClient()
+  const router = useRouter()
   const [orchards, setOrchards] = useState<Orchard[]>([])
   const [pestSummary, setPestSummary] = useState<PestSummary[]>([])
   const [recentSessions, setRecentSessions] = useState<RecentSession[]>([])
   const [stats, setStats] = useState<Stats>({ orchards: 0, sessions: 0, observations: 0, pests: 0 })
   const [loading, setLoading] = useState(true)
 
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+  
   useEffect(() => {
     async function fetchData() {
       // Orchards
@@ -414,10 +423,18 @@ export default function DashboardPage() {
 <a className="nav-item"><span className="nav-icon">🪤</span> Traps</a>
 <a className="nav-item"><span className="nav-icon">🔍</span> Inspections</a>
 <a className="nav-item"><span className="nav-icon">👷</span> Scouts</a>
-            <div className="sidebar-footer">
-              Mouton's Valley Group<br />
-              <span style={{ color: '#2a6e45' }}>●</span> Connected to Supabase
-            </div>
+         <div className="sidebar-footer">
+  Mouton's Valley Group<br />
+  <span style={{ color: '#2a6e45' }}>●</span> Connected
+  <br />
+  <button onClick={handleLogout} style={{
+    marginTop: 10, background: 'none', border: '1px solid #2a4f38',
+    color: '#6aaa80', borderRadius: 6, padding: '4px 10px',
+    fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif'
+  }}>
+    Sign out
+  </button>
+</div>
           </aside>
 
           {/* Main */}

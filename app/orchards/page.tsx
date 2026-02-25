@@ -1,7 +1,7 @@
 'use client'
 
+import { createClient } from '@/lib/supabase-auth'
 import { useEffect, useState, useRef } from 'react'
-import { supabase } from '@/lib/supabase'
 
 interface OrchardInfo {
   id: string
@@ -102,10 +102,12 @@ function currentWeekNr(): number {
 }
 
 export default function OrchardsPage() {
+  const supabase         = createClient()
   const mapRef          = useRef<any>(null)
   const leafletRef      = useRef<any>(null)
   const geoLayerRef     = useRef<any>(null)
 
+  
   const [orchards, setOrchards]           = useState<OrchardInfo[]>([])
   const [pests, setPests]                 = useState<PestOption[]>([])
   const [selectedPest, setSelectedPest]   = useState<PestOption | null>(null)
@@ -119,13 +121,26 @@ export default function OrchardsPage() {
   const [selectedWeek, setSelectedWeek]   = useState<number>(currentWeekNr())
   const weeks = getWeeksInSeason(season)
 
+  
   // Load orchards
+   // Load orchards
   useEffect(() => {
+    
     supabase
       .from('orchards')
       .select('id, name, variety, ha, legacy_id, is_active, commodity_id, commodities(code, name)')
       .eq('is_active', true)
-      .then(({ data }) => setOrchards((data as any) || []))
+      .then(({ data, error }) => {
+        console.log('Orchards data:', data)
+        console.log('Orchards error:', error)
+        setOrchards((data as any) || [])
+      })
+  }, [])
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      console.log('Current user:', data.user?.id, data.user?.email)
+    })
   }, [])
 
   // Load pests that have trap counts
@@ -233,10 +248,12 @@ export default function OrchardsPage() {
   useEffect(() => {
     if (mapReady) return
     async function initMap() {
+       console.log('initMap called, mapRef:', mapRef.current)
       const L = (await import('leaflet')).default
-      
+      console.log('Leaflet loaded:', L)
       leafletRef.current = L
       if (mapRef.current && !mapRef.current._leaflet_id) {
+        console.log('Creating map...')
         const map = L.map(mapRef.current, { center: [-32.785, 18.715], zoom: 13 })
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
           attribution: '© Esri', maxZoom: 19,
@@ -253,11 +270,13 @@ export default function OrchardsPage() {
     if (!mapReady || orchards.length === 0) return
 
     async function drawPolygons() {
+      console.log('drawPolygons called, orchards:', orchards.length)
       const L = leafletRef.current
       const map = mapRef.current._map
       if (geoLayerRef.current) geoLayerRef.current.remove()
 
       const res = await fetch('/OrchardPolygons.geojson')
+      console.log('GeoJSON fetch status:', res.status)
       const geojson = await res.json()
 
       const lookup: Record<number, OrchardInfo> = {}
@@ -267,7 +286,7 @@ export default function OrchardsPage() {
         style: (feature: any) => {
           const oid  = parseInt(feature.properties.OrchardID?.toString().replace(/"/g, '') || '0')
           const info = lookup[oid]
-          if (!info) return { fillColor: '#888', fillOpacity: 0.3, color: '#fff', weight: 1 }
+          if (!info) return { fillColor: '#000', fillOpacity: 0, color: '#000', weight: 0, opacity: 0 }
           const p = pressure[info.id]
           const color = p ? STATUS_COLORS[p.status].fill : STATUS_COLORS.grey.fill
           return { fillColor: color, fillOpacity: 0.7, color: '#fff', weight: 1.5 }
@@ -362,8 +381,8 @@ export default function OrchardsPage() {
         .loading-bar { height: 3px; background: linear-gradient(90deg, #2a6e45, #a8d5a2); animation: pulse 1s infinite; }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-        .map-container { flex: 1; position: relative; }
-        #map { width: 100%; height: 100%; }
+        .map-container { flex: 1; position: relative; min-height: 600px; }
+        #map { width: 100%; height: 100%; min-height: 600px; }
 
         .info-panel {
           position: absolute; top: 16px; right: 16px; width: 240px;

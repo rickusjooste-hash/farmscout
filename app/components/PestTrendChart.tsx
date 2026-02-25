@@ -1,5 +1,5 @@
 'use client'
-
+import { createClient } from '@/lib/supabase-auth'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import {
@@ -50,6 +50,7 @@ function buildSeasonOptions(fromYear: number): string[] {
 }
 
 export default function PestTrendChart() {
+  const supabase = createClient()
   const [chartData, setChartData] = useState<WeeklyData[]>([])
   const [pestNames, setPestNames] = useState<string[]>([])
   const [selectedPests, setSelectedPests] = useState<Set<string>>(new Set())
