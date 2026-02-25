@@ -444,18 +444,21 @@ export default function OrchardsPage() {
 
             <div className="divider" />
 
-            {/* Week */}
+             {/* Week */}
             <div className="filter-group">
-              <span className="filter-label">Week</span>
-              <select
-                className="week-select"
-                value={selectedWeek}
-                onChange={e => setSelectedWeek(parseInt(e.target.value))}
-              >
-                {weeks.map(w => (
-                  <option key={w} value={w}>Week {w}</option>
-                ))}
-              </select>
+              <span className="filter-label">Week {selectedWeek}</span>
+              <input
+                type="range"
+                min={0}
+                max={weeks.length - 1}
+                value={weeks.indexOf(selectedWeek)}
+                onChange={e => setSelectedWeek(weeks[parseInt(e.target.value)])}
+                style={{
+                  width: 160,
+                  accentColor: '#2a6e45',
+                  cursor: 'pointer',
+                }}
+              />
             </div>
 
             <div className="divider" />
