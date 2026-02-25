@@ -234,7 +234,7 @@ export default function OrchardsPage() {
     if (mapReady) return
     async function initMap() {
       const L = (await import('leaflet')).default
-      await import('leaflet/dist/leaflet.css')
+      
       leafletRef.current = L
       if (mapRef.current && !mapRef.current._leaflet_id) {
         const map = L.map(mapRef.current, { center: [-32.785, 18.715], zoom: 13 })
