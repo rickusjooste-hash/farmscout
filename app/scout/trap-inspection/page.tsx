@@ -9,6 +9,7 @@ const SUPABASE_URL = 'https://agktzdeskpyevurhabpg.supabase.co'
 
 interface TrapWithDetails {
   id: string
+  orchard_id: string | null
   trap_nr: number
   next_trap_id: string | null
   seq: number
@@ -121,6 +122,7 @@ async function fetchTrapDetails(trapId: string): Promise<TrapWithDetails | null>
 
       return {
         id: t.id,
+        orchard_id: t.orchard_id,
         trap_nr: t.trap_nr,
         next_trap_id: t.next_trap_id,
         seq: t.seq,
@@ -234,7 +236,7 @@ async function loadFirstTrap() {
   trap_id: trap.id,
   organisation_id: localStorage.getItem('farmscout_organisation_id'),
   scout_id: localStorage.getItem('farmscout_user_id'),
-  orchard_id: null,
+  orchard_id: trap.orchard_id,
   pest_id_direct: null,
   rebaited,
   inspected_at: now,
