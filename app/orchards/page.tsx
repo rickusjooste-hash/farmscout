@@ -437,9 +437,20 @@ export default function OrchardsPage() {
           <a className="nav-item"><span>🪤</span> Traps</a>
           <a className="nav-item"><span>🔍</span> Inspections</a>
           <a className="nav-item"><span>👷</span> Scouts</a>
-          <div className="sidebar-footer">
+           <div className="sidebar-footer">
             Mouton's Valley Group<br />
-            <span style={{ color: '#2a6e45' }}>●</span> Connected to Supabase
+            <span style={{ color: '#2a6e45' }}>●</span> Connected
+            <br />
+            <button onClick={async () => {
+              await supabase.auth.signOut()
+              window.location.href = '/login'
+            }} style={{
+              marginTop: 10, background: 'none', border: '1px solid #2a4f38',
+              color: '#6aaa80', borderRadius: 6, padding: '4px 10px',
+              fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif'
+            }}>
+              Sign out
+            </button>
           </div>
         </aside>
 

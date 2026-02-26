@@ -1,0 +1,639 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+
+const SUPABASE_URL = 'https://agktzdeskpyevurhabpg.supabase.co'
+
+// ── Types ─────────────────────────────────────────────────────────────────
+
+interface TrapWithDetails {
+  id: string
+  trap_nr: number
+  next_trap_id: string | null
+  seq: number
+  zone: { name: string }
+  pest: { name: string; image_url: string }
+  lure_type: { rebait_weeks: number; name: string }
+  last_inspection?: { inspected_at: string; rebaited: boolean } | null
+  rebait_required: boolean
+  weeks_since_rebait: number | null
+}
+
+// ── Main Component ────────────────────────────────────────────────────────
+
+export default function TrapInspectionPage() {
+  const [trap, setTrap] = useState<TrapWithDetails | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [count, setCount] = useState(0)
+  const [rebaited, setRebaited] = useState(false)
+  const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [progress, setProgress] = useState({ current: 1, total: 1 })
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  const router = useRouter()
+
+  // Get GPS silently in background
+  useEffect(() => {
+    navigator.geolocation?.getCurrentPosition(
+      (pos) => setGpsLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => console.log('GPS unavailable'),
+      { enableHighAccuracy: true, timeout: 10000 }
+    )
+  }, [])
+
+  // Load first trap on mount
+  useEffect(() => {
+    loadFirstTrap()
+  }, [])
+
+  async function fetchTrapDetails(trapId: string): Promise<TrapWithDetails | null> {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/traps?id=eq.${trapId}&select=id,trap_nr,next_trap_id,seq,zones(name),pests(name,image_url),lure_types(rebait_weeks,name)`,
+      {
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+      }
+    )
+
+    if (!res.ok) throw new Error('Failed to load trap')
+    const data = await res.json()
+    if (!data.length) return null
+
+    const t = data[0]
+
+    // Get last inspection for this trap
+    const lastRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/trap_inspections?trap_id=eq.${trapId}&order=inspected_at.desc&limit=1&select=inspected_at,rebaited`,
+      {
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+      }
+    )
+    const lastData = lastRes.ok ? await lastRes.json() : []
+    const lastInspection = lastData[0] || null
+
+    // Calculate weeks since last rebait
+    let weeksSinceRebait: number | null = null
+    let rebaitRequired = false
+
+    if (lastInspection) {
+      const lastDate = new Date(lastInspection.inspected_at)
+      const now = new Date()
+      const diffMs = now.getTime() - lastDate.getTime()
+      weeksSinceRebait = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 7))
+      rebaitRequired = weeksSinceRebait >= t.lure_types.rebait_weeks
+    }
+
+    return {
+      id: t.id,
+      trap_nr: t.trap_nr,
+      next_trap_id: t.next_trap_id,
+      seq: t.seq,
+      zone: t.zones,
+      pest: t.pests,
+      lure_type: t.lure_types,
+      last_inspection: lastInspection,
+      rebait_required: rebaitRequired,
+      weeks_since_rebait: weeksSinceRebait,
+    }
+  }
+
+  async function loadFirstTrap() {
+    setLoading(true)
+    setError(null)
+    try {
+      // Get the first trap in the route (lowest seq)
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/traps?is_active=eq.true&order=seq.asc&limit=1&select=id`,
+        {
+          headers: {
+            apikey: supabaseKey,
+            Authorization: `Bearer ${supabaseKey}`,
+          },
+        }
+      )
+      const data = await res.json()
+      if (!data.length) {
+        setError('No traps found. Please contact your manager.')
+        setLoading(false)
+        return
+      }
+
+      // Get total trap count for progress indicator
+      const countRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/traps?is_active=eq.true&select=id`,
+        {
+          headers: {
+            apikey: supabaseKey,
+            Authorization: `Bearer ${supabaseKey}`,
+          },
+        }
+      )
+      const allTraps = countRes.ok ? await countRes.json() : []
+      setProgress({ current: 1, total: allTraps.length })
+
+      const trapDetails = await fetchTrapDetails(data[0].id)
+      setTrap(trapDetails)
+      setCount(0)
+      setRebaited(false)
+    } catch (err) {
+      setError('Could not load traps. Are you online?')
+    }
+    setLoading(false)
+  }
+
+  async function handleSave() {
+    if (!trap) return
+    setSaving(true)
+
+    try {
+      const now = new Date().toISOString()
+      const inspectionId = crypto.randomUUID()
+
+      // Build location object for Supabase PostGIS
+      const locationValue = gpsLocation
+        ? `POINT(${gpsLocation.lng} ${gpsLocation.lat})`
+        : null
+
+      // 1. Save trap inspection
+      const inspRes = await fetch(`${SUPABASE_URL}/rest/v1/trap_inspections`, {
+        method: 'POST',
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({
+          id: inspectionId,
+          trap_id: trap.id,
+          pest_id_direct: null,
+          rebaited,
+          inspected_at: now,
+          location: locationValue,
+          nfc_scanned: false,
+        }),
+      })
+
+      if (!inspRes.ok) throw new Error('Failed to save inspection')
+
+      // 2. Save trap count
+      const countRes = await fetch(`${SUPABASE_URL}/rest/v1/trap_counts`, {
+        method: 'POST',
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({
+          id: crypto.randomUUID(),
+          inspection_id: inspectionId,
+          pest_id: null,
+          count,
+        }),
+      })
+
+      if (!countRes.ok) throw new Error('Failed to save count')
+
+      // 3. Load next trap or finish
+      if (trap.next_trap_id) {
+        setProgress(p => ({ ...p, current: p.current + 1 }))
+        const nextTrap = await fetchTrapDetails(trap.next_trap_id)
+        setTrap(nextTrap)
+        setCount(0)
+        setRebaited(false)
+      } else {
+        // Route complete!
+        router.push('/scout?completed=traps')
+      }
+    } catch (err: any) {
+      setError(err.message || 'Save failed. Please try again.')
+    }
+
+    setSaving(false)
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div style={styles.app}>
+        <div style={styles.header}>
+          <button style={styles.backBtn} onClick={() => router.push('/scout')}>←</button>
+          <div style={styles.headerTitle}>Trap Inspection</div>
+          <div />
+        </div>
+        <div style={styles.centered}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>🪤</div>
+          <div style={{ color: '#7a8a5a' }}>Loading traps...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div style={styles.app}>
+        <div style={styles.header}>
+          <button style={styles.backBtn} onClick={() => router.push('/scout')}>←</button>
+          <div style={styles.headerTitle}>Trap Inspection</div>
+          <div />
+        </div>
+        <div style={styles.centered}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>⚠️</div>
+          <div style={{ color: '#e05c4b', marginBottom: 16, textAlign: 'center' }}>{error}</div>
+          <button style={styles.secondaryBtn} onClick={loadFirstTrap}>Try Again</button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!trap) return null
+
+  return (
+    <div style={styles.app}>
+
+      {/* Header */}
+      <div style={styles.header}>
+        <button style={styles.backBtn} onClick={() => router.push('/scout')}>←</button>
+        <div style={styles.headerTitle}>Trap Inspection</div>
+        <div style={styles.progressText}>{progress.current}/{progress.total}</div>
+      </div>
+
+      {/* Progress Bar */}
+      <div style={styles.progressBar}>
+        <div style={{
+          ...styles.progressFill,
+          width: `${(progress.current / progress.total) * 100}%`
+        }} />
+      </div>
+
+      {/* Content */}
+      <div style={styles.screen}>
+
+        {/* Pest Image */}
+        <div style={styles.pestImageContainer}>
+          {trap.pest?.image_url ? (
+            <img
+              src={trap.pest.image_url}
+              alt={trap.pest.name}
+              style={styles.pestImage}
+            />
+          ) : (
+            <div style={styles.pestImagePlaceholder}>🐛</div>
+          )}
+          <div style={styles.pestName}>{trap.pest?.name}</div>
+        </div>
+
+        {/* Trap Info */}
+        <div style={styles.trapInfo}>
+          <div style={styles.infoRow}>
+            <div style={styles.infoLabel}>Zone</div>
+            <div style={styles.infoValue}>{trap.zone?.name || '—'}</div>
+          </div>
+          <div style={styles.infoRow}>
+            <div style={styles.infoLabel}>Trap</div>
+            <div style={styles.infoValue}>Trap #{trap.trap_nr} — {trap.lure_type?.name}</div>
+          </div>
+          {trap.weeks_since_rebait !== null && (
+            <div style={styles.infoRow}>
+              <div style={styles.infoLabel}>Last Rebait</div>
+              <div style={styles.infoValue}>{trap.weeks_since_rebait} week{trap.weeks_since_rebait !== 1 ? 's' : ''} ago</div>
+            </div>
+          )}
+        </div>
+
+        {/* Rebait Warning */}
+        {trap.rebait_required && (
+          <div style={styles.rebaitWarning}>
+            ⚠️ Rebait Required — {trap.weeks_since_rebait} weeks since last rebait
+          </div>
+        )}
+
+        {/* Count Input */}
+        <div style={styles.section}>
+          <div style={styles.sectionLabel}>Pest Count</div>
+          <div style={styles.countInput}>
+            <button
+              style={styles.countBtn}
+              onClick={() => setCount(c => Math.max(0, c - 1))}
+            >−</button>
+            <div style={styles.countValue}>{count}</div>
+            <button
+              style={styles.countBtn}
+              onClick={() => setCount(c => c + 1)}
+            >+</button>
+          </div>
+        </div>
+
+        {/* Rebaited */}
+        <div style={styles.section}>
+          <div style={styles.sectionLabel}>Rebaited?</div>
+          <div style={styles.rebaitRow}>
+            <button
+              style={{
+                ...styles.rebaitBtn,
+                background: !rebaited ? '#3a1a1a' : 'transparent',
+                borderColor: !rebaited ? '#e05c4b' : '#3a4228',
+                color: !rebaited ? '#e05c4b' : '#7a8a5a',
+              }}
+              onClick={() => setRebaited(false)}
+            >
+              No
+            </button>
+            <button
+              style={{
+                ...styles.rebaitBtn,
+                background: rebaited ? '#1a3a1a' : 'transparent',
+                borderColor: rebaited ? '#6abf4b' : '#3a4228',
+                color: rebaited ? '#6abf4b' : '#7a8a5a',
+              }}
+              onClick={() => setRebaited(true)}
+            >
+              Yes
+            </button>
+          </div>
+        </div>
+
+        {/* GPS Status */}
+        <div style={styles.gpsStatus}>
+          <span style={{
+            ...styles.gpsDot,
+            background: gpsLocation ? '#6abf4b' : '#7a8a5a'
+          }} />
+          {gpsLocation
+            ? `GPS locked — ${gpsLocation.lat.toFixed(4)}, ${gpsLocation.lng.toFixed(4)}`
+            : 'Acquiring GPS...'}
+        </div>
+
+      </div>
+
+      {/* Bottom Buttons */}
+      <div style={styles.bottomBar}>
+        <button
+          style={{ ...styles.cancelBtn }}
+          onClick={() => router.push('/scout')}
+        >
+          Cancel
+        </button>
+        <button
+          style={{
+            ...styles.saveBtn,
+            opacity: saving ? 0.7 : 1
+          }}
+          onClick={handleSave}
+          disabled={saving}
+        >
+          {saving ? 'Saving...' : trap.next_trap_id ? 'Save & Next →' : 'Save & Finish ✓'}
+        </button>
+      </div>
+
+    </div>
+  )
+}
+
+// ── Styles ────────────────────────────────────────────────────────────────
+
+const styles: Record<string, React.CSSProperties> = {
+  app: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100dvh',
+    maxWidth: 480,
+    margin: '0 auto',
+    background: '#1a1f0e',
+    color: '#e8e8d8',
+    fontFamily: 'system-ui, sans-serif',
+    overflow: 'hidden',
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '16px',
+    background: '#222918',
+    borderBottom: '1px solid #3a4228',
+    flexShrink: 0,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 700,
+  },
+  backBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#f0a500',
+    fontSize: 22,
+    cursor: 'pointer',
+    padding: 0,
+  },
+  progressText: {
+    fontSize: 13,
+    color: '#7a8a5a',
+    fontVariantNumeric: 'tabular-nums',
+  },
+  progressBar: {
+    height: 4,
+    background: '#3a4228',
+    flexShrink: 0,
+  },
+  progressFill: {
+    height: '100%',
+    background: '#f0a500',
+    transition: 'width 0.4s ease',
+  },
+  screen: {
+    flex: 1,
+    overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch',
+  },
+  centered: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  pestImageContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: '24px 16px 16px',
+    borderBottom: '1px solid #3a4228',
+  },
+  pestImage: {
+    width: 160,
+    height: 160,
+    objectFit: 'contain',
+    borderRadius: 8,
+    background: '#222918',
+    padding: 8,
+  },
+  pestImagePlaceholder: {
+    width: 160,
+    height: 160,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 60,
+    background: '#222918',
+    borderRadius: 8,
+  },
+  pestName: {
+    marginTop: 10,
+    fontSize: 16,
+    fontWeight: 600,
+    color: '#e8e8d8',
+  },
+  trapInfo: {
+    padding: '12px 16px',
+    borderBottom: '1px solid #3a4228',
+  },
+  infoRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 8,
+  },
+  infoLabel: {
+    fontSize: 12,
+    color: '#7a8a5a',
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: 500,
+    color: '#e8e8d8',
+    textAlign: 'right',
+    maxWidth: '65%',
+  },
+  rebaitWarning: {
+    margin: '12px 16px',
+    padding: '12px 16px',
+    background: '#2a1f00',
+    border: '1px solid #f0a500',
+    borderRadius: 6,
+    color: '#f0a500',
+    fontSize: 14,
+    fontWeight: 600,
+  },
+  section: {
+    padding: '16px 16px 0',
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: '0.12em',
+    textTransform: 'uppercase',
+    color: '#7a8a5a',
+    marginBottom: 10,
+  },
+  countInput: {
+    display: 'flex',
+    alignItems: 'center',
+    border: '1px solid #3a4228',
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  countBtn: {
+    width: 64,
+    height: 64,
+    background: '#222918',
+    border: 'none',
+    color: '#f0a500',
+    fontSize: 28,
+    fontWeight: 600,
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  countValue: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 36,
+    fontWeight: 700,
+    color: '#e8e8d8',
+    background: '#1f2514',
+    height: 64,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rebaitRow: {
+    display: 'flex',
+    gap: 12,
+  },
+  rebaitBtn: {
+    flex: 1,
+    padding: '14px',
+    borderRadius: 6,
+    border: '1px solid',
+    fontSize: 16,
+    fontWeight: 700,
+    cursor: 'pointer',
+    letterSpacing: '0.05em',
+    transition: 'all 0.15s',
+  },
+  gpsStatus: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '16px',
+    fontSize: 11,
+    color: '#7a8a5a',
+  },
+  gpsDot: {
+    width: 7,
+    height: 7,
+    borderRadius: '50%',
+    flexShrink: 0,
+  },
+  bottomBar: {
+    display: 'flex',
+    gap: 12,
+    padding: 16,
+    background: '#222918',
+    borderTop: '1px solid #3a4228',
+    flexShrink: 0,
+  },
+  cancelBtn: {
+    flex: 1,
+    padding: '14px',
+    background: 'transparent',
+    border: '1px solid #3a4228',
+    borderRadius: 6,
+    color: '#7a8a5a',
+    fontSize: 16,
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+  saveBtn: {
+    flex: 2,
+    padding: '14px',
+    background: '#f0a500',
+    border: 'none',
+    borderRadius: 6,
+    color: '#000',
+    fontSize: 16,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  secondaryBtn: {
+    padding: '12px 24px',
+    background: 'transparent',
+    border: '1px solid #3a4228',
+    borderRadius: 6,
+    color: '#e8e8d8',
+    fontSize: 15,
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+}
