@@ -183,7 +183,6 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: 480,
     width: '100%',
     alignSelf: 'center',
-  }
   },
   logoIcon: {
     fontSize: 64,
