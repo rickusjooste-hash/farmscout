@@ -90,7 +90,7 @@ interface FarmScoutDB extends DBSchema {
     indexes: { 'by_trap_inspection': string }
   }
   sync_queue: {
-    key: number
+    key: string
     value: {
       id?: number
       tableName: string
