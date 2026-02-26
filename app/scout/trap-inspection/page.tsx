@@ -13,7 +13,7 @@ interface TrapWithDetails {
   next_trap_id: string | null
   seq: number
   zone: { name: string }
-  pest: { name: string; image_url: string }
+  pest: { id: string; name: string; image_url: string }
   lure_type: { rebait_weeks: number; name: string }
   last_inspection?: { inspected_at: string; rebaited: boolean } | null
   rebait_required: boolean
@@ -48,104 +48,151 @@ export default function TrapInspectionPage() {
     loadFirstTrap()
   }, [])
 
-  async function fetchTrapDetails(trapId: string): Promise<TrapWithDetails | null> {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/traps?id=eq.${trapId}&select=id,trap_nr,next_trap_id,seq,zones(name),pests(name,image_url),lure_types(rebait_weeks,name)`,
-      {
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-      }
-    )
-
-    if (!res.ok) throw new Error('Failed to load trap')
-    const data = await res.json()
-    if (!data.length) return null
-
-    const t = data[0]
-
-    // Get last inspection for this trap
-    const lastRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/trap_inspections?trap_id=eq.${trapId}&order=inspected_at.desc&limit=1&select=inspected_at,rebaited`,
-      {
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-      }
-    )
-    const lastData = lastRes.ok ? await lastRes.json() : []
-    const lastInspection = lastData[0] || null
-
-    // Calculate weeks since last rebait
-    let weeksSinceRebait: number | null = null
-    let rebaitRequired = false
-
-    if (lastInspection) {
-      const lastDate = new Date(lastInspection.inspected_at)
-      const now = new Date()
-      const diffMs = now.getTime() - lastDate.getTime()
-      weeksSinceRebait = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 7))
-      rebaitRequired = weeksSinceRebait >= t.lure_types.rebait_weeks
-    }
-
-    return {
-      id: t.id,
-      trap_nr: t.trap_nr,
-      next_trap_id: t.next_trap_id,
-      seq: t.seq,
-      zone: t.zones,
-      pest: t.pests,
-      lure_type: t.lure_types,
-      last_inspection: lastInspection,
-      rebait_required: rebaitRequired,
-      weeks_since_rebait: weeksSinceRebait,
-    }
-  }
-
-  async function loadFirstTrap() {
-    setLoading(true)
-    setError(null)
+async function fetchTrapDetails(trapId: string): Promise<TrapWithDetails | null> {
+    const token = localStorage.getItem('farmscout_access_token')
+    
     try {
-      // Get the first trap in the route (lowest seq)
+      // Fetch trap
       const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/traps?is_active=eq.true&order=seq.asc&limit=1&select=id`,
+        `${SUPABASE_URL}/rest/v1/traps?id=eq.${trapId}&select=*`,
         {
           headers: {
             apikey: supabaseKey,
-            Authorization: `Bearer ${supabaseKey}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       )
       const data = await res.json()
-      if (!data.length) {
-        setError('No traps found. Please contact your manager.')
-        setLoading(false)
-        return
-      }
+      if (!data.length) return null
+      const t = data[0]
 
-      // Get total trap count for progress indicator
-      const countRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/traps?is_active=eq.true&select=id`,
+      // Fetch zone, pest and lure in parallel
+      const [zoneRes, pestRes, lureRes] = await Promise.all([
+        t.zone_id ? fetch(`${SUPABASE_URL}/rest/v1/zones?id=eq.${t.zone_id}&select=name`, {
+          headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` }
+        }) : null,
+        t.pest_id ? fetch(`${SUPABASE_URL}/rest/v1/pests?id=eq.${t.pest_id}&select=name,image_url`, {
+          headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` }
+        }) : null,
+        t.lure_type_id ? fetch(`${SUPABASE_URL}/rest/v1/lure_types?id=eq.${t.lure_type_id}&select=name,rebait_weeks`, {
+          headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` }
+        }) : null,
+      ])
+
+      const zone = zoneRes?.ok ? (await zoneRes.json())[0] : null
+      const pest = pestRes?.ok ? (await pestRes.json())[0] : null
+      const lure = lureRes?.ok ? (await lureRes.json())[0] : null
+
+      // Get last inspection for rebait calculation
+      const lastRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/trap_inspections?trap_id=eq.${trapId}&order=inspected_at.desc&limit=1&select=inspected_at,rebaited`,
         {
           headers: {
             apikey: supabaseKey,
-            Authorization: `Bearer ${supabaseKey}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       )
-      const allTraps = countRes.ok ? await countRes.json() : []
-      setProgress({ current: 1, total: allTraps.length })
+      const lastData = lastRes.ok ? await lastRes.json() : []
+      const lastInspection = lastData[0] || null
 
-      const trapDetails = await fetchTrapDetails(data[0].id)
+      // Calculate rebait
+      let weeksSinceRebait: number | null = null
+      let rebaitRequired = false
+
+      if (lastInspection && lure?.rebait_weeks) {
+        const lastDate = new Date(lastInspection.inspected_at)
+        const now = new Date()
+        weeksSinceRebait = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24 * 7))
+        rebaitRequired = weeksSinceRebait >= lure.rebait_weeks
+      }
+
+      return {
+        id: t.id,
+        trap_nr: t.trap_nr,
+        next_trap_id: t.next_trap_id,
+        seq: t.seq,
+        zone: zone,
+        pest: pest ? { ...pest, id: t.pest_id } : null,
+        lure_type: lure,
+        last_inspection: lastInspection,
+        rebait_required: rebaitRequired,
+        weeks_since_rebait: weeksSinceRebait,
+      }
+
+    } catch(err) {
+      console.log('fetchTrapDetails error:', err)
+      return null
+    }
+  }
+async function loadFirstTrap() {
+    setLoading(true)
+    setError(null)
+    try {
+      const token = localStorage.getItem('farmscout_access_token')
+      const userId = localStorage.getItem('farmscout_user_id')
+      const routeLength = parseInt(localStorage.getItem('farmscout_route_length') || '0')
+
+      // Check weekly status — completed, in progress, or not started
+      const statusRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/rpc/get_scout_weekly_status`,
+        {
+          method: 'POST',
+          headers: {
+            apikey: supabaseKey,
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ scout_user_id: userId }),
+        }
+      )
+      const status = await statusRes.json()
+      console.log('Weekly status:', status)
+
+      // If completed this week — go back home
+      if (status.completed) {
+        router.push('/scout?trap_status=completed')
+        return
+      }
+
+      // Decide which trap to start from
+      const startTrapId = status.resume_trap_id
+        || localStorage.getItem('farmscout_first_trap_id')
+
+      // Count how many already done this week for progress
+      const doneRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/trap_inspections?scout_id=eq.${userId}&inspected_at=gte.${getWeekStart()}&select=id`,
+        {
+          headers: {
+            apikey: supabaseKey,
+            Authorization: `Bearer ${token}`,
+            'Prefer': 'count=exact',
+          },
+        }
+      )
+      const doneSoFar = parseInt(doneRes.headers.get('content-range')?.split('/')[1] || '0')
+
+      setProgress({ current: doneSoFar + 1, total: routeLength })
+
+      const trapDetails = await fetchTrapDetails(startTrapId)
       setTrap(trapDetails)
       setCount(0)
       setRebaited(false)
+
     } catch (err) {
+      console.log('Error:', err)
       setError('Could not load traps. Are you online?')
     }
     setLoading(false)
+  }
+
+  function getWeekStart() {
+    const now = new Date()
+    const day = now.getDay()
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1) // Monday
+    const monday = new Date(now.setDate(diff))
+    monday.setHours(0, 0, 0, 0)
+    return monday.toISOString()
   }
 
   async function handleSave() {
@@ -165,54 +212,70 @@ export default function TrapInspectionPage() {
       const inspRes = await fetch(`${SUPABASE_URL}/rest/v1/trap_inspections`, {
         method: 'POST',
         headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-          Prefer: 'return=minimal',
-        },
+  apikey: supabaseKey,
+  Authorization: `Bearer ${localStorage.getItem('farmscout_access_token')}`,
+  'Content-Type': 'application/json',
+  Prefer: 'return=minimal',
+},
         body: JSON.stringify({
-          id: inspectionId,
-          trap_id: trap.id,
-          pest_id_direct: null,
-          rebaited,
-          inspected_at: now,
-          location: locationValue,
-          nfc_scanned: false,
-        }),
+  id: inspectionId,
+  trap_id: trap.id,
+  organisation_id: localStorage.getItem('farmscout_organisation_id'),
+  scout_id: localStorage.getItem('farmscout_user_id'),
+  orchard_id: null,
+  pest_id_direct: null,
+  rebaited,
+  inspected_at: now,
+  location: locationValue,
+  nfc_scanned: false,
+}),
       })
 
-      if (!inspRes.ok) throw new Error('Failed to save inspection')
+      if (!inspRes.ok) {
+  const errText = await inspRes.text()
+  console.log('Inspection save error:', errText)
+  throw new Error('Failed to save inspection')
+}
 
       // 2. Save trap count
       const countRes = await fetch(`${SUPABASE_URL}/rest/v1/trap_counts`, {
         method: 'POST',
         headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-          Prefer: 'return=minimal',
-        },
+  apikey: supabaseKey,
+  Authorization: `Bearer ${localStorage.getItem('farmscout_access_token')}`,
+  'Content-Type': 'application/json',
+  Prefer: 'return=minimal',
+},
         body: JSON.stringify({
           id: crypto.randomUUID(),
           inspection_id: inspectionId,
-          pest_id: null,
+          pest_id: trap.pest?.id || null,
           count,
         }),
       })
 
-      if (!countRes.ok) throw new Error('Failed to save count')
+      if (!countRes.ok) {
+  const errText = await countRes.text()
+  console.log('Count save error:', errText)
+  throw new Error('Failed to save count')
+}
 
       // 3. Load next trap or finish
-      if (trap.next_trap_id) {
-        setProgress(p => ({ ...p, current: p.current + 1 }))
-        const nextTrap = await fetchTrapDetails(trap.next_trap_id)
-        setTrap(nextTrap)
-        setCount(0)
-        setRebaited(false)
-      } else {
-        // Route complete!
-        router.push('/scout?completed=traps')
-      }
+     if (trap.next_trap_id) {
+  setProgress(p => ({ ...p, current: p.current + 1 }))
+  const nextTrap = await fetchTrapDetails(trap.next_trap_id)
+  setTrap(nextTrap)
+  setCount(0)
+  setRebaited(false)
+  // Scroll back to top
+  window.scrollTo(0, 0)
+} else {
+  // Route complete!
+  setTrap(null)
+  setSaving(false)
+  router.push('/scout')
+  alert('🎉 All traps completed! Great work.')
+}
     } catch (err: any) {
       setError(err.message || 'Save failed. Please try again.')
     }

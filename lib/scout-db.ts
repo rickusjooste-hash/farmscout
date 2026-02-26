@@ -207,8 +207,13 @@ export async function upsertMany<T extends keyof FarmScoutDB>(
 }
 
 export async function getPendingQueue() {
-  const db = await getScoutDB()
-  return db.getAllFromIndex('sync_queue', 'by_synced', false as any)
+  try {
+    const db = await getScoutDB()
+    const all = await db.getAll('sync_queue')
+    return all.filter(item => item.synced === false)
+  } catch {
+    return []
+  }
 }
 
 export async function deleteFromQueue(id: number) {

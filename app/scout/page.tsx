@@ -1,65 +1,110 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getAll } from '../../lib/scout-db'
+import { useRouter } from 'next/navigation'
 import { runFullSync } from '../../lib/scout-sync'
 
 export default function ScoutApp() {
   const [isOnline, setIsOnline] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
-  const [sessions, setSessions] = useState<any[]>([])
+  const [scoutName, setScoutName] = useState('')
   const [pendingCount, setPendingCount] = useState(0)
+  const router = useRouter()
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  const [trapStatus, setTrapStatus] = useState<'not_started' | 'in_progress' | 'completed'>('not_started')
+  const SUPABASE_URL = 'https://agktzdeskpyevurhabpg.supabase.co'
 
-  // Check online/offline status
   useEffect(() => {
+    // Check if logged in — if not, redirect to login
+    const token = localStorage.getItem('farmscout_access_token')
+    if (!token) {
+      router.push('/scout/login')
+      return
+    }
+
+    // Load scout name
+    const name = localStorage.getItem('farmscout_scout_name') || ''
+    setScoutName(name)
+    
+    // Check online status
     setIsOnline(navigator.onLine)
     window.addEventListener('online', () => setIsOnline(true))
     window.addEventListener('offline', () => setIsOnline(false))
-  }, [])
 
-  // Load sessions from local database
-  useEffect(() => {
-    loadSessions()
-  }, [])
-
-  // Auto-sync when online
-  useEffect(() => {
-    if (isOnline && supabaseKey) {
+    // Load pending count
+    loadPendingCount()
+    checkTrapStatus()
+    // Auto sync if online
+    if (navigator.onLine) {
       handleSync()
     }
-  }, [isOnline])
+  }, [])
 
-  async function loadSessions() {
-    const data = await getAll('inspection_sessions')
-    setSessions(data.sort((a, b) =>
-      new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
-    ))
-    const { getPendingQueue } = await import('../../lib/scout-db')
-    const queue = await getPendingQueue()
-    setPendingCount(queue.length)
+  async function checkTrapStatus() {
+    const token = localStorage.getItem('farmscout_access_token')
+    const userId = localStorage.getItem('farmscout_user_id')
+    if (!token || !userId) return
+
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/rpc/get_scout_weekly_status`,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ scout_user_id: userId }),
+        }
+      )
+      const data = await res.json()
+      setTrapStatus(data.status)
+    } catch { }
+  }
+
+  async function loadPendingCount() {
+    try {
+      const { getPendingQueue } = await import('../../lib/scout-db')
+      const queue = await getPendingQueue()
+      setPendingCount(queue.length)
+    } catch {
+      setPendingCount(0)
+    }
   }
 
   async function handleSync() {
     if (isSyncing) return
     setIsSyncing(true)
-    await runFullSync(supabaseKey)
-    await loadSessions()
+    try {
+      await runFullSync(supabaseKey)
+      await loadPendingCount()
+    } catch { }
     setIsSyncing(false)
   }
 
-  const activeSessions = sessions.filter(s => s.status === 'active')
-  const recentSessions = sessions.filter(s => s.status !== 'active').slice(0, 5)
+  function handleLogout() {
+    localStorage.clear()
+    router.push('/scout/login')
+  }
+
+  // Get first name only for greeting
+  const firstName = scoutName.split(' ')[0]
 
   return (
     <div style={styles.app}>
 
       {/* Header */}
       <div style={styles.header}>
-        <div style={styles.logo}>🌿 FarmScout</div>
+        <div>
+          <div style={styles.logo}>🌿 FarmScout</div>
+          <div style={styles.greeting}>Hello, {firstName}</div>
+        </div>
         <div style={styles.headerRight}>
           {pendingCount > 0 && (
-            <div style={styles.pendingBadge}>{pendingCount} pending</div>
+            <div style={styles.pendingBadge} onClick={handleSync}>
+              {pendingCount} pending
+            </div>
           )}
           <div
             style={{
@@ -68,9 +113,8 @@ export default function ScoutApp() {
               color: isOnline ? '#6abf4b' : '#e05c4b',
               border: `1px solid ${isOnline ? '#6abf4b' : '#e05c4b'}`,
             }}
-            onClick={handleSync}
           >
-            {isSyncing ? '⟳ Syncing...' : isOnline ? '● Online' : '● Offline'}
+            {isSyncing ? '⟳ Syncing' : isOnline ? '● Online' : '● Offline'}
           </div>
         </div>
       </div>
@@ -78,74 +122,66 @@ export default function ScoutApp() {
       {/* Main content */}
       <div style={styles.screen}>
 
-        {/* Active Sessions */}
-        {activeSessions.length > 0 && (
-          <div style={styles.section}>
-            <div style={styles.sectionLabel}>Active Inspections</div>
-            {activeSessions.map(s => (
-              <SessionCard key={s.id} session={s} />
-            ))}
-          </div>
-        )}
-
-        {/* Recent Sessions */}
         <div style={styles.section}>
-          <div style={styles.sectionLabel}>Recent</div>
-          {sessions.length === 0 ? (
-            <div style={styles.empty}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>🌱</div>
-              <div style={styles.emptyTitle}>No inspections yet</div>
-              <div style={styles.emptyDesc}>
-                Tap the button below to start your first inspection.
-              </div>
+          <div style={styles.sectionLabel}>What would you like to do?</div>
+
+          {/* Tile Grid */}
+          <div style={styles.tileGrid}>
+
+           {/* Trap Inspection */}
+<div
+  style={{
+    ...styles.tile,
+    background: trapStatus === 'completed' ? '#1a1a1a' : '#1a3a2a',
+    cursor: trapStatus === 'completed' ? 'not-allowed' : 'pointer',
+    opacity: trapStatus === 'completed' ? 0.5 : 1,
+  }}
+  onClick={() => trapStatus !== 'completed' && router.push('/scout/trap-inspection')}
+>
+  <div style={styles.tileIcon}>🪤</div>
+  <div style={styles.tileLabel}>Trap Inspection</div>
+  {trapStatus === 'completed' && (
+    <div style={{ ...styles.tileSoon, color: '#6abf4b' }}>✓ Done this week</div>
+  )}
+  {trapStatus === 'in_progress' && (
+    <div style={{ ...styles.tileSoon, color: '#f0a500' }}>● In progress</div>
+  )}
+</div>
+
+            {/* Coming soon tiles */}
+            <div style={{ ...styles.tile, ...styles.tileDimmed }}>
+              <div style={styles.tileIcon}>🍎</div>
+              <div style={styles.tileLabel}>Pomefruit Scouting</div>
+              <div style={styles.tileSoon}>Coming soon</div>
             </div>
-          ) : (
-            recentSessions.map(s => (
-              <SessionCard key={s.id} session={s} />
-            ))
-          )}
+
+            <div style={{ ...styles.tile, ...styles.tileDimmed }}>
+              <div style={styles.tileIcon}>🍑</div>
+              <div style={styles.tileLabel}>Stonefruit Scouting</div>
+              <div style={styles.tileSoon}>Coming soon</div>
+            </div>
+
+            <div style={{ ...styles.tile, ...styles.tileDimmed }}>
+              <div style={styles.tileIcon}>🍊</div>
+              <div style={styles.tileLabel}>Citrus Scouting</div>
+              <div style={styles.tileSoon}>Coming soon</div>
+            </div>
+
+          </div>
         </div>
 
       </div>
 
-      {/* Bottom Button */}
+      {/* Bottom bar with logout */}
       <div style={styles.bottomBar}>
-        <button style={styles.primaryBtn}>
-          + New Inspection
+        <button style={styles.logoutBtn} onClick={handleLogout}>
+          Sign Out
         </button>
       </div>
 
     </div>
   )
 }
-
-// ── Session Card ─────────────────────────────────────────────────────────
-
-function SessionCard({ session }: { session: any }) {
-  return (
-    <div style={styles.card}>
-      <div style={styles.cardRow}>
-        <div style={styles.cardTitle}>
-          {session.orchard_name || 'Unnamed Orchard'}
-        </div>
-        <div style={{
-          ...styles.chip,
-          background: session.status === 'active' ? '#1a3a1a' : '#1a1a3a',
-          color: session.status === 'active' ? '#6abf4b' : '#5b9bd5',
-        }}>
-          {session.status || 'active'}
-        </div>
-      </div>
-      <div style={styles.cardMeta}>
-        {session.block_name && <span>Block {session.block_name}</span>}
-        <span>{session._treeCount || 0} trees</span>
-        <span>{new Date(session.started_at).toLocaleDateString()}</span>
-      </div>
-    </div>
-  )
-}
-
-// ── Styles ────────────────────────────────────────────────────────────────
 
 const styles: Record<string, React.CSSProperties> = {
   app: {
@@ -169,9 +205,14 @@ const styles: Record<string, React.CSSProperties> = {
     flexShrink: 0,
   },
   logo: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 700,
-    letterSpacing: '0.02em',
+    color: '#f0a500',
+  },
+  greeting: {
+    fontSize: 13,
+    color: '#7a8a5a',
+    marginTop: 2,
   },
   headerRight: {
     display: 'flex',
@@ -179,10 +220,9 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 8,
   },
   statusPill: {
-    fontSize: 12,
+    fontSize: 11,
     padding: '4px 10px',
     borderRadius: 100,
-    cursor: 'pointer',
     fontWeight: 500,
   },
   pendingBadge: {
@@ -192,6 +232,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     padding: '3px 8px',
     borderRadius: 100,
+    cursor: 'pointer',
   },
   screen: {
     flex: 1,
@@ -207,54 +248,48 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: '0.12em',
     textTransform: 'uppercase',
     color: '#7a8a5a',
-    marginBottom: 10,
+    marginBottom: 16,
   },
-  card: {
-    background: '#222918',
-    border: '1px solid #3a4228',
-    borderRadius: 6,
-    padding: '14px 16px',
-    marginBottom: 8,
-    borderLeft: '3px solid #f0a500',
-  },
-  cardRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: 600,
-  },
-  cardMeta: {
-    fontSize: 12,
-    color: '#7a8a5a',
-    marginTop: 4,
-    display: 'flex',
+  tileGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
     gap: 12,
   },
-  chip: {
-    fontSize: 11,
-    fontWeight: 600,
-    padding: '2px 8px',
-    borderRadius: 4,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
+  tile: {
+    background: '#222918',
+    border: '1px solid #3a4228',
+    borderRadius: 8,
+    padding: '24px 16px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    minHeight: 130,
+    transition: 'opacity 0.15s',
+    position: 'relative',
   },
-  empty: {
-    textAlign: 'center',
-    padding: '40px 24px',
-    color: '#7a8a5a',
+  tileDimmed: {
+    opacity: 0.4,
+    cursor: 'not-allowed',
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: 600,
-    color: '#e8e8d8',
-    marginBottom: 6,
+  tileIcon: {
+    fontSize: 40,
+    marginBottom: 10,
   },
-  emptyDesc: {
+  tileLabel: {
     fontSize: 13,
-    lineHeight: 1.5,
+    fontWeight: 600,
+    textAlign: 'center',
+    color: '#e8e8d8',
+    letterSpacing: '0.02em',
+  },
+  tileSoon: {
+    fontSize: 10,
+    color: '#7a8a5a',
+    marginTop: 4,
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
   },
   bottomBar: {
     padding: 16,
@@ -262,16 +297,15 @@ const styles: Record<string, React.CSSProperties> = {
     borderTop: '1px solid #3a4228',
     flexShrink: 0,
   },
-  primaryBtn: {
+  logoutBtn: {
     width: '100%',
-    background: '#f0a500',
-    color: '#000',
-    fontSize: 17,
-    fontWeight: 700,
-    padding: '14px 20px',
-    border: 'none',
+    background: 'transparent',
+    border: '1px solid #3a4228',
     borderRadius: 6,
+    color: '#7a8a5a',
+    fontSize: 15,
+    fontWeight: 600,
+    padding: '12px',
     cursor: 'pointer',
-    letterSpacing: '0.03em',
   },
 }
