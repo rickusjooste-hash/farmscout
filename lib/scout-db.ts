@@ -90,7 +90,7 @@ interface FarmScoutDB extends DBSchema {
     indexes: { 'by_trap_inspection': string }
   }
   sync_queue: {
-    key: string
+    key: number
     value: {
       id?: number
       tableName: string
@@ -104,8 +104,9 @@ interface FarmScoutDB extends DBSchema {
       createdAt: string
       lastAttempt?: string
       lastError?: string
+      [key: string]: any
     }
-    indexes: { 'by_synced': boolean }
+    indexes: { 'by_synced': string }
   }
 }
 
@@ -163,48 +164,49 @@ export async function getScoutDB(): Promise<IDBPDatabase<FarmScoutDB>> {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 export async function getAll<T extends keyof FarmScoutDB>(
-  storeName: T
-): Promise<FarmScoutDB[T]['value'][]> {
+  storeName: any
+): Promise<any[]> {
   const db = await getScoutDB()
   return db.getAll(storeName) as any
 }
 
 export async function getAllByIndex<T extends keyof FarmScoutDB>(
-  storeName: T,
-  indexName: string,
+  storeName: any,
+  indexName: any,
   query: any
-): Promise<FarmScoutDB[T]['value'][]> {
+): Promise<any[]> {
   const db = await getScoutDB()
-  return db.getAllFromIndex(storeName as any, indexName, query) as any
+  return (db as any).getAllFromIndex(storeName, indexName, query)
 }
 
 export async function getOne<T extends keyof FarmScoutDB>(
-  storeName: T,
+  storeName: any,
   key: string | number
-): Promise<FarmScoutDB[T]['value'] | undefined> {
+): Promise<any> {
   const db = await getScoutDB()
-  return db.get(storeName, key as any) as any
+  return (db as any).get(storeName, key)
 }
 
 export async function upsertRecord<T extends keyof FarmScoutDB>(
-  storeName: T,
-  record: FarmScoutDB[T]['value']
+  storeName: any,
+  record: any
 ): Promise<void> {
   const db = await getScoutDB()
-  await db.put(storeName, record as any)
+  await (db as any).put(storeName, record)
 }
 
 export async function upsertMany<T extends keyof FarmScoutDB>(
-  storeName: T,
-  records: FarmScoutDB[T]['value'][]
+  storeName: any,
+  records: any[]
 ): Promise<void> {
   const db = await getScoutDB()
-  const tx = db.transaction(storeName, 'readwrite')
+  const tx = (db as any).transaction(storeName, 'readwrite')
   await Promise.all([
-    ...records.map((r) => tx.store.put(r as any)),
+    ...records.map((r) => tx.store.put(r)),
     tx.done,
   ])
 }
+
 
 export async function getPendingQueue() {
   try {
