@@ -171,8 +171,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     justifyContent: 'center',
     minHeight: '100dvh',
-    maxWidth: 480,
-    margin: '0 auto',
+    width: '100%',
     background: '#1a1f0e',
     color: '#e8e8d8',
     fontFamily: 'system-ui, sans-serif',
@@ -181,6 +180,10 @@ const styles: Record<string, React.CSSProperties> = {
   logoSection: {
     textAlign: 'center',
     marginBottom: 48,
+    maxWidth: 480,
+    width: '100%',
+    alignSelf: 'center',
+  }
   },
   logoIcon: {
     fontSize: 64,
@@ -204,6 +207,9 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid #3a4228',
     borderRadius: 8,
     padding: 24,
+    maxWidth: 480,
+    width: '100%',
+    alignSelf: 'center',
   },
   formGroup: {
     marginBottom: 16,
