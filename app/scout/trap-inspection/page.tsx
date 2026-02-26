@@ -35,12 +35,24 @@ export default function TrapInspectionPage() {
   const router = useRouter()
 
   // Get GPS silently in background
-  useEffect(() => {
-    navigator.geolocation?.getCurrentPosition(
-      (pos) => setGpsLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => console.log('GPS unavailable'),
-      { enableHighAccuracy: true, timeout: 10000 }
+ useEffect(() => {
+    if (!navigator.geolocation) return
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => setGpsLocation({ 
+        lat: pos.coords.latitude, 
+        lng: pos.coords.longitude 
+      }),
+      (err) => console.log('GPS error:', err),
+      { 
+        enableHighAccuracy: true, 
+        timeout: 10000,
+        maximumAge: 5000 // update every 5 seconds
+      }
     )
+
+    // Clean up when leaving the page
+    return () => navigator.geolocation.clearWatch(watchId)
   }, [])
 
   // Load first trap on mount
