@@ -5,7 +5,7 @@
   "start_url": "/scout/login",
   "display": "standalone",
   "background_color": "#1a1f0e",
-  "theme_color": "#f0a500",
+  "theme_color": "#1a1f0e",
   "orientation": "portrait",
   "icons": [
     {
