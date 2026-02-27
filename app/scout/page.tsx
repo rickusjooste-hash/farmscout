@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { runFullSync } from '../../lib/scout-sync'
+import TrapInspectionView from './TrapInspectionView'
 
 export default function ScoutApp() {
   const [isOnline, setIsOnline] = useState(true)
@@ -12,6 +13,7 @@ export default function ScoutApp() {
   const router = useRouter()
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
   const [trapStatus, setTrapStatus] = useState<'not_started' | 'in_progress' | 'completed'>('not_started')
+  const [view, setView] = useState<'home' | 'trap-inspection'>('home')
   const SUPABASE_URL = 'https://agktzdeskpyevurhabpg.supabase.co'
 
   useEffect(() => {
@@ -92,6 +94,10 @@ export default function ScoutApp() {
   // Get first name only for greeting
   const firstName = scoutName.split(' ')[0]
 
+  if (view === 'trap-inspection') {
+    return <TrapInspectionView onBack={() => { setView('home'); checkTrapStatus() }} />
+  }
+
   return (
     <div style={styles.app}>
 
@@ -137,7 +143,7 @@ export default function ScoutApp() {
     cursor: trapStatus === 'completed' ? 'not-allowed' : 'pointer',
     opacity: trapStatus === 'completed' ? 0.5 : 1,
   }}
-  onClick={() => trapStatus !== 'completed' && (window.location.href = '/scout/trap-inspection')}
+  onClick={() => trapStatus !== 'completed' && setView('trap-inspection')}
 >
   <div style={styles.tileIcon}>🪤</div>
   <div style={styles.tileLabel}>Trap Inspection</div>
