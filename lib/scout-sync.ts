@@ -12,7 +12,7 @@ export async function pullReferenceData(supabaseKey: string, accessToken?: strin
     const orchardsRes = await fetch(`${SUPABASE_REST}/orchards?select=*`, {
       headers: {
         apikey: supabaseKey,
-        Authorization: `Bearer ${supabaseKey}`,
+         Authorization: `Bearer ${accessToken || supabaseKey}`,
       },
     })
     if (orchardsRes.ok) {
@@ -25,7 +25,7 @@ export async function pullReferenceData(supabaseKey: string, accessToken?: strin
     const pestsRes = await fetch(`${SUPABASE_REST}/pests?select=*`, {
       headers: {
         apikey: supabaseKey,
-        Authorization: `Bearer ${supabaseKey}`,
+         Authorization: `Bearer ${accessToken || supabaseKey}`,
       },
     })
     if (pestsRes.ok) {
@@ -43,13 +43,13 @@ export async function pullReferenceData(supabaseKey: string, accessToken?: strin
     if (token && farmId) {
   const [trapsRes, zonesRes, luresRes] = await Promise.all([
     fetch(`${SUPABASE_REST}/traps?farm_id=eq.${farmId}&is_active=eq.true&select=*`, {
-      headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` }
+      headers: { apikey: supabaseKey,  Authorization: `Bearer ${accessToken || supabaseKey}`, }
     }),
     fetch(`${SUPABASE_REST}/zones?select=*`, {
-      headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` }
+      headers: { apikey: supabaseKey, Authorization: `Bearer ${accessToken || supabaseKey}` }
     }),
     fetch(`${SUPABASE_REST}/lure_types?select=*`, {
-      headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` }
+      headers: { apikey: supabaseKey, Authorization: `Bearer ${accessToken || supabaseKey}` }
     }),
   ])
 
@@ -82,13 +82,18 @@ export async function pullReferenceData(supabaseKey: string, accessToken?: strin
 export async function saveAndQueue(
   tableName: string,
   record: Record<string, any>,
-  supabaseKey: string
+  supabaseKey: string,
+  accessToken?: string
 ) {
   // Save to local database first (works offline)
   await upsertRecord(tableName as any, {
     ...record,
     _syncStatus: 'pending',
   })
+
+  const token = accessToken
+    || (typeof window !== 'undefined' ? localStorage.getItem('farmscout_access_token') : null)
+    || supabaseKey
 
   // Add to upload queue
   await addToQueue({
@@ -97,7 +102,7 @@ export async function saveAndQueue(
     url: `${SUPABASE_REST}/${tableName}`,
     headers: {
       apikey: supabaseKey,
-      Authorization: `Bearer ${supabaseKey}`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
       Prefer: 'resolution=merge-duplicates',
     },

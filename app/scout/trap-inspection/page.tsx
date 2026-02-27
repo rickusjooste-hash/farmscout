@@ -155,56 +155,66 @@ async function loadFirstTrap() {
       const token = localStorage.getItem('farmscout_access_token')
       const userId = localStorage.getItem('farmscout_user_id')
       const routeLength = parseInt(localStorage.getItem('farmscout_route_length') || '0')
+      const isOnline = navigator.onLine
 
-      // Check weekly status — completed, in progress, or not started
-      const statusRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/rpc/get_scout_weekly_status`,
-        {
-          method: 'POST',
-          headers: {
-            apikey: supabaseKey,
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ scout_user_id: userId }),
+      let startTrapId = localStorage.getItem('farmscout_first_trap_id')
+
+      if (isOnline) {
+        // Check weekly status — completed, in progress, or not started
+        const statusRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/rpc/get_scout_weekly_status`,
+          {
+            method: 'POST',
+            headers: {
+              apikey: supabaseKey,
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ scout_user_id: userId }),
+          }
+        )
+        const status = await statusRes.json()
+        console.log('Weekly status:', status)
+
+        // If completed this week — go back home
+        if (status.completed) {
+          router.push('/scout?trap_status=completed')
+          return
         }
-      )
-      const status = await statusRes.json()
-      console.log('Weekly status:', status)
 
-      // If completed this week — go back home
-      if (status.completed) {
-        router.push('/scout?trap_status=completed')
-        return
+        // Resume from where we left off if available
+        if (status.resume_trap_id) startTrapId = status.resume_trap_id
+
+        // Count how many already done this week for progress
+        const doneRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/trap_inspections?scout_id=eq.${userId}&inspected_at=gte.${getWeekStart()}&select=id`,
+          {
+            headers: {
+              apikey: supabaseKey,
+              Authorization: `Bearer ${token}`,
+              'Prefer': 'count=exact',
+            },
+          }
+        )
+        const doneSoFar = parseInt(doneRes.headers.get('content-range')?.split('/')[1] || '0')
+        setProgress({ current: doneSoFar + 1, total: routeLength })
+      } else {
+        // Offline — skip status check, start from beginning
+        setProgress({ current: 1, total: routeLength })
       }
 
-      // Decide which trap to start from
-      const startTrapId = status.resume_trap_id
-        || localStorage.getItem('farmscout_first_trap_id')
-
-      // Count how many already done this week for progress
-      const doneRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/trap_inspections?scout_id=eq.${userId}&inspected_at=gte.${getWeekStart()}&select=id`,
-        {
-          headers: {
-            apikey: supabaseKey,
-            Authorization: `Bearer ${token}`,
-            'Prefer': 'count=exact',
-          },
-        }
-      )
-      const doneSoFar = parseInt(doneRes.headers.get('content-range')?.split('/')[1] || '0')
-
-      setProgress({ current: doneSoFar + 1, total: routeLength })
-
       const trapDetails = await fetchTrapDetails(startTrapId)
-      setTrap(trapDetails)
-      setCount(0)
-      setRebaited(false)
+      if (!trapDetails) {
+        setError('No trap data found. Please sync while online before going offline.')
+      } else {
+        setTrap(trapDetails)
+        setCount(0)
+        setRebaited(false)
+      }
 
     } catch (err) {
       console.log('Error:', err)
-      setError('Could not load traps. Are you online?')
+      setError('Could not load traps. Please try again.')
     }
     setLoading(false)
   }
