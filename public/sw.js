@@ -11,8 +11,11 @@ const PRECACHE = [
 ]
 
 self.addEventListener('install', (event) => {
+  // Use allSettled so one bad URL doesn't prevent the SW from installing
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE))
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.allSettled(PRECACHE.map((url) => cache.add(url)))
+    )
   )
   self.skipWaiting()
 })

@@ -98,8 +98,17 @@ export default function ScoutLogin() {
         throw new Error(`Sync failed — no trap data downloaded. (${JSON.stringify(syncResult)}) Please check your connection and try again.`)
       }
 
-      // 5. Go to home screen
-      router.push('/scout')
+      // 5. Pre-warm the cache so scout pages work offline immediately
+      if ('caches' in window) {
+        const cache = await caches.open('farmscout-v1')
+        await Promise.allSettled([
+          cache.add('/scout'),
+          cache.add('/scout/trap-inspection'),
+        ])
+      }
+
+      // 6. Go to home screen
+      window.location.href = '/scout'
 
     } catch (err: any) {
       setError(err.message || 'Login failed. Please try again.')
