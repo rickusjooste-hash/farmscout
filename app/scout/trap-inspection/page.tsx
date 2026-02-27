@@ -327,7 +327,7 @@ async function loadFirstTrap() {
       } else {
         setTrap(null)
         setSaving(false)
-        router.push('/scout')
+        window.location.href = '/scout'
         alert('🎉 All traps completed! Great work.')
       }
 
@@ -345,7 +345,7 @@ async function loadFirstTrap() {
     return (
       <div style={styles.app}>
         <div style={styles.header}>
-          <button style={styles.backBtn} onClick={() => router.push('/scout')}>←</button>
+          <button style={styles.backBtn} onClick={() => window.location.href = '/scout'}>←</button>
           <div style={styles.headerTitle}>Trap Inspection</div>
           <div />
         </div>
@@ -361,7 +361,7 @@ async function loadFirstTrap() {
     return (
       <div style={styles.app}>
         <div style={styles.header}>
-          <button style={styles.backBtn} onClick={() => router.push('/scout')}>←</button>
+          <button style={styles.backBtn} onClick={() => window.location.href = '/scout'}>←</button>
           <div style={styles.headerTitle}>Trap Inspection</div>
           <div />
         </div>
@@ -381,7 +381,7 @@ async function loadFirstTrap() {
 
       {/* Header */}
       <div style={styles.header}>
-        <button style={styles.backBtn} onClick={() => router.push('/scout')}>←</button>
+        <button style={styles.backBtn} onClick={() => window.location.href = '/scout'}>←</button>
         <div style={styles.headerTitle}>Trap Inspection</div>
         <div style={styles.progressText}>{progress.current}/{progress.total}</div>
       </div>
@@ -498,7 +498,7 @@ async function loadFirstTrap() {
       <div style={styles.bottomBar}>
         <button
           style={{ ...styles.cancelBtn }}
-          onClick={() => router.push('/scout')}
+          onClick={() => window.location.href = '/scout'}
         >
           Cancel
         </button>

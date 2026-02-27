@@ -137,7 +137,7 @@ export default function ScoutApp() {
     cursor: trapStatus === 'completed' ? 'not-allowed' : 'pointer',
     opacity: trapStatus === 'completed' ? 0.5 : 1,
   }}
-  onClick={() => trapStatus !== 'completed' && router.push('/scout/trap-inspection')}
+  onClick={() => trapStatus !== 'completed' && (window.location.href = '/scout/trap-inspection')}
 >
   <div style={styles.tileIcon}>🪤</div>
   <div style={styles.tileLabel}>Trap Inspection</div>
