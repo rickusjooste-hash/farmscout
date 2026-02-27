@@ -89,7 +89,14 @@ export default function ScoutLogin() {
 
       // 4. Pull all reference data now so the app works offline immediately
       const { pullReferenceData } = await import('@/lib/scout-sync')
-      await pullReferenceData(SUPABASE_ANON_KEY, accessToken)
+      const syncResult = await pullReferenceData(SUPABASE_ANON_KEY, accessToken)
+
+      // Verify traps were actually cached — surface any silent failures
+      const { getAll } = await import('@/lib/scout-db')
+      const traps = await getAll('traps')
+      if (traps.length === 0) {
+        throw new Error(`Sync failed — no trap data downloaded. (${JSON.stringify(syncResult)}) Please check your connection and try again.`)
+      }
 
       // 5. Go to home screen
       router.push('/scout')
