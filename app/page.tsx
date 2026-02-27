@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase-auth'
+import { useUserContext } from '@/lib/useUserContext'
 import PestTrendChart from '@/app/components/PestTrendChart'
 import { useRouter } from 'next/navigation'
 
@@ -40,8 +41,8 @@ export default function DashboardPage() {
   const [pestSummary, setPestSummary] = useState<PestSummary[]>([])
   const [recentSessions, setRecentSessions] = useState<RecentSession[]>([])
   const [stats, setStats] = useState<Stats>({ orchards: 0, sessions: 0, observations: 0, pests: 0 })
+  const { farmIds, isSuperAdmin, contextLoaded } = useUserContext()
   const [loading, setLoading] = useState(true)
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -49,36 +50,49 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
+    if (!contextLoaded) return
     async function fetchData() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: orgUser } = await supabase
-          .from('organisation_users')
-          .select('role')
-          .eq('user_id', user.id)
-          .single()
-        if (orgUser?.role === 'super_admin') setIsSuperAdmin(true)
-      }
-      // Orchards
-      const { data: orchardData } = await supabase
+      const isSuperAdminUser = isSuperAdmin
+
+      // Orchards — scoped to accessible farms
+      let orchardQuery = supabase
         .from('orchards')
         .select('id, name, variety, ha, is_active')
         .eq('is_active', true)
         .order('name')
+      if (!isSuperAdminUser && farmIds.length > 0) {
+        orchardQuery = orchardQuery.in('farm_id', farmIds)
+      }
+      const { data: orchardData } = await orchardQuery
 
-      // Recent inspection sessions
-      const { data: sessionData } = await supabase
+      const orchardIds = (orchardData || []).map(o => o.id)
+      const orchardLookup: Record<string, string> = {}
+      orchardData?.forEach(o => { orchardLookup[o.id] = o.name })
+
+      // Recent inspection sessions — scoped to accessible orchards
+      let sessionQuery = supabase
         .from('inspection_sessions')
         .select('id, inspected_at, orchard_id')
         .order('inspected_at', { ascending: false })
         .limit(8)
+      if (!isSuperAdminUser && orchardIds.length > 0) {
+        sessionQuery = sessionQuery.in('orchard_id', orchardIds)
+      }
+      const { data: sessionData } = await sessionQuery
 
-      // Top pests by observation count
-      const { data: obsData } = await supabase
+      // Top pests — scoped to accessible orchards via sessions
+      let obsQuery = supabase
         .from('inspection_observations')
         .select('pest_id, count, pests(name)')
         .gt('count', 0)
         .limit(1000)
+      if (!isSuperAdminUser && orchardIds.length > 0) {
+        const sessionIds = (sessionData || []).map(s => s.id)
+        if (sessionIds.length > 0) {
+          obsQuery = obsQuery.in('session_id', sessionIds)
+        }
+      }
+      const { data: obsData } = await obsQuery
 
       // Aggregate pest counts
       const pestTotals: Record<string, { name: string; total: number }> = {}
@@ -92,24 +106,22 @@ export default function DashboardPage() {
         .slice(0, 8)
         .map(p => ({ pest_name: p.name, total: p.total }))
 
-      // Enrich sessions with orchard names
-      const orchardLookup: Record<string, string> = {}
-      orchardData?.forEach(o => { orchardLookup[o.id] = o.name })
       const enrichedSessions = sessionData?.map(s => ({
         ...s,
         orchard_name: orchardLookup[s.orchard_id] || 'Unknown'
       })) || []
 
-      // Stats counts
-      const { count: sessionCount } = await supabase
-        .from('inspection_sessions')
-        .select('*', { count: 'exact', head: true })
-      const { count: obsCount } = await supabase
-        .from('inspection_observations')
-        .select('*', { count: 'exact', head: true })
-      const { count: pestCount } = await supabase
-        .from('pests')
-        .select('*', { count: 'exact', head: true })
+      // Stats counts — scoped
+      let sessionCountQuery = supabase.from('inspection_sessions').select('*', { count: 'exact', head: true })
+      let obsCountQuery = supabase.from('inspection_observations').select('*', { count: 'exact', head: true })
+      if (!isSuperAdminUser && orchardIds.length > 0) {
+        sessionCountQuery = sessionCountQuery.in('orchard_id', orchardIds)
+      }
+      const [{ count: sessionCount }, { count: obsCount }, { count: pestCount }] = await Promise.all([
+        sessionCountQuery,
+        obsCountQuery,
+        supabase.from('pests').select('*', { count: 'exact', head: true }),
+      ])
 
       setOrchards(orchardData || [])
       setPestSummary(sorted)
@@ -124,7 +136,7 @@ export default function DashboardPage() {
     }
 
     fetchData()
-  }, [])
+  }, [contextLoaded])
 
   const maxPest = pestSummary[0]?.total || 1
 
@@ -428,7 +440,7 @@ export default function DashboardPage() {
           <aside className="sidebar">
             <div className="logo"><span>Farm</span>Scout</div>
 <a href="/" className="nav-item active"><span className="nav-icon">📊</span> Dashboard</a>
-<a href="/orchards" className="nav-item"><span className="nav-icon">🌳</span> Orchards</a>
+<a href="/orchards" className="nav-item"><span className="nav-icon">🪤</span> Trap Inspections</a>
 <a className="nav-item"><span className="nav-icon">🐛</span> Pests</a>
 <a className="nav-item"><span className="nav-icon">🪤</span> Traps</a>
 <a className="nav-item"><span className="nav-icon">🔍</span> Inspections</a>

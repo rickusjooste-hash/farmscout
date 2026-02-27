@@ -53,9 +53,19 @@ export default function NewScoutPage() {
         .select('farm_id, farms(id, full_name, code)')
         .eq('user_id', user.id)
 
-      const farmList: Farm[] = (farmAccess || [])
+      let farmList: Farm[] = (farmAccess || [])
         .map((fa: any) => fa.farms)
         .filter(Boolean)
+
+      // Fallback: if user has no farm_access rows, load all farms for their org
+      if (farmList.length === 0) {
+        const { data: allFarms } = await supabase
+          .from('farms')
+          .select('id, full_name, code')
+          .eq('organisation_id', orgUser.organisation_id)
+          .order('full_name')
+        farmList = allFarms || []
+      }
 
       setFarms(farmList)
       if (farmList.length === 1) setFarmId(farmList[0].id)
@@ -165,7 +175,7 @@ export default function NewScoutPage() {
         <aside className="sidebar">
           <div className="logo"><span>Farm</span>Scout</div>
           <a href="/" className="nav-item"><span>📊</span> Dashboard</a>
-          <a href="/orchards" className="nav-item"><span>🌳</span> Orchards</a>
+          <a href="/orchards" className="nav-item"><span>🪤</span> Trap Inspections</a>
           <a className="nav-item"><span>🐛</span> Pests</a>
           <a className="nav-item"><span>🪤</span> Traps</a>
           <a className="nav-item"><span>🔍</span> Inspections</a>

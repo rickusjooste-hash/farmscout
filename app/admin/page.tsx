@@ -21,10 +21,18 @@ export default function AdminPage() {
   const router = useRouter()
 
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'farm' | 'manager'>('farm')
+  const [activeTab, setActiveTab] = useState<'org' | 'farm' | 'manager'>('org')
 
   const [organisations, setOrganisations] = useState<Organisation[]>([])
   const [allFarms, setAllFarms] = useState<Farm[]>([])
+
+  // Add Organisation form
+  const [orgName, setOrgName] = useState('')
+  const [orgSlug, setOrgSlug] = useState('')
+  const [orgPlan, setOrgPlan] = useState('')
+  const [orgSubmitting, setOrgSubmitting] = useState(false)
+  const [orgError, setOrgError] = useState('')
+  const [orgSuccess, setOrgSuccess] = useState('')
 
   // Add Farm form
   const [farmOrgId, setFarmOrgId] = useState('')
@@ -81,24 +89,56 @@ export default function AdminPage() {
 
   const farmsForMgOrg = allFarms.filter(f => f.organisation_id === mgOrgId)
 
+  async function handleAddOrg(e: React.FormEvent) {
+    e.preventDefault()
+    setOrgError('')
+    setOrgSuccess('')
+    setOrgSubmitting(true)
+
+    const res = await fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'create-org', name: orgName, slug: orgSlug, plan: orgPlan }),
+    })
+    const json = await res.json()
+
+    setOrgSubmitting(false)
+    if (!res.ok || json.error) {
+      setOrgError(json.error || 'An error occurred')
+    } else {
+      setOrgSuccess(`Organisation "${orgName}" created successfully.`)
+      setOrgName('')
+      setOrgSlug('')
+      setOrgPlan('')
+      const { data: orgs } = await supabase.from('organisations').select('id, name').eq('is_active', true).order('name')
+      setOrganisations(orgs || [])
+    }
+  }
+
   async function handleAddFarm(e: React.FormEvent) {
     e.preventDefault()
     setFarmError('')
     setFarmSuccess('')
     setFarmSubmitting(true)
 
-    const { error } = await supabase.from('farms').insert({
-      organisation_id: farmOrgId,
-      code: farmCode.trim().toUpperCase(),
-      full_name: farmName.trim(),
-      puc: farmPuc.trim() || null,
-      province: farmProvince.trim() || null,
-      region: farmRegion.trim() || null,
+    const res = await fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'create-farm',
+        organisation_id: farmOrgId,
+        code: farmCode,
+        full_name: farmName,
+        puc: farmPuc,
+        province: farmProvince,
+        region: farmRegion,
+      }),
     })
+    const json = await res.json()
 
     setFarmSubmitting(false)
-    if (error) {
-      setFarmError(error.message)
+    if (!res.ok || json.error) {
+      setFarmError(json.error || 'An error occurred')
     } else {
       setFarmSuccess(`Farm "${farmName}" created successfully.`)
       setFarmCode('')
@@ -106,7 +146,6 @@ export default function AdminPage() {
       setFarmPuc('')
       setFarmProvince('')
       setFarmRegion('')
-      // Refresh farms list
       const { data: farms } = await supabase.from('farms').select('id, full_name, code, organisation_id').order('full_name')
       setAllFarms(farms || [])
     }
@@ -220,7 +259,7 @@ export default function AdminPage() {
         <aside className="sidebar">
           <div className="logo"><span>Farm</span>Scout</div>
           <a href="/" className="nav-item"><span>📊</span> Dashboard</a>
-          <a href="/orchards" className="nav-item"><span>🌳</span> Orchards</a>
+          <a href="/orchards" className="nav-item"><span>🪤</span> Trap Inspections</a>
           <a className="nav-item"><span>🐛</span> Pests</a>
           <a className="nav-item"><span>🪤</span> Traps</a>
           <a className="nav-item"><span>🔍</span> Inspections</a>
@@ -248,6 +287,12 @@ export default function AdminPage() {
 
           <div className="tabs">
             <button
+              className={`tab${activeTab === 'org' ? ' active' : ''}`}
+              onClick={() => setActiveTab('org')}
+            >
+              Add Organisation
+            </button>
+            <button
               className={`tab${activeTab === 'farm' ? ' active' : ''}`}
               onClick={() => setActiveTab('farm')}
             >
@@ -260,6 +305,56 @@ export default function AdminPage() {
               Add Manager
             </button>
           </div>
+
+          {activeTab === 'org' && (
+            <div className="form-card">
+              <div className="section-title">New Organisation</div>
+              {orgError && <div className="error">{orgError}</div>}
+              {orgSuccess && <div className="success">{orgSuccess}</div>}
+
+              <form onSubmit={handleAddOrg}>
+                <div className="two-col-fields">
+                  <div className="field">
+                    <label>Name</label>
+                    <input
+                      type="text"
+                      value={orgName}
+                      onChange={e => {
+                        setOrgName(e.target.value)
+                        setOrgSlug(e.target.value.trim().toLowerCase().replace(/\s+/g, '-'))
+                      }}
+                      placeholder="e.g. Mouton's Valley Group"
+                      required
+                    />
+                  </div>
+                  <div className="field">
+                    <label>Slug</label>
+                    <input
+                      type="text"
+                      value={orgSlug}
+                      onChange={e => setOrgSlug(e.target.value)}
+                      placeholder="e.g. moutons-valley"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label>Plan <span style={{ color: '#b0bdb5', fontWeight: 400, textTransform: 'none' }}>(optional)</span></label>
+                  <input
+                    type="text"
+                    value={orgPlan}
+                    onChange={e => setOrgPlan(e.target.value)}
+                    placeholder="e.g. pro, enterprise"
+                  />
+                </div>
+
+                <button type="submit" className="btn-submit" disabled={orgSubmitting}>
+                  {orgSubmitting ? 'Creating organisation…' : 'Create Organisation'}
+                </button>
+              </form>
+            </div>
+          )}
 
           {activeTab === 'farm' && (
             <div className="form-card">

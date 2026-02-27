@@ -1,6 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase-auth'
+import { useUserContext } from '@/lib/useUserContext'
 import { useEffect, useState } from 'react'
 
 interface Scout {
@@ -33,6 +34,7 @@ interface AvailableTrap {
 
 export default function ScoutsPage() {
   const supabase = createClient()
+  const { farmIds, isSuperAdmin, contextLoaded } = useUserContext()
   const [scouts, setScouts] = useState<Scout[]>([])
   const [selectedScout, setSelectedScout] = useState<Scout | null>(null)
   const [route, setRoute] = useState<RouteTrap[]>([])
@@ -45,15 +47,16 @@ export default function ScoutsPage() {
   const [insertAfterTrap, setInsertAfterTrap] = useState<RouteTrap | null>(null)
 
   useEffect(() => {
-    supabase
-      .from('scouts')
-      .select('*')
-      .eq('is_active', true)
-      .then(({ data }) => {
-        setScouts(data || [])
-        if (data && data.length > 0) setSelectedScout(data[0])
-      })
-  }, [])
+    if (!contextLoaded) return
+    let query = supabase.from('scouts').select('*').eq('is_active', true)
+    if (!isSuperAdmin && farmIds.length > 0) {
+      query = query.in('farm_id', farmIds)
+    }
+    query.then(({ data }) => {
+      setScouts(data || [])
+      if (data && data.length > 0) setSelectedScout(data[0])
+    })
+  }, [contextLoaded])
 
   useEffect(() => {
     if (!selectedScout) return
@@ -258,7 +261,7 @@ export default function ScoutsPage() {
         <aside className="sidebar">
           <div className="logo"><span>Farm</span>Scout</div>
           <a href="/" className="nav-item"><span>📊</span> Dashboard</a>
-          <a href="/orchards" className="nav-item"><span>🌳</span> Orchards</a>
+          <a href="/orchards" className="nav-item"><span>🪤</span> Trap Inspections</a>
           <a className="nav-item"><span>🐛</span> Pests</a>
           <a className="nav-item"><span>🪤</span> Traps</a>
           <a className="nav-item"><span>🔍</span> Inspections</a>

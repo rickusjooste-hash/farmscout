@@ -16,34 +16,83 @@ interface Orchard {
   section_id: string | null
 }
 
+interface Farm {
+  id: string
+  full_name: string
+  code: string
+  organisation_id: string
+}
+
 export default function SectionsPage() {
   const supabase = createClient()
+  const [farms, setFarms] = useState<Farm[]>([])
+  const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null)
   const [sections, setSections] = useState<Section[]>([])
   const [orchards, setOrchards] = useState<Orchard[]>([])
   const [saving, setSaving] = useState<string | null>(null)
   const [newSectionName, setNewSectionName] = useState('')
   const [addingSection, setAddingSection] = useState(false)
-  const [farmId] = useState('1a52f7f3-aeab-475c-a6e9-53a5e302fddb')
-  const [orgId] = useState('93d1760e-a484-4379-95fb-6cad294e2191')
-  
 
+  // Load farms the current user has access to
   useEffect(() => {
-    loadData()
+    async function loadFarms() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: orgUser } = await supabase
+        .from('organisation_users')
+        .select('role, organisation_id')
+        .eq('user_id', user.id)
+        .single()
+
+      let farmList: Farm[] = []
+
+      if (orgUser?.role === 'super_admin') {
+        const { data } = await supabase.from('farms').select('id, full_name, code, organisation_id').order('full_name')
+        farmList = data || []
+      } else {
+        const { data: access } = await supabase
+          .from('user_farm_access')
+          .select('farm_id')
+          .eq('user_id', user.id)
+        const farmIds = (access || []).map((a: any) => a.farm_id)
+
+        if (farmIds.length > 0) {
+          const { data: farmsData } = await supabase
+            .from('farms')
+            .select('id, full_name, code, organisation_id')
+            .in('id', farmIds)
+            .order('full_name')
+          farmList = farmsData || []
+        }
+
+        // Fallback: if no farm_access rows, load all farms for their org
+        if (farmList.length === 0 && orgUser?.organisation_id) {
+          const { data: allFarms } = await supabase
+            .from('farms')
+            .select('id, full_name, code, organisation_id')
+            .eq('organisation_id', orgUser.organisation_id)
+            .order('full_name')
+          farmList = allFarms || []
+        }
+      }
+
+      setFarms(farmList)
+      if (farmList.length > 0) setSelectedFarmId(farmList[0].id)
+    }
+    loadFarms()
   }, [])
 
-  async function loadData() {
+  useEffect(() => {
+    if (selectedFarmId) loadData(selectedFarmId)
+  }, [selectedFarmId])
+
+  async function loadData(farmId: string) {
+    setSections([])
+    setOrchards([])
     const [{ data: sectionData }, { data: orchardData }] = await Promise.all([
-      supabase
-        .from('sections')
-        .select('*')
-        .eq('farm_id', farmId)
-        .order('section_nr'),
-      supabase
-        .from('orchards')
-        .select('id, name, legacy_id, section_id')
-        .eq('farm_id', farmId)
-        .eq('is_active', true)
-        .order('name'),
+      supabase.from('sections').select('*').eq('farm_id', farmId).order('section_nr'),
+      supabase.from('orchards').select('id, name, legacy_id, section_id').eq('farm_id', farmId).eq('is_active', true).order('name'),
     ])
     setSections(sectionData || [])
     setOrchards(orchardData || [])
@@ -51,10 +100,7 @@ export default function SectionsPage() {
 
   async function assignOrchard(orchardId: string, sectionId: string | null) {
     setSaving(orchardId)
-    await supabase
-      .from('orchards')
-      .update({ section_id: sectionId })
-      .eq('id', orchardId)
+    await supabase.from('orchards').update({ section_id: sectionId }).eq('id', orchardId)
     setOrchards(prev =>
       prev.map(o => o.id === orchardId ? { ...o, section_id: sectionId } : o)
     )
@@ -62,13 +108,14 @@ export default function SectionsPage() {
   }
 
   async function addSection() {
-    if (!newSectionName.trim()) return
+    if (!newSectionName.trim() || !selectedFarmId) return
     setAddingSection(true)
+    const farm = farms.find(f => f.id === selectedFarmId)
     const { data } = await supabase
       .from('sections')
       .insert({
-        organisation_id: orgId,
-        farm_id: farmId,
+        organisation_id: farm?.organisation_id,
+        farm_id: selectedFarmId,
         section_nr: sections.length + 1,
         name: newSectionName.trim(),
       })
@@ -192,7 +239,7 @@ export default function SectionsPage() {
         <aside className="sidebar">
           <div className="logo"><span>Farm</span>Scout</div>
           <a href="/" className="nav-item"><span>📊</span> Dashboard</a>
-          <a href="/orchards" className="nav-item"><span>🌳</span> Orchards</a>
+          <a href="/orchards" className="nav-item"><span>🪤</span> Trap Inspections</a>
           <a className="nav-item"><span>🐛</span> Pests</a>
           <a className="nav-item"><span>🪤</span> Traps</a>
           <a className="nav-item"><span>🔍</span> Inspections</a>
@@ -223,6 +270,21 @@ export default function SectionsPage() {
                 <a href="/scouts">Scouts</a> › Sections
               </div>
             </div>
+            {farms.length > 1 && (
+              <select
+                value={selectedFarmId || ''}
+                onChange={e => setSelectedFarmId(e.target.value)}
+                style={{
+                  marginLeft: 'auto', padding: '8px 12px', borderRadius: 8,
+                  border: '1.5px solid #e0ddd6', fontFamily: "'DM Sans', sans-serif",
+                  fontSize: 13, color: '#1c3a2a', background: '#fff', cursor: 'pointer',
+                }}
+              >
+                {farms.map(f => (
+                  <option key={f.id} value={f.id}>{f.full_name}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div className="content">

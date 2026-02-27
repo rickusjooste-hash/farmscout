@@ -1,6 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase-auth'
+import { useUserContext } from '@/lib/useUserContext'
 import { useEffect, useState, useRef } from 'react'
 
 interface OrchardInfo {
@@ -103,6 +104,7 @@ function currentWeekNr(): number {
 
 export default function OrchardsPage() {
   const supabase         = createClient()
+  const { farmIds, isSuperAdmin, contextLoaded } = useUserContext()
   const mapRef          = useRef<any>(null)
   const leafletRef      = useRef<any>(null)
   const geoLayerRef     = useRef<any>(null)
@@ -122,26 +124,18 @@ export default function OrchardsPage() {
   const weeks = getWeeksInSeason(season)
 
   
-  // Load orchards
-   // Load orchards
+  // Load orchards — scoped to manager's farm access
   useEffect(() => {
-    
-    supabase
+    if (!contextLoaded) return
+    let query = supabase
       .from('orchards')
       .select('id, name, variety, ha, legacy_id, is_active, commodity_id, commodities(code, name)')
       .eq('is_active', true)
-      .then(({ data, error }) => {
-        console.log('Orchards data:', data)
-        console.log('Orchards error:', error)
-        setOrchards((data as any) || [])
-      })
-  }, [])
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      console.log('Current user:', data.user?.id, data.user?.email)
-    })
-  }, [])
+    if (!isSuperAdmin && farmIds.length > 0) {
+      query = query.in('farm_id', farmIds)
+    }
+    query.then(({ data }) => setOrchards((data as any) || []))
+  }, [contextLoaded])
 
   // Load pests that have trap counts
   useEffect(() => {
@@ -441,7 +435,7 @@ export default function OrchardsPage() {
         <aside className="sidebar">
           <div className="logo"><span>Farm</span>Scout</div>
           <a href="/" className="nav-item"><span>📊</span> Dashboard</a>
-          <a href="/orchards" className="nav-item active"><span>🌳</span> Orchards</a>
+          <a href="/orchards" className="nav-item active"><span>🪤</span> Trap Inspections</a>
           <a className="nav-item"><span>🐛</span> Pests</a>
           <a className="nav-item"><span>🪤</span> Traps</a>
           <a className="nav-item"><span>🔍</span> Inspections</a>
@@ -466,7 +460,7 @@ export default function OrchardsPage() {
 
         <div className="main">
           <div className="top-bar">
-            <div className="page-title">Orchard Map</div>
+            <div className="page-title">Trap Inspections</div>
             <div className="divider" />
 
             {/* Season */}

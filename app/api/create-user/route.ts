@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     // 4. Insert organisation_users
     const { error: orgUserError } = await supabase
       .from('organisation_users')
-      .insert({ organisation_id, user_id: userId, role: 'scout' })
+      .insert({ organisation_id, user_id: userId, role: 'scout' as const })
 
     if (orgUserError) {
       await supabase.auth.admin.deleteUser(userId)
