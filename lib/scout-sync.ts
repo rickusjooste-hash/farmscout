@@ -33,27 +33,42 @@ export async function pullReferenceData(supabaseKey: string) {
       await upsertMany('pests', pests)
       console.log(`[Sync] Pulled ${pests.length} pests`)
     }
+
+    
+
     // Fetch traps for scout's farm
     const token = typeof window !== 'undefined' ? localStorage.getItem('farmscout_access_token') : null
     const farmId = typeof window !== 'undefined' ? localStorage.getItem('farmscout_farm_id') : null
 
     if (token && farmId) {
-      const trapsRes = await fetch(
-        `${SUPABASE_REST}/traps?farm_id=eq.${farmId}&is_active=eq.true&select=*`,
-        {
-          headers: {
-            apikey: supabaseKey,
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
-      if (trapsRes.ok) {
-        const traps = await trapsRes.json()
-        await upsertMany('trap_inspections', []) // ensure store exists
-        console.log(`[Sync] Pulled ${traps.length} traps`)
-      }
-    }
+  const [trapsRes, zonesRes, luresRes] = await Promise.all([
+    fetch(`${SUPABASE_REST}/traps?farm_id=eq.${farmId}&is_active=eq.true&select=*`, {
+      headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` }
+    }),
+    fetch(`${SUPABASE_REST}/zones?select=*`, {
+      headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` }
+    }),
+    fetch(`${SUPABASE_REST}/lure_types?select=*`, {
+      headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` }
+    }),
+  ])
 
+  if (trapsRes.ok) {
+    const traps = await trapsRes.json()
+    await upsertMany('traps', traps)
+    console.log(`[Sync] Pulled ${traps.length} traps`)
+  }
+  if (zonesRes.ok) {
+    const zones = await zonesRes.json()
+    await upsertMany('zones', zones)
+    console.log(`[Sync] Pulled ${zones.length} zones`)
+  }
+  if (luresRes.ok) {
+    const lures = await luresRes.json()
+    await upsertMany('lure_types', lures)
+    console.log(`[Sync] Pulled ${lures.length} lure types`)
+  }
+}
     return { success: true }
   } catch (err) {
     console.error('[Sync] Pull failed:', err)

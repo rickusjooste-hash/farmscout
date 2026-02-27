@@ -22,6 +22,39 @@ interface FarmScoutDB extends DBSchema {
       [key: string]: any
     }
   }
+  traps: {
+    key: string
+    value: {
+      id: string
+      trap_nr: number
+      next_trap_id: string | null
+      zone_id: string | null
+      pest_id: string | null
+      lure_type_id: string | null
+      orchard_id: string | null
+      farm_id: string
+      seq: number | null
+      is_active: boolean
+      [key: string]: any
+    }
+  }
+  zones: {
+    key: string
+    value: {
+      id: string
+      name: string
+      [key: string]: any
+    }
+  }
+  lure_types: {
+    key: string
+    value: {
+      id: string
+      name: string
+      rebait_weeks: number | null
+      [key: string]: any
+    }
+  }
   inspection_sessions: {
     key: string
     value: {
@@ -115,7 +148,7 @@ let _db: IDBPDatabase<FarmScoutDB> | null = null
 export async function getScoutDB(): Promise<IDBPDatabase<FarmScoutDB>> {
   if (_db) return _db
 
-  _db = await openDB<FarmScoutDB>('farmscout-local', 1, {
+  _db = await openDB<FarmScoutDB>('farmscout-local', 2,  {
     upgrade(db) {
       // Reference data (downloaded from Supabase)
       if (!db.objectStoreNames.contains('orchards')) {
@@ -123,6 +156,15 @@ export async function getScoutDB(): Promise<IDBPDatabase<FarmScoutDB>> {
       }
       if (!db.objectStoreNames.contains('pests')) {
         db.createObjectStore('pests', { keyPath: 'id' })
+      }
+      if (!db.objectStoreNames.contains('traps')) {
+        db.createObjectStore('traps', { keyPath: 'id' })
+      }
+      if (!db.objectStoreNames.contains('zones')) {
+        db.createObjectStore('zones', { keyPath: 'id' })
+      }
+      if (!db.objectStoreNames.contains('lure_types')) {
+        db.createObjectStore('lure_types', { keyPath: 'id' })
       }
 
       // Field data (created on device, uploaded later)

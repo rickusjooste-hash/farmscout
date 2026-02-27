@@ -63,56 +63,65 @@ export default function TrapInspectionPage() {
 
 async function fetchTrapDetails(trapId: string): Promise<TrapWithDetails | null> {
     const token = localStorage.getItem('farmscout_access_token')
-    
+    const isOnline = navigator.onLine
+
     try {
-      // Fetch trap
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/traps?id=eq.${trapId}&select=*`,
-        {
-          headers: {
-            apikey: supabaseKey,
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
-      const data = await res.json()
-      if (!data.length) return null
-      const t = data[0]
+      let t: any = null
+      let zone: any = null
+      let pest: any = null
+      let lure: any = null
 
-      // Fetch zone, pest and lure in parallel
-      const [zoneRes, pestRes, lureRes] = await Promise.all([
-        t.zone_id ? fetch(`${SUPABASE_URL}/rest/v1/zones?id=eq.${t.zone_id}&select=name`, {
-          headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` }
-        }) : null,
-        t.pest_id ? fetch(`${SUPABASE_URL}/rest/v1/pests?id=eq.${t.pest_id}&select=name,image_url`, {
-          headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` }
-        }) : null,
-        t.lure_type_id ? fetch(`${SUPABASE_URL}/rest/v1/lure_types?id=eq.${t.lure_type_id}&select=name,rebait_weeks`, {
-          headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` }
-        }) : null,
-      ])
+      if (isOnline) {
+        // Online — fetch from Supabase
+        const res = await fetch(
+          `${SUPABASE_URL}/rest/v1/traps?id=eq.${trapId}&select=*`,
+          { headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` } }
+        )
+        const data = await res.json()
+        if (!data.length) return null
+        t = data[0]
 
-      const zone = zoneRes?.ok ? (await zoneRes.json())[0] : null
-      const pest = pestRes?.ok ? (await pestRes.json())[0] : null
-      const lure = lureRes?.ok ? (await lureRes.json())[0] : null
+        const [zoneRes, pestRes, lureRes] = await Promise.all([
+          t.zone_id ? fetch(`${SUPABASE_URL}/rest/v1/zones?id=eq.${t.zone_id}&select=name`, {
+            headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` }
+          }) : null,
+          t.pest_id ? fetch(`${SUPABASE_URL}/rest/v1/pests?id=eq.${t.pest_id}&select=name,image_url`, {
+            headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` }
+          }) : null,
+          t.lure_type_id ? fetch(`${SUPABASE_URL}/rest/v1/lure_types?id=eq.${t.lure_type_id}&select=name,rebait_weeks`, {
+            headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` }
+          }) : null,
+        ])
 
-      // Get last inspection for rebait calculation
-      const lastRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/trap_inspections?trap_id=eq.${trapId}&order=inspected_at.desc&limit=1&select=inspected_at,rebaited`,
-        {
-          headers: {
-            apikey: supabaseKey,
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
-      const lastData = lastRes.ok ? await lastRes.json() : []
-      const lastInspection = lastData[0] || null
+        zone = zoneRes?.ok ? (await zoneRes.json())[0] : null
+        pest = pestRes?.ok ? (await pestRes.json())[0] : null
+        lure = lureRes?.ok ? (await lureRes.json())[0] : null
+
+      } else {
+        // Offline — load from IndexedDB
+        const { getOne } = await import('@/lib/scout-db')
+        t = await getOne('traps', trapId)
+        if (!t) return null
+
+        zone = t.zone_id ? await getOne('zones', t.zone_id) : null
+        pest = t.pest_id ? await getOne('pests', t.pest_id) : null
+        lure = t.lure_type_id ? await getOne('lure_types', t.lure_type_id) : null
+      }
+
+      // Get last inspection
+      let lastInspection = null
+      if (isOnline) {
+        const lastRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/trap_inspections?trap_id=eq.${trapId}&order=inspected_at.desc&limit=1&select=inspected_at,rebaited`,
+          { headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` } }
+        )
+        const lastData = lastRes.ok ? await lastRes.json() : []
+        lastInspection = lastData[0] || null
+      }
 
       // Calculate rebait
       let weeksSinceRebait: number | null = null
       let rebaitRequired = false
-
       if (lastInspection && lure?.rebait_weeks) {
         const lastDate = new Date(lastInspection.inspected_at)
         const now = new Date()
@@ -126,7 +135,7 @@ async function fetchTrapDetails(trapId: string): Promise<TrapWithDetails | null>
         trap_nr: t.trap_nr,
         next_trap_id: t.next_trap_id,
         seq: t.seq,
-        zone: zone,
+        zone,
         pest: pest ? { ...pest, id: t.pest_id } : null,
         lure_type: lure,
         last_inspection: lastInspection,
@@ -209,89 +218,106 @@ async function loadFirstTrap() {
     return monday.toISOString()
   }
 
-  async function handleSave() {
-    if (!trap) return
+ async function handleSave() {
+    if (!trap || saving) return
     setSaving(true)
 
+    const now = new Date().toISOString()
+    const inspectionId = crypto.randomUUID()
+    const token = localStorage.getItem('farmscout_access_token')
+    const isOnline = navigator.onLine
+
+    const locationValue = gpsLocation
+      ? `SRID=4326;POINT(${gpsLocation.lng} ${gpsLocation.lat})`
+      : null
+
+    const inspectionRecord = {
+      id: inspectionId,
+      trap_id: trap.id,
+      organisation_id: localStorage.getItem('farmscout_organisation_id'),
+      scout_id: localStorage.getItem('farmscout_user_id'),
+      orchard_id: trap.orchard_id,
+      pest_id_direct: null,
+      rebaited,
+      inspected_at: now,
+      location: locationValue,
+      nfc_scanned: false,
+    }
+
+    const countRecord = {
+      id: crypto.randomUUID(),
+      inspection_id: inspectionId,
+      pest_id: trap.pest?.id || null,
+      count,
+    }
+
     try {
-      const now = new Date().toISOString()
-      const inspectionId = crypto.randomUUID()
+      if (isOnline) {
+        // Online — save directly to Supabase
+        const inspRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/trap_inspections`,
+          {
+            method: 'POST',
+            headers: {
+              apikey: supabaseKey,
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+              Prefer: 'return=minimal',
+            },
+            body: JSON.stringify(inspectionRecord),
+          }
+        )
+        if (!inspRes.ok) {
+          const errText = await inspRes.text()
+          console.log('Inspection save error:', errText)
+          throw new Error('Failed to save inspection')
+        }
 
-      // Build location object for Supabase PostGIS
-      const locationValue = gpsLocation
-        ? `POINT(${gpsLocation.lng} ${gpsLocation.lat})`
-        : null
+        const countRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/trap_counts`,
+          {
+            method: 'POST',
+            headers: {
+              apikey: supabaseKey,
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+              Prefer: 'return=minimal',
+            },
+            body: JSON.stringify(countRecord),
+          }
+        )
+        if (!countRes.ok) {
+          const errText = await countRes.text()
+          console.log('Count save error:', errText)
+          throw new Error('Failed to save count')
+        }
 
-      // 1. Save trap inspection
-      const inspRes = await fetch(`${SUPABASE_URL}/rest/v1/trap_inspections`, {
-        method: 'POST',
-        headers: {
-  apikey: supabaseKey,
-  Authorization: `Bearer ${localStorage.getItem('farmscout_access_token')}`,
-  'Content-Type': 'application/json',
-  Prefer: 'return=minimal',
-},
-        body: JSON.stringify({
-  id: inspectionId,
-  trap_id: trap.id,
-  organisation_id: localStorage.getItem('farmscout_organisation_id'),
-  scout_id: localStorage.getItem('farmscout_user_id'),
-  orchard_id: trap.orchard_id,
-  pest_id_direct: null,
-  rebaited,
-  inspected_at: now,
-  location: locationValue,
-  nfc_scanned: false,
-}),
-      })
+      } else {
+        // Offline — save to IndexedDB queue
+        const { saveAndQueue } = await import('@/lib/scout-sync')
+        await saveAndQueue('trap_inspections', inspectionRecord, supabaseKey)
+        await saveAndQueue('trap_counts', countRecord, supabaseKey)
+        console.log('[Offline] Saved to queue')
+      }
 
-      if (!inspRes.ok) {
-  const errText = await inspRes.text()
-  console.log('Inspection save error:', errText)
-  throw new Error('Failed to save inspection')
-}
+      // Navigate to next trap
+      if (trap.next_trap_id) {
+        setProgress(p => ({ ...p, current: p.current + 1 }))
+        const nextTrap = await fetchTrapDetails(trap.next_trap_id)
+        setTrap(nextTrap)
+        setCount(0)
+        setRebaited(false)
+        window.scrollTo(0, 0)
+      } else {
+        setTrap(null)
+        setSaving(false)
+        router.push('/scout')
+        alert('🎉 All traps completed! Great work.')
+      }
 
-      // 2. Save trap count
-      const countRes = await fetch(`${SUPABASE_URL}/rest/v1/trap_counts`, {
-        method: 'POST',
-        headers: {
-  apikey: supabaseKey,
-  Authorization: `Bearer ${localStorage.getItem('farmscout_access_token')}`,
-  'Content-Type': 'application/json',
-  Prefer: 'return=minimal',
-},
-        body: JSON.stringify({
-          id: crypto.randomUUID(),
-          inspection_id: inspectionId,
-          pest_id: trap.pest?.id || null,
-          count,
-        }),
-      })
-
-      if (!countRes.ok) {
-  const errText = await countRes.text()
-  console.log('Count save error:', errText)
-  throw new Error('Failed to save count')
-}
-
-      // 3. Load next trap or finish
-     if (trap.next_trap_id) {
-  setProgress(p => ({ ...p, current: p.current + 1 }))
-  const nextTrap = await fetchTrapDetails(trap.next_trap_id)
-  setTrap(nextTrap)
-  setCount(0)
-  setRebaited(false)
-  // Scroll back to top
-  window.scrollTo(0, 0)
-} else {
-  // Route complete!
-  setTrap(null)
-  setSaving(false)
-  router.push('/scout')
-  alert('🎉 All traps completed! Great work.')
-}
-    } catch (err: any) {
-      setError(err.message || 'Save failed. Please try again.')
+    } catch (err) {
+      console.log('Save error:', err)
+      alert('Failed to save inspection. Please try again.')
     }
 
     setSaving(false)
