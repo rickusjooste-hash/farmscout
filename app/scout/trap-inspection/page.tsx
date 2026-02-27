@@ -203,6 +203,12 @@ async function loadFirstTrap() {
         setProgress({ current: 1, total: routeLength })
       }
 
+      if (!startTrapId) {
+        setError('No trap data found. Please sync while online before going offline.')
+        setLoading(false)
+        return
+      }
+
       const trapDetails = await fetchTrapDetails(startTrapId)
       if (!trapDetails) {
         setError('No trap data found. Please sync while online before going offline.')
