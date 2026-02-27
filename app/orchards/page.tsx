@@ -269,57 +269,66 @@ export default function OrchardsPage() {
   useEffect(() => {
     if (!mapReady || orchards.length === 0) return
 
-    async function drawPolygons() {
-      console.log('drawPolygons called, orchards:', orchards.length)
-      const L = leafletRef.current
-      const map = mapRef.current._map
-      if (geoLayerRef.current) geoLayerRef.current.remove()
+  async function drawPolygons() {
+  const L = leafletRef.current
+  const map = mapRef.current._map
+  if (geoLayerRef.current) geoLayerRef.current.remove()
 
-      const res = await fetch('/OrchardPolygons.geojson')
-      console.log('GeoJSON fetch status:', res.status)
-      const geojson = await res.json()
+  // Fetch boundaries from Supabase instead of static file
+ const { data: boundaryData } = await supabase
+    .rpc('get_orchard_boundaries')
 
-      const lookup: Record<number, OrchardInfo> = {}
-      orchards.forEach(o => { if (o.legacy_id) lookup[o.legacy_id] = o })
+  if (!boundaryData?.length) return
 
-      const layer = L.geoJSON(geojson, {
-        style: (feature: any) => {
-          const oid  = parseInt(feature.properties.OrchardID?.toString().replace(/"/g, '') || '0')
-          const info = lookup[oid]
-          if (!info) return { fillColor: '#000', fillOpacity: 0, color: '#000', weight: 0, opacity: 0 }
-          const p = pressure[info.id]
-          const color = p ? STATUS_COLORS[p.status].fill : STATUS_COLORS.grey.fill
-          return { fillColor: color, fillOpacity: 0.7, color: '#fff', weight: 1.5 }
-        },
-        onEachFeature: (feature: any, lyr: any) => {
-          const oid  = parseInt(feature.properties.OrchardID?.toString().replace(/"/g, '') || '0')
-          const info = lookup[oid]
-          const p    = info ? pressure[info.id] : null
+  // Convert to GeoJSON format
+  const geojson = {
+    type: 'FeatureCollection',
+    features: boundaryData.map((o: any) => ({
+      type: 'Feature',
+      properties: { OrchardID: o.legacy_id, id: o.id, name: o.name },
+      geometry: o.boundary
+    }))
+  }
 
-          lyr.on('mouseover', () => lyr.setStyle({ fillOpacity: 0.95, weight: 2.5 }))
-          lyr.on('mouseout',  () => lyr.setStyle({ fillOpacity: 0.7,  weight: 1.5 }))
-          lyr.on('click', () => {
-            setSelected(info ? {
-              name:           info.name,
-              variety:        info.variety,
-              commodity:      (info.commodities as any)?.name || '—',
-              ha:             info.ha,
-              legacy_id:      info.legacy_id,
-              status:         p?.status || 'grey',
-              latest_count:   p?.latest_count ?? null,
-              threshold:      p?.threshold ?? null,
-              last_inspected: p?.last_inspected || null,
-            } : null)
-          })
+  const lookup: Record<string, OrchardInfo> = {}
+  orchards.forEach(o => { lookup[o.id] = o })
 
-          const label = info?.name || feature.properties.name || `ID ${oid}`
-          lyr.bindTooltip(label, { permanent: false, direction: 'center', className: 'orchard-tooltip' })
-        },
-      }).addTo(map)
+  const layer = L.geoJSON(geojson, {
+    style: (feature: any) => {
+      const info = lookup[feature.properties.id]
+      if (!info) return { fillColor: '#000', fillOpacity: 0, color: '#000', weight: 0, opacity: 0 }
+      const p = pressure[info.id]
+      const color = p ? STATUS_COLORS[p.status].fill : STATUS_COLORS.grey.fill
+      return { fillColor: color, fillOpacity: 0.7, color: '#fff', weight: 1.5 }
+    },
+    onEachFeature: (feature: any, lyr: any) => {
+      const info = lookup[feature.properties.id]
+      const p = info ? pressure[info.id] : null
 
-      geoLayerRef.current = layer
-      if (layer.getBounds().isValid()) map.fitBounds(layer.getBounds(), { padding: [20, 20] })
-    }
+      lyr.on('mouseover', () => lyr.setStyle({ fillOpacity: 0.95, weight: 2.5 }))
+      lyr.on('mouseout',  () => lyr.setStyle({ fillOpacity: 0.7,  weight: 1.5 }))
+      lyr.on('click', () => {
+        setSelected(info ? {
+          name:           info.name,
+          variety:        info.variety,
+          commodity:      (info.commodities as any)?.name || '—',
+          ha:             info.ha,
+          legacy_id:      info.legacy_id,
+          status:         p?.status || 'grey',
+          latest_count:   p?.latest_count ?? null,
+          threshold:      p?.threshold ?? null,
+          last_inspected: p?.last_inspected || null,
+        } : null)
+      })
+
+      const label = info?.name || feature.properties.name || ''
+      lyr.bindTooltip(label, { permanent: false, direction: 'center', className: 'orchard-tooltip' })
+    },
+  }).addTo(map)
+
+  geoLayerRef.current = layer
+  if (layer.getBounds().isValid()) map.fitBounds(layer.getBounds(), { padding: [20, 20] })
+}
 
     drawPolygons()
   }, [mapReady, orchards, pressure])
@@ -436,7 +445,8 @@ export default function OrchardsPage() {
           <a className="nav-item"><span>🐛</span> Pests</a>
           <a className="nav-item"><span>🪤</span> Traps</a>
           <a className="nav-item"><span>🔍</span> Inspections</a>
-          <a className="nav-item"><span>👷</span> Scouts</a>
+          <a href="/scouts" className="nav-item"><span>👷</span> Scouts</a>
+<a href="/scouts/sections" className="nav-item sub"><span>🗂️</span> Sections</a>
            <div className="sidebar-footer">
             Mouton's Valley Group<br />
             <span style={{ color: '#2a6e45' }}>●</span> Connected

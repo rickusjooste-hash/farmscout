@@ -33,6 +33,26 @@ export async function pullReferenceData(supabaseKey: string) {
       await upsertMany('pests', pests)
       console.log(`[Sync] Pulled ${pests.length} pests`)
     }
+    // Fetch traps for scout's farm
+    const token = typeof window !== 'undefined' ? localStorage.getItem('farmscout_access_token') : null
+    const farmId = typeof window !== 'undefined' ? localStorage.getItem('farmscout_farm_id') : null
+
+    if (token && farmId) {
+      const trapsRes = await fetch(
+        `${SUPABASE_REST}/traps?farm_id=eq.${farmId}&is_active=eq.true&select=*`,
+        {
+          headers: {
+            apikey: supabaseKey,
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+      if (trapsRes.ok) {
+        const traps = await trapsRes.json()
+        await upsertMany('trap_inspections', []) // ensure store exists
+        console.log(`[Sync] Pulled ${traps.length} traps`)
+      }
+    }
 
     return { success: true }
   } catch (err) {

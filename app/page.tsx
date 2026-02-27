@@ -422,7 +422,8 @@ export default function DashboardPage() {
 <a className="nav-item"><span className="nav-icon">🐛</span> Pests</a>
 <a className="nav-item"><span className="nav-icon">🪤</span> Traps</a>
 <a className="nav-item"><span className="nav-icon">🔍</span> Inspections</a>
-<a className="nav-item"><span className="nav-icon">👷</span> Scouts</a>
+<a href="/scouts" className="nav-item"><span>👷</span> Scouts</a>
+<a href="/scouts/sections" className="nav-item sub"><span>🗂️</span> Sections</a>
          <div className="sidebar-footer">
   Mouton's Valley Group<br />
   <span style={{ color: '#2a6e45' }}>●</span> Connected
