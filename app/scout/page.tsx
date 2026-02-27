@@ -30,8 +30,10 @@ export default function ScoutApp() {
     
     // Check online status
     setIsOnline(navigator.onLine)
-    window.addEventListener('online', () => setIsOnline(true))
-    window.addEventListener('offline', () => setIsOnline(false))
+    const handleOnline = () => { setIsOnline(true); handleSync(); loadPendingCount() }
+    const handleOffline = () => setIsOnline(false)
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
 
     // Load pending count
     loadPendingCount()
@@ -39,6 +41,11 @@ export default function ScoutApp() {
     // Auto sync if online
     if (navigator.onLine) {
       handleSync()
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
     }
   }, [])
 
@@ -95,7 +102,7 @@ export default function ScoutApp() {
   const firstName = scoutName.split(' ')[0]
 
   if (view === 'trap-inspection') {
-    return <TrapInspectionView onBack={() => { setView('home'); checkTrapStatus() }} />
+    return <TrapInspectionView onBack={() => { setView('home'); checkTrapStatus(); loadPendingCount() }} />
   }
 
   return (
