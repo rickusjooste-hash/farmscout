@@ -6,7 +6,7 @@ const SUPABASE_REST = `${SUPABASE_URL}/rest/v1`
 // ── Pull reference data down from Supabase ────────────────────────────────
 // This downloads orchards and pests onto the phone so they're available offline
 
-export async function pullReferenceData(supabaseKey: string) {
+export async function pullReferenceData(supabaseKey: string, accessToken?: string) {
   try {
     // Fetch orchards
     const orchardsRes = await fetch(`${SUPABASE_REST}/orchards?select=*`, {
@@ -37,7 +37,7 @@ export async function pullReferenceData(supabaseKey: string) {
     
 
     // Fetch traps for scout's farm
-    const token = typeof window !== 'undefined' ? localStorage.getItem('farmscout_access_token') : null
+    const token = accessToken || (typeof window !== 'undefined' ? localStorage.getItem('farmscout_access_token') : null)
     const farmId = typeof window !== 'undefined' ? localStorage.getItem('farmscout_farm_id') : null
 
     if (token && farmId) {
@@ -171,8 +171,8 @@ export async function pushPendingRecords(supabaseKey: string) {
 
 // ── Full sync: pull down + push up ────────────────────────────────────────
 
-export async function runFullSync(supabaseKey: string) {
-  const pull = await pullReferenceData(supabaseKey)
+export async function runFullSync(supabaseKey: string, accessToken?: string) {
+  const pull = await pullReferenceData(supabaseKey, accessToken)
   const push = await pushPendingRecords(supabaseKey)
   return { pull, push }
 }

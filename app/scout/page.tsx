@@ -73,11 +73,12 @@ export default function ScoutApp() {
     }
   }
 
-  async function handleSync() {
+ async function handleSync() {
     if (isSyncing) return
     setIsSyncing(true)
     try {
-      await runFullSync(supabaseKey)
+      const token = localStorage.getItem('farmscout_access_token') ?? undefined
+      await runFullSync(supabaseKey, token)
       await loadPendingCount()
     } catch { }
     setIsSyncing(false)
