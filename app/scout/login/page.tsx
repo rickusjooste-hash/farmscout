@@ -72,28 +72,26 @@ export default function ScoutLogin() {
       localStorage.setItem('farmscout_user_id', userId)
 
       // Get route length in one fast database call
-const routeLengthRes = await fetch(
-  `${SUPABASE_URL}/rest/v1/rpc/get_route_length`,
-  {
-    method: 'POST',
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ first_trap_id: scout.first_trap_id }),
-  }
-)
-const routeLength = await routeLengthRes.json()
-localStorage.setItem('farmscout_route_length', routeLength.toString())
+      const routeLengthRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/rpc/get_route_length`,
+        {
+          method: 'POST',
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ first_trap_id: scout.first_trap_id }),
+        }
+      )
+      const routeLength = await routeLengthRes.json()
+      localStorage.setItem('farmscout_route_length', routeLength.toString())
 
-let currentTrapId = scout.first_trap_id
+      // 4. Pull all reference data now so the app works offline immediately
+      const { pullReferenceData } = await import('../../lib/scout-sync')
+      await pullReferenceData(SUPABASE_ANON_KEY, accessToken)
 
-
-
-localStorage.setItem('farmscout_route_length', routeLength.toString())
-
-      // 4. Go to home screen
+      // 5. Go to home screen
       router.push('/scout')
 
     } catch (err: any) {
@@ -150,7 +148,7 @@ localStorage.setItem('farmscout_route_length', routeLength.toString())
           onClick={handleLogin}
           disabled={loading}
         >
-          {loading ? 'Signing in...' : 'Sign In'}
+          {loading ? 'Setting up...' : 'Sign In'}
         </button>
 
         <div style={styles.helpText}>
