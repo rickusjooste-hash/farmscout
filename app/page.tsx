@@ -41,14 +41,24 @@ export default function DashboardPage() {
   const [recentSessions, setRecentSessions] = useState<RecentSession[]>([])
   const [stats, setStats] = useState<Stats>({ orchards: 0, sessions: 0, observations: 0, pests: 0 })
   const [loading, setLoading] = useState(true)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
 
   async function handleLogout() {
     await supabase.auth.signOut()
     router.push('/login')
   }
-  
+
   useEffect(() => {
     async function fetchData() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: orgUser } = await supabase
+          .from('organisation_users')
+          .select('role')
+          .eq('user_id', user.id)
+          .single()
+        if (orgUser?.role === 'super_admin') setIsSuperAdmin(true)
+      }
       // Orchards
       const { data: orchardData } = await supabase
         .from('orchards')
@@ -423,7 +433,9 @@ export default function DashboardPage() {
 <a className="nav-item"><span className="nav-icon">🪤</span> Traps</a>
 <a className="nav-item"><span className="nav-icon">🔍</span> Inspections</a>
 <a href="/scouts" className="nav-item"><span>👷</span> Scouts</a>
-<a href="/scouts/sections" className="nav-item sub"><span>🗂️</span> Sections</a>
+<a href="/scouts/new" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>➕</span> New Scout</a>
+<a href="/scouts/sections" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>🗂️</span> Sections</a>
+{isSuperAdmin && <a href="/admin" className="nav-item"><span>⚙️</span> Admin</a>}
          <div className="sidebar-footer">
   Mouton's Valley Group<br />
   <span style={{ color: '#2a6e45' }}>●</span> Connected

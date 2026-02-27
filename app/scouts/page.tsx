@@ -262,8 +262,9 @@ export default function ScoutsPage() {
           <a className="nav-item"><span>🐛</span> Pests</a>
           <a className="nav-item"><span>🪤</span> Traps</a>
           <a className="nav-item"><span>🔍</span> Inspections</a>
-          <a href="/scouts" className="nav-item"><span>👷</span> Scouts</a>
-<a href="/scouts/sections" className="nav-item sub"><span>🗂️</span> Sections</a>
+          <a href="/scouts" className="nav-item active"><span>👷</span> Scouts</a>
+          <a href="/scouts/new" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>➕</span> New Scout</a>
+          <a href="/scouts/sections" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>🗂️</span> Sections</a>
           <div className="sidebar-footer">
             Mouton's Valley Group<br />
             <span style={{ color: '#2a6e45' }}>●</span> Connected
@@ -296,6 +297,15 @@ export default function ScoutsPage() {
                   {firstName(s.full_name)}
                 </button>
               ))}
+            </div>
+            <div style={{ marginLeft: 'auto' }}>
+              <a href="/scouts/new" style={{
+                display: 'inline-block', padding: '7px 16px', borderRadius: 8,
+                background: '#1c3a2a', color: '#a8d5a2', fontSize: 13, fontWeight: 600,
+                textDecoration: 'none',
+              }}>
+                + New Scout
+              </a>
             </div>
           </div>
 
