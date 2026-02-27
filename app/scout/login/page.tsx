@@ -88,7 +88,7 @@ export default function ScoutLogin() {
       localStorage.setItem('farmscout_route_length', routeLength.toString())
 
       // 4. Pull all reference data now so the app works offline immediately
-      const { pullReferenceData } = await import('../../lib/scout-sync')
+      const { pullReferenceData } = await import('@/lib/scout-sync')
       await pullReferenceData(SUPABASE_ANON_KEY, accessToken)
 
       // 5. Go to home screen

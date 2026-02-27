@@ -209,7 +209,7 @@ async function loadFirstTrap() {
         return
       }
 
-      const trapDetails = await fetchTrapDetails(startTrapId)
+      const trapDetails = await fetchTrapDetails(startTrapId!)
       if (!trapDetails) {
         setError('No trap data found. Please sync while online before going offline.')
       } else {
