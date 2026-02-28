@@ -81,3 +81,278 @@ Server-side routes that use `SUPABASE_SERVICE_ROLE_KEY` (bypasses RLS):
 ### Trap Route Data Model
 
 Traps form a linked list via `traps.next_trap_id`. The scout's entry point is stored in `scouts.first_trap_id`. The RPC `get_route_length` counts the chain. RPCs `get_scout_route`, `add_trap_to_route`, `insert_trap_after`, `remove_last_trap_from_route` manage the chain.
+
+## Database Schema
+
+> Context only — not meant to be executed directly.
+
+```sql
+-- Organisations & access control
+CREATE TABLE public.organisations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  slug text NOT NULL UNIQUE,
+  plan USER-DEFINED NOT NULL DEFAULT 'free'::subscription_plan,  -- subscription_plan enum
+  created_at timestamptz DEFAULT now(),
+  is_active boolean DEFAULT true
+);
+
+CREATE TABLE public.farms (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organisation_id uuid NOT NULL REFERENCES organisations(id),
+  code text NOT NULL,
+  full_name text NOT NULL,
+  puc text, province text, region text,
+  location USER-DEFINED,  -- PostGIS geometry
+  created_at timestamptz DEFAULT now(),
+  is_active boolean DEFAULT true
+);
+
+CREATE TABLE public.user_profiles (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),  -- mirrors auth.users.id
+  full_name text NOT NULL,
+  phone text, avatar_url text,
+  created_at timestamptz DEFAULT now(),
+  last_login_at timestamptz,
+  is_active boolean DEFAULT true
+);
+
+CREATE TABLE public.organisation_users (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organisation_id uuid NOT NULL REFERENCES organisations(id),
+  user_id uuid NOT NULL REFERENCES user_profiles(id),
+  role USER-DEFINED NOT NULL,  -- 'super_admin' | 'org_admin' | 'manager' | 'scout'
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE public.user_farm_access (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organisation_id uuid NOT NULL REFERENCES organisations(id),
+  user_id uuid NOT NULL REFERENCES user_profiles(id),
+  farm_id uuid NOT NULL REFERENCES farms(id),
+  created_at timestamptz DEFAULT now()
+);
+
+-- Farm structure
+CREATE TABLE public.sections (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organisation_id uuid NOT NULL REFERENCES organisations(id),
+  farm_id uuid NOT NULL REFERENCES farms(id),
+  section_nr integer NOT NULL,
+  name text,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE public.zones (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organisation_id uuid NOT NULL REFERENCES organisations(id),
+  orchard_id uuid NOT NULL REFERENCES orchards(id),
+  section_id uuid REFERENCES sections(id),
+  zone_nr integer NOT NULL,
+  zone_letter text NOT NULL,
+  name text NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+
+-- Commodities & pests
+CREATE TABLE public.commodities (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  code text NOT NULL UNIQUE,
+  name text NOT NULL,
+  description text
+);
+
+CREATE TABLE public.pests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  scientific_name text,
+  description text,
+  image_url text,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE public.commodity_pests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  commodity_id uuid NOT NULL REFERENCES commodities(id),
+  pest_id uuid NOT NULL REFERENCES pests(id),
+  category USER-DEFINED NOT NULL,  -- pest category enum
+  display_name text,
+  display_order integer NOT NULL DEFAULT 0,
+  is_active boolean DEFAULT true
+);
+
+-- Orchards
+CREATE TABLE public.orchards (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organisation_id uuid NOT NULL REFERENCES organisations(id),
+  farm_id uuid NOT NULL REFERENCES farms(id),
+  commodity_id uuid NOT NULL REFERENCES commodities(id),
+  section_id uuid REFERENCES sections(id),
+  orchard_nr integer,
+  name text NOT NULL,
+  variety text, variety_group text, rootstock text,
+  ha numeric, year_planted integer,
+  plant_distance numeric, row_width numeric,
+  trees_per_ha integer, nr_of_trees integer,
+  location USER-DEFINED,   -- PostGIS geometry (centroid)
+  boundary USER-DEFINED,   -- PostGIS geometry (polygon)
+  legacy_id integer,
+  is_active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now()
+  -- (additional irrigation/admin columns omitted for brevity)
+);
+
+CREATE TABLE public.orchard_sections (
+  orchard_id uuid NOT NULL REFERENCES orchards(id),
+  section_id uuid NOT NULL REFERENCES sections(id),
+  PRIMARY KEY (orchard_id, section_id)
+);
+
+-- Scouts
+CREATE TABLE public.scouts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id),
+  organisation_id uuid REFERENCES organisations(id),
+  farm_id uuid REFERENCES farms(id),
+  section_id uuid REFERENCES sections(id),
+  first_trap_id uuid REFERENCES traps(id),  -- head of linked-list route
+  employee_nr text,
+  full_name text NOT NULL,
+  email text NOT NULL UNIQUE,
+  is_active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE public.scout_zone_assignments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES user_profiles(id),
+  zone_id uuid NOT NULL REFERENCES zones(id),
+  assigned_from date NOT NULL DEFAULT CURRENT_DATE,
+  assigned_until date,
+  created_at timestamptz DEFAULT now()
+);
+
+-- Traps
+CREATE TABLE public.trap_types (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  image_url text
+);
+
+CREATE TABLE public.lure_types (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  description text,
+  rebait_weeks integer,
+  pest_id uuid REFERENCES pests(id)
+);
+
+CREATE TABLE public.traps (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organisation_id uuid NOT NULL REFERENCES organisations(id),
+  farm_id uuid NOT NULL REFERENCES farms(id),
+  orchard_id uuid NOT NULL REFERENCES orchards(id),
+  zone_id uuid NOT NULL REFERENCES zones(id),
+  trap_type_id uuid NOT NULL REFERENCES trap_types(id),
+  lure_type_id uuid REFERENCES lure_types(id),
+  pest_id uuid REFERENCES pests(id),
+  next_trap_id uuid REFERENCES traps(id),  -- linked-list chain for scout route
+  trap_nr integer,
+  seq integer,
+  nfc_tag text,
+  location USER-DEFINED,  -- PostGIS geometry
+  is_active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE public.trap_thresholds (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organisation_id uuid NOT NULL REFERENCES organisations(id),
+  pest_id uuid NOT NULL REFERENCES pests(id),
+  lure_type_id uuid REFERENCES lure_types(id),
+  trap_type_id uuid REFERENCES trap_types(id),
+  commodity_id uuid REFERENCES commodities(id),
+  threshold integer NOT NULL
+);
+
+-- Trap inspection data (scout field records)
+CREATE TABLE public.trap_inspections (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organisation_id uuid NOT NULL REFERENCES organisations(id),
+  trap_id uuid REFERENCES traps(id),
+  scout_id uuid REFERENCES user_profiles(id),
+  orchard_id uuid REFERENCES orchards(id),
+  pest_id_direct uuid REFERENCES pests(id),
+  inspected_at timestamptz NOT NULL,
+  rebaited boolean DEFAULT false,
+  nfc_scanned boolean DEFAULT false,
+  location USER-DEFINED,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE public.trap_counts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  inspection_id uuid NOT NULL REFERENCES trap_inspections(id),
+  pest_id uuid NOT NULL REFERENCES pests(id),
+  count integer NOT NULL DEFAULT 0,
+  created_at timestamptz DEFAULT now()
+);
+
+-- Tree scouting (future feature)
+CREATE TABLE public.inspection_sessions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organisation_id uuid NOT NULL REFERENCES organisations(id),
+  farm_id uuid NOT NULL REFERENCES farms(id),
+  orchard_id uuid NOT NULL REFERENCES orchards(id),
+  zone_id uuid NOT NULL REFERENCES zones(id),
+  scout_id uuid NOT NULL REFERENCES user_profiles(id),
+  inspected_at timestamptz NOT NULL,
+  week_nr integer, notes text,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE public.inspection_trees (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid NOT NULL REFERENCES inspection_sessions(id),
+  organisation_id uuid NOT NULL REFERENCES organisations(id),
+  tree_nr integer NOT NULL,
+  location USER-DEFINED, image_url text, comments text,
+  inspected_at timestamptz,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE public.inspection_observations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tree_id uuid NOT NULL REFERENCES inspection_trees(id),
+  organisation_id uuid NOT NULL REFERENCES organisations(id),
+  pest_id uuid NOT NULL REFERENCES pests(id),
+  count integer,
+  severity text,
+  created_at timestamptz DEFAULT now()
+);
+
+-- Other field records
+CREATE TABLE public.orchard_inspections (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organisation_id uuid NOT NULL REFERENCES organisations(id),
+  orchard_id uuid NOT NULL REFERENCES orchards(id),
+  scout_id uuid NOT NULL REFERENCES user_profiles(id),
+  inspected_at timestamptz NOT NULL,
+  gravestone text, orchard_numbers boolean,
+  kop_en_ente text, broken_wires text, notes text,
+  location USER-DEFINED,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE public.shoot_counts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organisation_id uuid NOT NULL REFERENCES organisations(id),
+  orchard_id uuid NOT NULL REFERENCES orchards(id),
+  scout_id uuid NOT NULL REFERENCES user_profiles(id),
+  counted_at timestamptz NOT NULL,
+  pruner_1 integer, pruner_2 integer, pruner_3 integer,
+  total integer DEFAULT (COALESCE(pruner_1,0) + COALESCE(pruner_2,0) + COALESCE(pruner_3,0)),
+  team text,
+  created_at timestamptz DEFAULT now()
+);
+```
