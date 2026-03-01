@@ -6,6 +6,7 @@ import { useUserContext } from '@/lib/useUserContext'
 import PestTrendChart from '@/app/components/PestTrendChart'
 import OrchardPressureMap from '@/app/components/OrchardPressureMap'
 import PestAlertSummary from '@/app/components/PestAlertSummary'
+import TreeScoutingAlertSummary from '@/app/components/TreeScoutingAlertSummary'
 import { useRouter } from 'next/navigation'
 import { Inter } from 'next/font/google'
 
@@ -692,6 +693,8 @@ export default function DashboardPage() {
             <div ref={pressureMapRef} id="pressure-map">
               <OrchardPressureMap key={selectedPestId ?? 'default'} initialPestId={selectedPestId} />
             </div>
+
+            <TreeScoutingAlertSummary farmIds={farmIds} />
 
             <PestTrendChart />
           </main>
