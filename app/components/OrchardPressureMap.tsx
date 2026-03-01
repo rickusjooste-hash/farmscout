@@ -103,7 +103,7 @@ const dot = (status: string) => (
 // Unique map ID to avoid conflicts with the dashboard's other map
 const MAP_ID = 'orchard-pressure-inline-map'
 
-export default function OrchardPressureMap() {
+export default function OrchardPressureMap({ initialPestId }: { initialPestId?: string }) {
   const supabase = createClient()
   const { farmIds, isSuperAdmin, contextLoaded } = useUserContext()
 
@@ -115,6 +115,7 @@ export default function OrchardPressureMap() {
   const [pests, setPests]               = useState<PestOption[]>([])
   const [selectedPest, setSelectedPest] = useState<PestOption | null>(null)
   const [pressure, setPressure]         = useState<Record<string, OrchardPressure>>({})
+  const [prevPressure, setPrevPressure] = useState<Record<string, number>>({})
   const [mapReady, setMapReady]         = useState(false)
   const [loading, setLoading]           = useState(false)
 
@@ -202,7 +203,10 @@ export default function OrchardPressureMap() {
         })
         unique.sort((a, b) => a.name.localeCompare(b.name))
         setPests(unique)
-        if (unique.length > 0) setSelectedPest(unique[0])
+        if (unique.length > 0) {
+          const preferred = initialPestId ? unique.find(p => p.id === initialPestId) : null
+          setSelectedPest(preferred ?? unique[0])
+        }
       })
   }, [])
 
@@ -212,22 +216,37 @@ export default function OrchardPressureMap() {
     async function load() {
       setLoading(true)
       const { from, to } = isoWeekRange(weekYear, weekNum)
+      const pw = prevWeek(weekYear, weekNum)
+      const { from: prevFrom, to: prevTo } = isoWeekRange(pw.year, pw.week)
       const orchardIds = orchards.map(o => o.id)
 
-      const { data: inspections } = await supabase
-        .from('trap_inspections')
-        .select('id, orchard_id, trap_id, inspected_at')
-        .gte('inspected_at', from.toISOString())
-        .lte('inspected_at', to.toISOString())
-        .in('orchard_id', orchardIds)
+      // Fetch both weeks' inspection lists in parallel
+      const [{ data: inspections }, { data: prevInspections }] = await Promise.all([
+        supabase.from('trap_inspections')
+          .select('id, orchard_id, trap_id, inspected_at')
+          .gte('inspected_at', from.toISOString())
+          .lte('inspected_at', to.toISOString())
+          .in('orchard_id', orchardIds),
+        supabase.from('trap_inspections')
+          .select('id, orchard_id')
+          .gte('inspected_at', prevFrom.toISOString())
+          .lte('inspected_at', prevTo.toISOString())
+          .in('orchard_id', orchardIds),
+      ])
 
-      if (!inspections?.length) { setPressure({}); setLoading(false); return }
+      if (!inspections?.length) { setPressure({}); setPrevPressure({}); setLoading(false); return }
 
       const inspectionIds = inspections.map(i => i.id)
-      const [{ data: counts }, { data: thresholds }] = await Promise.all([
+      const prevInspectionIds = (prevInspections || []).map((i: any) => i.id)
+
+      const [{ data: counts }, { data: thresholds }, { data: prevCounts }] = await Promise.all([
         supabase.from('trap_counts').select('inspection_id, count')
           .eq('pest_id', selectedPest!.id).in('inspection_id', inspectionIds.slice(0, 500)),
         supabase.from('trap_thresholds').select('threshold, commodity_id').eq('pest_id', selectedPest!.id),
+        prevInspectionIds.length > 0
+          ? supabase.from('trap_counts').select('inspection_id, count')
+              .eq('pest_id', selectedPest!.id).in('inspection_id', prevInspectionIds.slice(0, 500))
+          : Promise.resolve({ data: [], error: null, count: null, status: 200, statusText: 'OK' }),
       ])
 
       const countByInsp: Record<string, number> = {}
@@ -250,6 +269,17 @@ export default function OrchardPressureMap() {
         }
       })
       setPressure(newPressure)
+
+      // Aggregate previous week counts per orchard
+      const prevCountByInsp: Record<string, number> = {}
+      prevCounts?.forEach((c: any) => { prevCountByInsp[c.inspection_id] = (prevCountByInsp[c.inspection_id] || 0) + c.count })
+      const prevAgg: Record<string, number> = {}
+      ;(prevInspections || []).forEach((i: any) => {
+        if (!prevAgg[i.orchard_id]) prevAgg[i.orchard_id] = 0
+        prevAgg[i.orchard_id] += prevCountByInsp[i.id] || 0
+      })
+      setPrevPressure(prevAgg)
+
       setLoading(false)
     }
     load()
@@ -501,17 +531,31 @@ export default function OrchardPressureMap() {
                     <thead><tr>
                       <th className="opm-th">Orchard</th>
                       <th className="opm-th">Count</th>
+                      <th className="opm-th">vs prev wk</th>
                       <th className="opm-th">Traps</th>
                       <th className="opm-th">Status</th>
                     </tr></thead>
                     <tbody>
                       {orchardsSorted.map(o => {
                         const p = pressure[o.id]
+                        const prev = prevPressure[o.id]
+                        const delta = prev !== undefined ? p.total_count - prev : null
                         return (
                           <tr key={o.id} className={`opm-tr-click${selectedOrchardId === o.id ? ' opm-tr-sel' : ''}`}
                             onClick={() => setSelectedOrchardId(o.id)}>
                             <td className="opm-td" style={{ fontWeight: 500, color: '#1c3a2a' }}>{o.name}</td>
                             <td className="opm-td" style={{ fontWeight: 600, color: '#1c3a2a' }}>{p.total_count}</td>
+                            <td className="opm-td">
+                              {delta === null ? (
+                                <span style={{ color: '#9aaa9f' }}>—</span>
+                              ) : delta === 0 ? (
+                                <span style={{ color: '#9aaa9f' }}>—</span>
+                              ) : delta > 0 ? (
+                                <span style={{ color: '#e8924a', fontWeight: 600 }}>+{delta} ↑</span>
+                              ) : (
+                                <span style={{ color: '#4caf72', fontWeight: 600 }}>{delta} ↓</span>
+                              )}
+                            </td>
                             <td className="opm-td" style={{ color: '#9aaa9f' }}>{p.trap_count}</td>
                             <td className="opm-td">{dot(p.status)}</td>
                           </tr>

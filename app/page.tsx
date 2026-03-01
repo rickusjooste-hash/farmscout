@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase-auth'
 import { useUserContext } from '@/lib/useUserContext'
 import PestTrendChart from '@/app/components/PestTrendChart'
 import OrchardPressureMap from '@/app/components/OrchardPressureMap'
+import PestAlertSummary from '@/app/components/PestAlertSummary'
 import { useRouter } from 'next/navigation'
 import { Inter } from 'next/font/google'
 
@@ -34,6 +35,13 @@ export default function DashboardPage() {
   }>({ totalTraps: 0, inspectedTraps: 0, perScout: [] })
   const { farmIds, isSuperAdmin, contextLoaded } = useUserContext()
   const [loading, setLoading] = useState(true)
+  const [selectedPestId, setSelectedPestId] = useState<string | undefined>()
+  const pressureMapRef = useRef<HTMLDivElement>(null)
+
+  function handlePestSelect(pestId: string) {
+    setSelectedPestId(pestId)
+    pressureMapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -679,7 +687,11 @@ export default function DashboardPage() {
               )}
             </div>
 
-            <OrchardPressureMap />
+            <PestAlertSummary farmIds={farmIds} onPestSelect={handlePestSelect} />
+
+            <div ref={pressureMapRef} id="pressure-map">
+              <OrchardPressureMap key={selectedPestId ?? 'default'} initialPestId={selectedPestId} />
+            </div>
 
             <PestTrendChart />
           </main>

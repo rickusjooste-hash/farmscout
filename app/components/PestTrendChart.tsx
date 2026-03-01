@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useUserContext } from '@/lib/useUserContext'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer
+  Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts'
 
 interface WeeklyData {
@@ -83,6 +83,8 @@ export default function PestTrendChart() {
   const [season, setSeason] = useState<string>(getCurrentSeason())
   const seasons = buildSeasonOptions(2023)
 
+  const [thresholdByPest, setThresholdByPest] = useState<Record<string, number>>({})
+
   const [farms, setFarms] = useState<Farm[]>([])
   const [commodities, setCommodities] = useState<Commodity[]>([])
   const [selectedFarmId, setSelectedFarmId] = useState<string>('')
@@ -122,12 +124,26 @@ export default function PestTrendChart() {
       try {
         const { from, to } = getSeasonRange(season)
 
-        const { data, error } = await supabase.rpc('get_pest_trend', {
-          p_from: from,
-          p_to: to,
-          p_farm_id: selectedFarmId || null,
-          p_commodity_id: selectedCommodityId || null,
+        const [{ data, error }, { data: thresholdData }] = await Promise.all([
+          supabase.rpc('get_pest_trend', {
+            p_from: from,
+            p_to: to,
+            p_farm_id: selectedFarmId || null,
+            p_commodity_id: selectedCommodityId || null,
+          }),
+          supabase.from('trap_thresholds').select('threshold, pests(name)'),
+        ])
+
+        // Compute min threshold per pest name
+        const newThresholds: Record<string, number> = {}
+        ;(thresholdData || []).forEach((t: any) => {
+          const name = t.pests?.name
+          if (!name || t.threshold == null) return
+          if (newThresholds[name] === undefined || t.threshold < newThresholds[name]) {
+            newThresholds[name] = t.threshold
+          }
         })
+        setThresholdByPest(newThresholds)
 
         if (error) {
           console.error('get_pest_trend RPC error:', error)
@@ -339,6 +355,18 @@ export default function PestTrendChart() {
                     strokeWidth={2}
                     dot={false}
                     activeDot={{ r: 4 }}
+                  />
+                ) : null
+              )}
+              {pestNames.map((name, i) =>
+                selectedPests.has(name) && thresholdByPest[name] !== undefined ? (
+                  <ReferenceLine
+                    key={`threshold-${name}`}
+                    y={thresholdByPest[name]}
+                    stroke={LINE_COLORS[i % LINE_COLORS.length]}
+                    strokeDasharray="5 3"
+                    strokeOpacity={0.5}
+                    label={{ value: `${name} limit`, position: 'insideTopRight', fontSize: 10, fill: LINE_COLORS[i % LINE_COLORS.length] }}
                   />
                 ) : null
               )}
