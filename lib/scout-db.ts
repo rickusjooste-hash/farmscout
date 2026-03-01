@@ -55,6 +55,61 @@ interface FarmScoutDB extends DBSchema {
       [key: string]: any
     }
   }
+  commodities: {
+    key: string
+    value: {
+      id: string
+      code: string
+      name: string
+      description?: string
+      [key: string]: any
+    }
+  }
+  commodity_pests: {
+    key: string
+    value: {
+      id: string
+      commodity_id: string
+      pest_id: string
+      observation_method: 'present_absent' | 'count' | 'leaf_inspection'
+      display_order: number
+      is_active: boolean
+      display_name?: string
+      [key: string]: any
+    }
+    indexes: { 'by_commodity': string }
+  }
+  farm_pest_config: {
+    key: string  // commodity_pest_id — unique per farm (only this farm's rows stored)
+    value: {
+      id: string
+      commodity_pest_id: string
+      farm_id: string
+      is_active: boolean
+      [key: string]: any
+    }
+  }
+  scout_zone_assignments: {
+    key: string
+    value: {
+      id: string
+      user_id: string
+      zone_id: string
+      assigned_from: string    // ISO date
+      assigned_until?: string  // ISO date, null = open-ended
+      [key: string]: any
+    }
+    indexes: { 'by_zone': string }
+  }
+  photos: {
+    key: string  // = tree_id
+    value: {
+      id: string
+      data: string
+      mimeType: string
+      synced: boolean
+    }
+  }
   inspection_sessions: {
     key: string
     value: {
@@ -137,6 +192,7 @@ interface FarmScoutDB extends DBSchema {
       createdAt: string
       lastAttempt?: string
       lastError?: string
+      has_photo?: boolean
       [key: string]: any
     }
     indexes: { 'by_synced': string }
@@ -148,9 +204,9 @@ let _db: IDBPDatabase<FarmScoutDB> | null = null
 export async function getScoutDB(): Promise<IDBPDatabase<FarmScoutDB>> {
   if (_db) return _db
 
-  _db = await openDB<FarmScoutDB>('farmscout-local', 2,  {
-    upgrade(db) {
-      // Reference data (downloaded from Supabase)
+  _db = await openDB<FarmScoutDB>('farmscout-local', 3, {
+    upgrade(db, oldVersion) {
+      // Version 1 & 2 stores (always create if missing)
       if (!db.objectStoreNames.contains('orchards')) {
         db.createObjectStore('orchards', { keyPath: 'id' })
       }
@@ -166,8 +222,6 @@ export async function getScoutDB(): Promise<IDBPDatabase<FarmScoutDB>> {
       if (!db.objectStoreNames.contains('lure_types')) {
         db.createObjectStore('lure_types', { keyPath: 'id' })
       }
-
-      // Field data (created on device, uploaded later)
       if (!db.objectStoreNames.contains('inspection_sessions')) {
         const s = db.createObjectStore('inspection_sessions', { keyPath: 'id' })
         s.createIndex('by_status', 'status')
@@ -188,14 +242,33 @@ export async function getScoutDB(): Promise<IDBPDatabase<FarmScoutDB>> {
         const s = db.createObjectStore('trap_counts', { keyPath: 'id' })
         s.createIndex('by_trap_inspection', 'trap_inspection_id')
       }
-
-      // Sync queue (pending uploads)
       if (!db.objectStoreNames.contains('sync_queue')) {
         const s = db.createObjectStore('sync_queue', {
           keyPath: 'id',
           autoIncrement: true,
         })
         s.createIndex('by_synced', 'synced')
+      }
+
+      // Version 3 stores
+      if (oldVersion < 3) {
+        if (!db.objectStoreNames.contains('commodities')) {
+          db.createObjectStore('commodities', { keyPath: 'id' })
+        }
+        if (!db.objectStoreNames.contains('commodity_pests')) {
+          const s = db.createObjectStore('commodity_pests', { keyPath: 'id' })
+          s.createIndex('by_commodity', 'commodity_id')
+        }
+        if (!db.objectStoreNames.contains('farm_pest_config')) {
+          db.createObjectStore('farm_pest_config', { keyPath: 'commodity_pest_id' })
+        }
+        if (!db.objectStoreNames.contains('scout_zone_assignments')) {
+          const s = db.createObjectStore('scout_zone_assignments', { keyPath: 'id' })
+          s.createIndex('by_zone', 'zone_id')
+        }
+        if (!db.objectStoreNames.contains('photos')) {
+          db.createObjectStore('photos', { keyPath: 'id' })
+        }
       }
     },
   })
@@ -268,4 +341,15 @@ export async function deleteFromQueue(id: number) {
 export async function addToQueue(item: Omit<FarmScoutDB['sync_queue']['value'], 'id'>) {
   const db = await getScoutDB()
   await db.add('sync_queue', item as any)
+}
+
+export async function getPendingPhotos(): Promise<any[]> {
+  const db = await getScoutDB()
+  return (await db.getAll('photos')).filter(p => !p.synced)
+}
+
+export async function markPhotoSynced(treeId: string): Promise<void> {
+  const db = await getScoutDB()
+  const p = await db.get('photos', treeId)
+  if (p) await db.put('photos', { ...p, synced: true })
 }

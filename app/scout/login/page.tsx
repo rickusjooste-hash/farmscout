@@ -100,11 +100,8 @@ export default function ScoutLogin() {
 
       // 5. Pre-warm the cache so scout pages work offline immediately
       if ('caches' in window) {
-        const cache = await caches.open('farmscout-v1')
-        await Promise.allSettled([
-          cache.add('/scout'),
-          cache.add('/scout/trap-inspection'),
-        ])
+        const cache = await caches.open('farmscout-v3')
+        await cache.add('/scout')
       }
 
       // 6. Go to home screen

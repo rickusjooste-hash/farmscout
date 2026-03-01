@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { runFullSync } from '../../lib/scout-sync'
 import TrapInspectionView from './TrapInspectionView'
+import TreeInspectionView from './TreeInspectionView'
 
 export default function ScoutApp() {
   const [isOnline, setIsOnline] = useState(true)
@@ -13,7 +14,8 @@ export default function ScoutApp() {
   const router = useRouter()
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
   const [trapStatus, setTrapStatus] = useState<'not_started' | 'in_progress' | 'completed'>('not_started')
-  const [view, setView] = useState<'home' | 'trap-inspection'>('home')
+  const [view, setView] = useState<'home' | 'trap-inspection' | 'tree-inspection'>('home')
+  const [commodityCode, setCommodityCode] = useState<string | null>(null)
   const SUPABASE_URL = 'https://agktzdeskpyevurhabpg.supabase.co'
 
   useEffect(() => {
@@ -105,6 +107,10 @@ export default function ScoutApp() {
     return <TrapInspectionView onBack={() => { setView('home'); checkTrapStatus(); loadPendingCount() }} />
   }
 
+  if (view === 'tree-inspection') {
+    return <TreeInspectionView commodityCode={commodityCode || undefined} onBack={() => { setView('home'); loadPendingCount() }} />
+  }
+
   return (
     <div style={styles.app}>
 
@@ -162,23 +168,29 @@ export default function ScoutApp() {
   )}
 </div>
 
-            {/* Coming soon tiles */}
-            <div style={{ ...styles.tile, ...styles.tileDimmed }}>
+            {/* Tree scouting tiles */}
+            <div
+              style={{ ...styles.tile, background: '#1a3a2a', cursor: 'pointer' }}
+              onClick={() => { setCommodityCode('POME'); setView('tree-inspection') }}
+            >
               <div style={styles.tileIcon}>🍎</div>
               <div style={styles.tileLabel}>Pomefruit Scouting</div>
-              <div style={styles.tileSoon}>Coming soon</div>
             </div>
 
-            <div style={{ ...styles.tile, ...styles.tileDimmed }}>
+            <div
+              style={{ ...styles.tile, background: '#1a3a2a', cursor: 'pointer' }}
+              onClick={() => { setCommodityCode('STONE'); setView('tree-inspection') }}
+            >
               <div style={styles.tileIcon}>🍑</div>
               <div style={styles.tileLabel}>Stonefruit Scouting</div>
-              <div style={styles.tileSoon}>Coming soon</div>
             </div>
 
-            <div style={{ ...styles.tile, ...styles.tileDimmed }}>
+            <div
+              style={{ ...styles.tile, background: '#1a3a2a', cursor: 'pointer' }}
+              onClick={() => { setCommodityCode('CITRUS'); setView('tree-inspection') }}
+            >
               <div style={styles.tileIcon}>🍊</div>
               <div style={styles.tileLabel}>Citrus Scouting</div>
-              <div style={styles.tileSoon}>Coming soon</div>
             </div>
 
           </div>
