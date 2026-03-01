@@ -320,8 +320,12 @@ export default function OrchardPressureMap() {
       const lookup: Record<string, OrchardInfo> = {}
       orchards.forEach(o => { lookup[o.id] = o })
 
+      // RPC uses SECURITY DEFINER so returns all orgs — filter to this user's orchards only
+      const myBoundaries = boundaryData.filter((o: any) => lookup[o.id])
+      if (!myBoundaries.length) return
+
       const layer = L.geoJSON(
-        { type: 'FeatureCollection', features: boundaryData.map((o: any) => ({ type: 'Feature', properties: { id: o.id, name: o.name }, geometry: o.boundary })) },
+        { type: 'FeatureCollection', features: myBoundaries.map((o: any) => ({ type: 'Feature', properties: { id: o.id, name: o.name }, geometry: o.boundary })) },
         {
           style: (f: any) => {
             const p = pressure[f.properties.id]

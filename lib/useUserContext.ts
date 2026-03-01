@@ -15,40 +15,50 @@ export function useUserContext(): UserContext {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
 
   useEffect(() => {
+    // Safety net: if the auth call hangs (e.g. stale session trying to refresh),
+    // unblock the page after 8s so it can redirect to login instead of hanging forever.
+    const fallbackTimer = setTimeout(() => setFarmIds([]), 8000)
+
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { setFarmIds([]); return }
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) { setFarmIds([]); return }
 
-      const { data: orgUser } = await supabase
-        .from('organisation_users')
-        .select('role, organisation_id')
-        .eq('user_id', user.id)
-        .single()
+        const { data: orgUser } = await supabase
+          .from('organisation_users')
+          .select('role, organisation_id')
+          .eq('user_id', user.id)
+          .single()
 
-      if (orgUser?.role === 'super_admin') {
-        setIsSuperAdmin(true)
+        if (orgUser?.role === 'super_admin') {
+          setIsSuperAdmin(true)
+          setFarmIds([])
+          return
+        }
+
+        if (orgUser?.role === 'org_admin') {
+          const { data: farms } = await supabase
+            .from('farms')
+            .select('id')
+            .eq('organisation_id', orgUser.organisation_id)
+          setFarmIds((farms || []).map((f: any) => f.id))
+          return
+        }
+
+        const { data: farmAccess } = await supabase
+          .from('user_farm_access')
+          .select('farm_id')
+          .eq('user_id', user.id)
+
+        setFarmIds((farmAccess || []).map((f: any) => f.farm_id))
+      } catch {
         setFarmIds([])
-        return
+      } finally {
+        clearTimeout(fallbackTimer)
       }
-
-      if (orgUser?.role === 'org_admin') {
-        // Org admin sees all farms in their org — load them explicitly
-        const { data: farms } = await supabase
-          .from('farms')
-          .select('id')
-          .eq('organisation_id', orgUser.organisation_id)
-        setFarmIds((farms || []).map((f: any) => f.id))
-        return
-      }
-
-      const { data: farmAccess } = await supabase
-        .from('user_farm_access')
-        .select('farm_id')
-        .eq('user_id', user.id)
-
-      setFarmIds((farmAccess || []).map((f: any) => f.farm_id))
     }
     load()
+    return () => clearTimeout(fallbackTimer)
   }, [])
 
   return {

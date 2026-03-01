@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (type === 'update') {
-    const { commodityPestId, observationMethod, displayOrder, isActive, displayName } = body
+    const { commodityPestId, observationMethod, displayOrder, isActive, displayName, category } = body
     if (!commodityPestId) {
       return NextResponse.json({ error: 'commodityPestId is required' }, { status: 400 })
     }
@@ -102,8 +102,19 @@ export async function POST(req: NextRequest) {
     if (displayOrder !== undefined) updates.display_order = displayOrder
     if (isActive !== undefined) updates.is_active = isActive
     if (displayName !== undefined) updates.display_name = displayName?.trim() || null
+    if (category !== undefined) updates.category = category
 
     const { error } = await svc.from('commodity_pests').update(updates).eq('id', commodityPestId)
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+    return NextResponse.json({ ok: true })
+  }
+
+  if (type === 'delete') {
+    const { commodityPestId } = body
+    if (!commodityPestId) {
+      return NextResponse.json({ error: 'commodityPestId is required' }, { status: 400 })
+    }
+    const { error } = await svc.from('commodity_pests').delete().eq('id', commodityPestId)
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
     return NextResponse.json({ ok: true })
   }

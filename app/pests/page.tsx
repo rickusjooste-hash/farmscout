@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase-auth'
 import { useUserContext } from '@/lib/useUserContext'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
@@ -48,22 +48,25 @@ const CATEGORIES = ['pest', 'mite', 'disease', 'beneficial']
 
 function SortablePestRow({
   row, isSuperAdmin, isEditing, editForm, editSubmitting, editError,
-  farmActive, onStartEdit, onSaveEdit, onCancelEdit, onEditFormChange, onFarmToggle, onGlobalToggle,
+  farmActive, commodityCode, onStartEdit, onSaveEdit, onCancelEdit, onEditFormChange, onFarmToggle, onGlobalToggle, onRemove,
 }: {
   row: PestRow
   isSuperAdmin: boolean
   isEditing: boolean
-  editForm: { displayName: string; observationMethod: string; displayOrder: number; isActive: boolean }
+  editForm: { displayName: string; observationMethod: string; displayOrder: number; isActive: boolean; category: string }
   editSubmitting: boolean
   editError: string
   farmActive: boolean
+  commodityCode: string
   onStartEdit: () => void
   onSaveEdit: () => void
   onCancelEdit: () => void
-  onEditFormChange: (updates: Partial<{ displayName: string; observationMethod: string; displayOrder: number; isActive: boolean }>) => void
+  onEditFormChange: (updates: Partial<{ displayName: string; observationMethod: string; displayOrder: number; isActive: boolean; category: string }>) => void
   onFarmToggle: () => void
   onGlobalToggle: () => void
+  onRemove: () => void
 }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id })
   const dragStyle: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -113,7 +116,21 @@ function SortablePestRow({
       {isEditing && (
         <div className="edit-row-form">
           {editError && <div className="error-msg">{editError}</div>}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 3 }}>Pest</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a' }}>
+              {row.pests?.name}
+              {row.pests?.scientific_name && <span style={{ fontWeight: 400, fontStyle: 'italic', color: '#9aaa9f', marginLeft: 8 }}>{row.pests.scientific_name}</span>}
+            </div>
+          </div>
           <div className="edit-row-grid">
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>Category</label>
+              <select value={editForm.category}
+                onChange={e => onEditFormChange({ category: e.target.value })}>
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
             <div className="field" style={{ marginBottom: 0 }}>
               <label>Display Label</label>
               <input type="text" value={editForm.displayName}
@@ -136,11 +153,29 @@ function SortablePestRow({
                 onChange={e => onEditFormChange({ displayOrder: parseInt(e.target.value) || 0 })} />
             </div>
           </div>
-          <div className="edit-actions">
-            <button className="btn-sm primary" onClick={onSaveEdit} disabled={editSubmitting}>
-              {editSubmitting ? 'Saving…' : 'Save'}
-            </button>
-            <button className="btn-sm ghost" onClick={onCancelEdit}>Cancel</button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn-sm primary" onClick={onSaveEdit} disabled={editSubmitting}>
+                {editSubmitting ? 'Saving…' : 'Save'}
+              </button>
+              <button className="btn-sm ghost" onClick={() => { onCancelEdit(); setConfirmingDelete(false) }}>Cancel</button>
+            </div>
+            {isSuperAdmin && !confirmingDelete && (
+              <button className="btn-sm ghost" onClick={() => setConfirmingDelete(true)}
+                style={{ color: '#c0392b', borderColor: '#f5c5be' }}>
+                Remove from {commodityCode}
+              </button>
+            )}
+            {isSuperAdmin && confirmingDelete && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, color: '#c0392b' }}>Remove {row.display_name || row.pests?.name} from {commodityCode}?</span>
+                <button className="btn-sm ghost" onClick={() => { onRemove(); setConfirmingDelete(false) }}
+                  style={{ background: '#c0392b', color: '#fff', borderColor: '#c0392b' }}>
+                  Yes, remove
+                </button>
+                <button className="btn-sm ghost" onClick={() => setConfirmingDelete(false)}>Cancel</button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -170,11 +205,14 @@ export default function PestsPage() {
   })
   const [addSubmitting, setAddSubmitting] = useState(false)
   const [addError, setAddError] = useState('')
+  const [pestSuggestions, setPestSuggestions] = useState<{ id: string; name: string; scientific_name: string | null }[]>([])
+  const [linkedPest, setLinkedPest] = useState<{ id: string; name: string; scientific_name: string | null } | null>(null)
+  const nameSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Inline edit state (super admin)
   const [editingRowId, setEditingRowId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({
-    displayName: '', observationMethod: 'count', displayOrder: 0, isActive: true,
+    displayName: '', observationMethod: 'count', displayOrder: 0, isActive: true, category: 'pest',
   })
   const [editSubmitting, setEditSubmitting] = useState(false)
   const [editError, setEditError] = useState('')
@@ -280,6 +318,7 @@ export default function PestsPage() {
       observationMethod: row.observation_method,
       displayOrder: row.display_order,
       isActive: row.is_active,
+      category: row.category,
     })
     setEditError('')
   }
@@ -297,6 +336,7 @@ export default function PestsPage() {
         observationMethod: editForm.observationMethod,
         displayOrder: editForm.displayOrder,
         isActive: editForm.isActive,
+        category: editForm.category,
       }),
     })
     const json = await res.json()
@@ -311,8 +351,30 @@ export default function PestsPage() {
       observation_method: editForm.observationMethod,
       display_order: editForm.displayOrder,
       is_active: editForm.isActive,
+      category: editForm.category,
     } : r))
     setEditingRowId(null)
+  }
+
+  function handleNameChange(value: string) {
+    setAddForm(f => ({ ...f, name: value }))
+    setLinkedPest(null)
+    if (nameSearchTimer.current) clearTimeout(nameSearchTimer.current)
+    if (value.trim().length < 2) { setPestSuggestions([]); return }
+    nameSearchTimer.current = setTimeout(async () => {
+      const { data } = await supabase
+        .from('pests')
+        .select('id, name, scientific_name')
+        .ilike('name', `%${value.trim()}%`)
+        .limit(6)
+      setPestSuggestions(data || [])
+    }, 300)
+  }
+
+  function selectExistingPest(pest: { id: string; name: string; scientific_name: string | null }) {
+    setLinkedPest(pest)
+    setAddForm(f => ({ ...f, name: pest.name }))
+    setPestSuggestions([])
   }
 
   async function handleAddPest(e: React.FormEvent) {
@@ -322,16 +384,28 @@ export default function PestsPage() {
     const res = await fetch('/api/pests/manage', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'create',
-        name: addForm.name,
-        displayName: addForm.displayName,
-        scientific_name: addForm.scientificName,
-        commodityId: addForm.commodityId,
-        category: addForm.category,
-        observationMethod: addForm.observationMethod,
-        displayOrder: addForm.displayOrder,
-      }),
+      body: JSON.stringify(
+        linkedPest
+          ? {
+              type: 'add-to-commodity',
+              pestId: linkedPest.id,
+              commodityId: addForm.commodityId,
+              category: addForm.category,
+              observationMethod: addForm.observationMethod,
+              displayOrder: addForm.displayOrder,
+              displayName: addForm.displayName,
+            }
+          : {
+              type: 'create',
+              name: addForm.name,
+              displayName: addForm.displayName,
+              scientific_name: addForm.scientificName,
+              commodityId: addForm.commodityId,
+              category: addForm.category,
+              observationMethod: addForm.observationMethod,
+              displayOrder: addForm.displayOrder,
+            }
+      ),
     })
     const json = await res.json()
     setAddSubmitting(false)
@@ -349,6 +423,8 @@ export default function PestsPage() {
 
     // Reset form (keep commodity/category/method)
     setAddForm(f => ({ ...f, name: '', displayName: '', scientificName: '', displayOrder: 10 }))
+    setLinkedPest(null)
+    setPestSuggestions([])
     setShowAddPanel(false)
   }
 
@@ -358,6 +434,18 @@ export default function PestsPage() {
   const filteredRows = pestRows
     .filter(r => r.commodity_id === activeCommodityObj?.id)
     .sort((a, b) => a.display_order - b.display_order)
+
+  async function handleRemove(row: PestRow) {
+    const res = await fetch('/api/pests/manage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'delete', commodityPestId: row.id }),
+    })
+    if (res.ok) {
+      setPestRows(prev => prev.filter(r => r.id !== row.id))
+      setEditingRowId(null)
+    }
+  }
 
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
@@ -479,7 +567,7 @@ export default function PestsPage() {
         .table-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #f0ede6; }
         .table-header-title { font-size: 14px; font-weight: 600; color: #1c3a2a; }
         .edit-row-form { padding: 12px; background: #f7faf8; border-top: 1px solid #e8e4dc; }
-        .edit-row-grid { display: grid; grid-template-columns: 1fr 1fr 80px; gap: 10px; align-items: end; }
+        .edit-row-grid { display: grid; grid-template-columns: 120px 1fr 1fr 80px; gap: 10px; align-items: end; }
         .checkbox-row { display: flex; align-items: center; gap: 8px; }
         input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: #1c3a2a; }
         .edit-actions { display: flex; gap: 8px; margin-top: 10px; }
@@ -562,7 +650,7 @@ export default function PestsPage() {
               <button
                 key={code}
                 className={`tab${activeCommodity === code ? ' active' : ''}`}
-                onClick={() => { setActiveCommodity(code); setEditingRowId(null) }}
+                onClick={() => { setActiveCommodity(code); setEditingRowId(null); setLinkedPest(null); setPestSuggestions([]) }}
               >
                 {code}
               </button>
@@ -589,6 +677,8 @@ export default function PestsPage() {
                       setShowAddPanel(willShow)
                       setEditingRowId(null)
                       setAddError('')
+                      setLinkedPest(null)
+                      setPestSuggestions([])
                       if (willShow && activeCommodityObj) {
                         setAddForm(f => ({ ...f, commodityId: activeCommodityObj.id }))
                       }
@@ -623,12 +713,14 @@ export default function PestsPage() {
                             editSubmitting={editSubmitting}
                             editError={editError}
                             farmActive={isFarmActive(row.id)}
+                            commodityCode={activeCommodity}
                             onStartEdit={() => startEdit(row)}
                             onSaveEdit={() => handleSaveEdit(row)}
                             onCancelEdit={() => setEditingRowId(null)}
                             onEditFormChange={updates => setEditForm(f => ({ ...f, ...updates }))}
                             onFarmToggle={() => handleFarmToggle(row.id)}
                             onGlobalToggle={() => handleGlobalToggle(row)}
+                            onRemove={() => handleRemove(row)}
                           />
                         ))}
                       </SortableContext>
@@ -650,15 +742,49 @@ export default function PestsPage() {
                 <div className="panel-title">Add Pest</div>
                 {addError && <div className="error-msg">{addError}</div>}
                 <form onSubmit={handleAddPest}>
-                  <div className="field">
+                  <div className="field" style={{ position: 'relative' }}>
                     <label>Name <span style={{ color: '#b0bdb5', fontWeight: 400, textTransform: 'none' }}>(canonical)</span></label>
-                    <input
-                      type="text"
-                      value={addForm.name}
-                      onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))}
-                      placeholder="e.g. Woolly Aphid"
-                      required
-                    />
+                    {linkedPest ? (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ flex: 1, padding: '9px 12px', borderRadius: 8, border: '1.5px solid #2a6e45', background: '#f0f7f3', fontSize: 13, color: '#1c3a2a', fontWeight: 500 }}>
+                            {linkedPest.name}
+                          </div>
+                          <button type="button" onClick={() => { setLinkedPest(null); setAddForm(f => ({ ...f, name: '' })) }}
+                            style={{ background: 'none', border: 'none', color: '#9aaa9f', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }} title="Clear — create new pest instead">×</button>
+                        </div>
+                        <div className="hint" style={{ color: '#2a6e45', marginTop: 5 }}>
+                          Linking existing pest to this commodity — no duplicate created.
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <input
+                          type="text"
+                          value={addForm.name}
+                          onChange={e => handleNameChange(e.target.value)}
+                          placeholder="e.g. Woolly Aphid"
+                          autoComplete="off"
+                          required
+                        />
+                        {pestSuggestions.length > 0 && (
+                          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1.5px solid #e0ddd6', borderRadius: 8, boxShadow: '0 4px 14px rgba(0,0,0,0.1)', zIndex: 20, overflow: 'hidden', marginTop: 2 }}>
+                            <div style={{ padding: '5px 12px', fontSize: 10, color: '#9aaa9f', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #f0ede6' }}>
+                              Already exists — click to link
+                            </div>
+                            {pestSuggestions.map(p => (
+                              <div key={p.id} onMouseDown={() => selectExistingPest(p)}
+                                style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #f0ede6' }}
+                                onMouseEnter={e => (e.currentTarget.style.background = '#f0f7f3')}
+                                onMouseLeave={e => (e.currentTarget.style.background = '')}>
+                                <span style={{ fontWeight: 500, color: '#1c3a2a' }}>{p.name}</span>
+                                {p.scientific_name && <span style={{ fontSize: 11, color: '#9aaa9f', marginLeft: 6, fontStyle: 'italic' }}>{p.scientific_name}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                   <div className="field">
                     <label>Display Label <span style={{ color: '#b0bdb5', fontWeight: 400, textTransform: 'none' }}>(optional)</span></label>
@@ -672,6 +798,7 @@ export default function PestsPage() {
                       <div className="hint">Tip: include unit, e.g. "Red Mite (5 leaves)"</div>
                     )}
                   </div>
+                  {!linkedPest && (
                   <div className="field">
                     <label>Scientific Name <span style={{ color: '#b0bdb5', fontWeight: 400, textTransform: 'none' }}>(optional)</span></label>
                     <input
@@ -681,6 +808,7 @@ export default function PestsPage() {
                       placeholder="e.g. Eriosoma lanigerum"
                     />
                   </div>
+                  )}
                   <div className="field">
                     <label>Commodity</label>
                     <select
