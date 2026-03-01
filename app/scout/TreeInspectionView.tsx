@@ -106,14 +106,13 @@ export default function TreeInspectionView({
     setLoadingZones(true)
     try {
       const userId = localStorage.getItem('farmscout_user_id')
-      if (!userId) { setLoadingZones(false); return }
+      const farmId = localStorage.getItem('farmscout_farm_id')
+      if (!userId || !farmId) { setLoadingZones(false); return }
 
-      const today = new Date().toISOString().slice(0, 10)
       const weekStart = getWeekStart()
 
       // Load all needed reference data from IndexedDB
-      const [allAssignments, allZones, allOrchards, allCommodities, allSessions, allTrees] = await Promise.all([
-        getAll('scout_zone_assignments'),
+      const [allZones, allOrchards, allCommodities, allSessions, allTrees] = await Promise.all([
         getAll('zones'),
         getAll('orchards'),
         getAll('commodities'),
@@ -121,7 +120,6 @@ export default function TreeInspectionView({
         getAll('inspection_trees'),
       ])
 
-      const zoneMap = new Map(allZones.map((z: any) => [z.id, z]))
       const orchardMap = new Map(allOrchards.map((o: any) => [o.id, o]))
       const commodityMap = new Map(allCommodities.map((c: any) => [c.id, c]))
 
@@ -138,22 +136,15 @@ export default function TreeInspectionView({
         if (CODE_TO_GROUP[c.code] === c.code) groupCommodityId.set(c.code, c.id)
       }
 
-      // Filter active assignments for this user
-      const myAssignments = allAssignments.filter((a: any) => {
-        if (a.user_id !== userId) return false
-        if (a.assigned_until && a.assigned_until < today) return false
-        return true
-      })
-
-      // Build zone+orchard+commodity rows
+      // Build zone+orchard+commodity rows — all zones on this farm matching the commodity
       const result: ZoneWithProgress[] = []
 
-      for (const assignment of myAssignments) {
-        const zone = zoneMap.get(assignment.zone_id)
-        if (!zone) continue
-
+      for (const zone of allZones) {
         const orchard = orchardMap.get(zone.orchard_id)
         if (!orchard) continue
+
+        // Only show zones belonging to this scout's farm
+        if (orchard.farm_id !== farmId) continue
 
         const commodity = commodityMap.get(orchard.commodity_id)
         if (!commodity) continue
@@ -195,6 +186,11 @@ export default function TreeInspectionView({
           completed,
         })
       }
+
+      // Sort by orchard name then zone name
+      result.sort((a, b) =>
+        a.orchard_name.localeCompare(b.orchard_name) || a.zone_name.localeCompare(b.zone_name)
+      )
 
       setZones(result)
     } catch (err) {
