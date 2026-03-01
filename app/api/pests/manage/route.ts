@@ -108,5 +108,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
+  if (type === 'reorder') {
+    const { orderedIds } = body
+    if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+      return NextResponse.json({ error: 'orderedIds array required' }, { status: 400 })
+    }
+    await Promise.all(
+      orderedIds.map((id: string, i: number) =>
+        svc.from('commodity_pests').update({ display_order: (i + 1) * 10 }).eq('id', id)
+      )
+    )
+    return NextResponse.json({ ok: true })
+  }
+
   return NextResponse.json({ error: 'Invalid type' }, { status: 400 })
 }

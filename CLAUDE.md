@@ -59,7 +59,7 @@ IndexedDB schema is in `lib/scout-db.ts` (database name: `farmscout-local`, vers
 - Static assets (`/_next/static`): cache-first
 - Scout pages (`/scout*`): network-first, fall back to cache
 - Supabase API calls: never intercepted, always hit network
-- Cache name: `farmscout-v2` (bump this string to force cache invalidation on deploy)
+- Cache name: auto-bumped to `farmscout-{timestamp}` by `scripts/bump-sw-version.js`, which runs as part of `npm run build` — do NOT manually edit the version string
 
 ### API Routes
 

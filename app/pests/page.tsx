@@ -2,8 +2,14 @@
 
 import { createClient } from '@/lib/supabase-auth'
 import { useUserContext } from '@/lib/useUserContext'
-import { useEffect, useState, Fragment } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface Commodity { id: string; code: string; name: string }
 interface PestRow {
@@ -39,6 +45,108 @@ const OBSERVATION_METHODS = [
 ]
 
 const CATEGORIES = ['pest', 'mite', 'disease', 'beneficial']
+
+function SortablePestRow({
+  row, isSuperAdmin, isEditing, editForm, editSubmitting, editError,
+  farmActive, onStartEdit, onSaveEdit, onCancelEdit, onEditFormChange, onFarmToggle, onGlobalToggle,
+}: {
+  row: PestRow
+  isSuperAdmin: boolean
+  isEditing: boolean
+  editForm: { displayName: string; observationMethod: string; displayOrder: number; isActive: boolean }
+  editSubmitting: boolean
+  editError: string
+  farmActive: boolean
+  onStartEdit: () => void
+  onSaveEdit: () => void
+  onCancelEdit: () => void
+  onEditFormChange: (updates: Partial<{ displayName: string; observationMethod: string; displayOrder: number; isActive: boolean }>) => void
+  onFarmToggle: () => void
+  onGlobalToggle: () => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id })
+  const dragStyle: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    position: 'relative',
+    zIndex: isDragging ? 1 : 0,
+  }
+  const catColors = CATEGORY_COLORS[row.category] || CATEGORY_COLORS.pest
+  const methInfo = METHOD_COLORS[row.observation_method] || METHOD_COLORS.count
+
+  return (
+    <div ref={setNodeRef} style={dragStyle}>
+      <div
+        className={`pest-row${isEditing ? ' editing' : isSuperAdmin ? ' clickable-row' : ''}`}
+        style={{ display: 'flex', alignItems: 'center' }}
+        onClick={isSuperAdmin && !isEditing ? onStartEdit : undefined}
+      >
+        {isSuperAdmin && (
+          <div
+            {...attributes} {...listeners}
+            className="drag-handle"
+            onClick={e => e.stopPropagation()}
+          >⠿</div>
+        )}
+        <div style={{ width: 90, flexShrink: 0 }}>
+          <span className="pill" style={{ background: catColors.bg, color: catColors.color }}>{row.category}</span>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 500, fontSize: 13, color: '#1c3a2a' }}>{row.display_name || row.pests?.name}</div>
+          {row.display_name && <div style={{ fontSize: 11, color: '#9aaa9f' }}>{row.pests?.name}</div>}
+          {row.pests?.scientific_name && <div style={{ fontSize: 11, color: '#b0bdb5', fontStyle: 'italic' }}>{row.pests.scientific_name}</div>}
+        </div>
+        <div style={{ width: 130, flexShrink: 0 }}>
+          <span className="method-badge" style={{ background: methInfo.bg, color: methInfo.color }}>{methInfo.label}</span>
+        </div>
+        <div style={{ width: 80, display: 'flex', justifyContent: 'center', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+          <button className={`toggle-btn ${farmActive ? 'on' : 'off'}`} onClick={onFarmToggle}
+            title={farmActive ? 'Disable for this farm' : 'Enable for this farm'} />
+        </div>
+        {isSuperAdmin && (
+          <div style={{ width: 56, display: 'flex', justifyContent: 'center', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+            <input type="checkbox" checked={row.is_active} onChange={onGlobalToggle} title="Globally active" />
+          </div>
+        )}
+      </div>
+      {isEditing && (
+        <div className="edit-row-form">
+          {editError && <div className="error-msg">{editError}</div>}
+          <div className="edit-row-grid">
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>Display Label</label>
+              <input type="text" value={editForm.displayName}
+                onChange={e => onEditFormChange({ displayName: e.target.value })}
+                placeholder={row.pests?.name} />
+              {editForm.observationMethod === 'leaf_inspection' && (
+                <div className="hint">Tip: include unit, e.g. "Red Mite (5 leaves)"</div>
+              )}
+            </div>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>Observation Method</label>
+              <select value={editForm.observationMethod}
+                onChange={e => onEditFormChange({ observationMethod: e.target.value })}>
+                {OBSERVATION_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
+            </div>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>Order</label>
+              <input type="number" value={editForm.displayOrder}
+                onChange={e => onEditFormChange({ displayOrder: parseInt(e.target.value) || 0 })} />
+            </div>
+          </div>
+          <div className="edit-actions">
+            <button className="btn-sm primary" onClick={onSaveEdit} disabled={editSubmitting}>
+              {editSubmitting ? 'Saving…' : 'Save'}
+            </button>
+            <button className="btn-sm ghost" onClick={onCancelEdit}>Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function PestsPage() {
   const supabase = createClient()
@@ -244,10 +352,31 @@ export default function PestsPage() {
     setShowAddPanel(false)
   }
 
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+
   const activeCommodityObj = commodities.find(c => c.code === activeCommodity)
   const filteredRows = pestRows
     .filter(r => r.commodity_id === activeCommodityObj?.id)
     .sort((a, b) => a.display_order - b.display_order)
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const activeIndex = filteredRows.findIndex(r => r.id === active.id)
+    const overIndex = filteredRows.findIndex(r => r.id === over.id)
+    if (activeIndex === -1 || overIndex === -1) return
+    const reordered = arrayMove(filteredRows, activeIndex, overIndex)
+    const reorderedWithOrder = reordered.map((r, i) => ({ ...r, display_order: (i + 1) * 10 }))
+    setPestRows(prev => [
+      ...prev.filter(r => r.commodity_id !== activeCommodityObj?.id),
+      ...reorderedWithOrder,
+    ])
+    await fetch('/api/pests/manage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'reorder', orderedIds: reordered.map(r => r.id) }),
+    })
+  }
 
   if (loading) {
     return (
@@ -367,8 +496,16 @@ export default function PestsPage() {
         .farm-selector label { margin: 0; text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 500; color: #6a7a70; }
         .farm-selector select { width: auto; min-width: 160px; }
         .empty-state { padding: 40px; text-align: center; color: #9aaa9f; font-size: 14px; }
-        .row-click { cursor: pointer; }
-        tr.clickable-row:hover td { background: #f0f7f3; cursor: pointer; }
+        .pest-list { width: 100%; }
+        .pest-list-header { display: flex; align-items: center; padding: 10px 12px; border-bottom: 1px solid #e8e4dc; }
+        .pest-list-header-cell { font-size: 11px; font-weight: 600; color: #9aaa9f; text-transform: uppercase; letter-spacing: 0.6px; }
+        .pest-row { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #f0ede6; }
+        .pest-row:last-child { border-bottom: none; }
+        .pest-row.clickable-row { cursor: pointer; }
+        .pest-row.clickable-row:hover { background: #f0f7f3; }
+        .pest-row.editing { background: #f7faf8; }
+        .drag-handle { width: 28px; flex-shrink: 0; color: #b0bdb5; font-size: 15px; text-align: center; cursor: grab; user-select: none; touch-action: none; }
+        .drag-handle:active { cursor: grabbing; }
       `}</style>
 
       <div className="app">
@@ -465,139 +602,44 @@ export default function PestsPage() {
                 {filteredRows.length === 0 ? (
                   <div className="empty-state">No pests configured for {activeCommodity} yet.</div>
                 ) : (
-                  <table className="pest-table">
-                    <thead>
-                      <tr>
-                        <th>Category</th>
-                        <th>Pest</th>
-                        <th>Method</th>
-                        <th style={{ textAlign: 'center' }}>Order</th>
-                        <th style={{ textAlign: 'center' }}>Farm Active</th>
-                        {isSuperAdmin && <th style={{ textAlign: 'center' }}>Global</th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredRows.map(row => {
-                        const catColors = CATEGORY_COLORS[row.category] || CATEGORY_COLORS.pest
-                        const methInfo = METHOD_COLORS[row.observation_method] || METHOD_COLORS.count
-                        const farmActive = isFarmActive(row.id)
-                        const isEditing = editingRowId === row.id
-
-                        return (
-                          <Fragment key={row.id}>
-                            <tr
-                              className={isEditing ? 'editing' : isSuperAdmin ? 'clickable-row' : ''}
-                              onClick={isSuperAdmin && !isEditing ? () => startEdit(row) : undefined}
-                            >
-                              <td>
-                                <span className="pill" style={{ background: catColors.bg, color: catColors.color }}>
-                                  {row.category}
-                                </span>
-                              </td>
-                              <td>
-                                <div style={{ fontWeight: 500, fontSize: 13, color: '#1c3a2a' }}>
-                                  {row.display_name || row.pests?.name}
-                                </div>
-                                {row.display_name && (
-                                  <div style={{ fontSize: 11, color: '#9aaa9f' }}>{row.pests?.name}</div>
-                                )}
-                                {row.pests?.scientific_name && (
-                                  <div style={{ fontSize: 11, color: '#b0bdb5', fontStyle: 'italic' }}>{row.pests.scientific_name}</div>
-                                )}
-                              </td>
-                              <td>
-                                <span className="method-badge" style={{ background: methInfo.bg, color: methInfo.color }}>
-                                  {methInfo.label}
-                                </span>
-                              </td>
-                              <td style={{ textAlign: 'center', color: '#9aaa9f', fontSize: 13 }}>
-                                {row.display_order}
-                              </td>
-                              <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                  <button
-                                    className={`toggle-btn ${farmActive ? 'on' : 'off'}`}
-                                    onClick={() => handleFarmToggle(row.id)}
-                                    title={farmActive ? 'Click to disable for this farm' : 'Click to enable for this farm'}
-                                  />
-                                </div>
-                              </td>
-                              {isSuperAdmin && (
-                                <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                                  <input
-                                    type="checkbox"
-                                    checked={row.is_active}
-                                    onChange={() => handleGlobalToggle(row)}
-                                    title="Globally active"
-                                  />
-                                </td>
-                              )}
-                            </tr>
-                            {isEditing && (
-                              <tr className="editing">
-                                <td colSpan={isSuperAdmin ? 6 : 5} style={{ padding: 0 }}>
-                                  <div className="edit-row-form">
-                                    {editError && <div className="error-msg">{editError}</div>}
-                                    <div className="edit-row-grid">
-                                      <div className="field" style={{ marginBottom: 0 }}>
-                                        <label>Display Label</label>
-                                        <input
-                                          type="text"
-                                          value={editForm.displayName}
-                                          onChange={e => setEditForm(f => ({ ...f, displayName: e.target.value }))}
-                                          placeholder={row.pests?.name}
-                                        />
-                                        {editForm.observationMethod === 'leaf_inspection' && (
-                                          <div className="hint">Tip: include unit, e.g. "Red Mite (5 leaves)"</div>
-                                        )}
-                                      </div>
-                                      <div className="field" style={{ marginBottom: 0 }}>
-                                        <label>Observation Method</label>
-                                        <select
-                                          value={editForm.observationMethod}
-                                          onChange={e => setEditForm(f => ({ ...f, observationMethod: e.target.value }))}
-                                        >
-                                          {OBSERVATION_METHODS.map(m => (
-                                            <option key={m.value} value={m.value}>{m.label}</option>
-                                          ))}
-                                        </select>
-                                      </div>
-                                      <div className="field" style={{ marginBottom: 0 }}>
-                                        <label>Order</label>
-                                        <input
-                                          type="number"
-                                          value={editForm.displayOrder}
-                                          onChange={e => setEditForm(f => ({ ...f, displayOrder: parseInt(e.target.value) || 0 }))}
-                                        />
-                                      </div>
-                                    </div>
-                                    <div className="edit-actions">
-                                      <button
-                                        className="btn-sm primary"
-                                        onClick={() => handleSaveEdit(row)}
-                                        disabled={editSubmitting}
-                                      >
-                                        {editSubmitting ? 'Saving…' : 'Save'}
-                                      </button>
-                                      <button className="btn-sm ghost" onClick={() => setEditingRowId(null)}>
-                                        Cancel
-                                      </button>
-                                    </div>
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </Fragment>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                  <div className="pest-list">
+                    <div className="pest-list-header">
+                      {isSuperAdmin && <div style={{ width: 28, flexShrink: 0 }} />}
+                      <div className="pest-list-header-cell" style={{ width: 90, flexShrink: 0 }}>Category</div>
+                      <div className="pest-list-header-cell" style={{ flex: 1 }}>Pest</div>
+                      <div className="pest-list-header-cell" style={{ width: 130, flexShrink: 0 }}>Method</div>
+                      <div className="pest-list-header-cell" style={{ width: 80, flexShrink: 0, textAlign: 'center' }}>Farm Active</div>
+                      {isSuperAdmin && <div className="pest-list-header-cell" style={{ width: 56, flexShrink: 0, textAlign: 'center' }}>Global</div>}
+                    </div>
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={isSuperAdmin ? handleDragEnd : undefined}>
+                      <SortableContext items={filteredRows.map(r => r.id)} strategy={verticalListSortingStrategy}>
+                        {filteredRows.map(row => (
+                          <SortablePestRow
+                            key={row.id}
+                            row={row}
+                            isSuperAdmin={isSuperAdmin}
+                            isEditing={editingRowId === row.id}
+                            editForm={editForm}
+                            editSubmitting={editSubmitting}
+                            editError={editError}
+                            farmActive={isFarmActive(row.id)}
+                            onStartEdit={() => startEdit(row)}
+                            onSaveEdit={() => handleSaveEdit(row)}
+                            onCancelEdit={() => setEditingRowId(null)}
+                            onEditFormChange={updates => setEditForm(f => ({ ...f, ...updates }))}
+                            onFarmToggle={() => handleFarmToggle(row.id)}
+                            onGlobalToggle={() => handleGlobalToggle(row)}
+                          />
+                        ))}
+                      </SortableContext>
+                    </DndContext>
+                  </div>
                 )}
               </div>
 
               {isSuperAdmin && (
                 <div style={{ marginTop: 10, fontSize: 12, color: '#9aaa9f' }}>
-                  Click a row to edit its display label, method, or order.
+                  Drag ⠿ to reorder. Click a row to edit its display label, method, or order.
                 </div>
               )}
             </div>
