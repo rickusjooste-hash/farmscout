@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { saveAndQueue } from '../../lib/scout-sync'
+import { saveAndQueue, runFullSync } from '../../lib/scout-sync'
 import { getAll, getAllByIndex, getOne, upsertRecord } from '../../lib/scout-db'
 
 type SubView = 'zone_list' | 'tree_list' | 'inspecting'
@@ -353,6 +353,12 @@ export default function TreeInspectionView({
       }
 
       setSubView('tree_list')
+
+      // Sync immediately if online
+      if (navigator.onLine) {
+        const token = localStorage.getItem('farmscout_access_token') ?? undefined
+        runFullSync(supabaseKey, token).catch(() => {})
+      }
     } catch (err) {
       console.error('[TreeScouting] Failed to save tree:', err)
     }

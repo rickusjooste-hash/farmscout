@@ -108,7 +108,7 @@ export default function ScoutApp() {
   }
 
   if (view === 'tree-inspection') {
-    return <TreeInspectionView commodityCode={commodityCode || undefined} onBack={() => { setView('home'); loadPendingCount() }} />
+    return <TreeInspectionView commodityCode={commodityCode || undefined} onBack={() => { setView('home'); loadPendingCount(); if (navigator.onLine) handleSync() }} />
   }
 
   return (
