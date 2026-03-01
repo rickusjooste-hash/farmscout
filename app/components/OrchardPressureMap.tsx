@@ -367,13 +367,16 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
             const id = f.properties.id
             lyr.on('mouseover', () => { if (id !== selectedOrchardId) lyr.setStyle({ fillOpacity: 0.88 }) })
             lyr.on('mouseout',  () => { if (id !== selectedOrchardId) lyr.setStyle({ fillOpacity: 0.7 }) })
-            lyr.on('click', () => setSelectedOrchardId(prev => prev === id ? null : id))
+            lyr.on('click', () => {
+              setSelectedOrchardId(prev => prev === id ? null : id)
+              mapRef.current?._map?.fitBounds(lyr.getBounds(), { padding: [60, 60], maxZoom: 17 })
+            })
             lyr.bindTooltip(lookup[id]?.name || f.properties.name || '', { permanent: false, className: 'opm-tooltip' })
           },
         }
       ).addTo(map)
       geoLayerRef.current = layer
-      if (layer.getBounds().isValid()) map.fitBounds(layer.getBounds(), { padding: [16, 16] })
+      if (layer.getBounds().isValid() && !selectedOrchardId) map.fitBounds(layer.getBounds(), { padding: [16, 16] })
     })()
   }, [mapReady, orchards, pressure, selectedOrchardId])
 
