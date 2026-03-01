@@ -107,6 +107,7 @@ export default function TreeInspectionView({
     try {
       const userId = localStorage.getItem('farmscout_user_id')
       const farmId = localStorage.getItem('farmscout_farm_id')
+      const sectionId = localStorage.getItem('farmscout_section_id') // may be null
       if (!userId || !farmId) { setLoadingZones(false); return }
 
       const weekStart = getWeekStart()
@@ -145,6 +146,14 @@ export default function TreeInspectionView({
 
         // Only show zones belonging to this scout's farm
         if (orchard.farm_id !== farmId) continue
+
+        // If the scout is assigned to a section, filter to that section only
+        // (check zone.section_id first, fall back to orchard.section_id)
+        if (sectionId) {
+          const zoneSectionMatch = zone.section_id === sectionId
+          const orchardSectionMatch = !zone.section_id && orchard.section_id === sectionId
+          if (!zoneSectionMatch && !orchardSectionMatch) continue
+        }
 
         const commodity = commodityMap.get(orchard.commodity_id)
         if (!commodity) continue

@@ -70,6 +70,7 @@ export default function ScoutLogin() {
       localStorage.setItem('farmscout_first_trap_id', scout.first_trap_id)
       localStorage.setItem('farmscout_organisation_id', scout.organisation_id)
       localStorage.setItem('farmscout_user_id', userId)
+      if (scout.section_id) localStorage.setItem('farmscout_section_id', scout.section_id)
 
       // Get route length in one fast database call
       const routeLengthRes = await fetch(
