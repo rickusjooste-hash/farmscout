@@ -1,4 +1,4 @@
-const CACHE_NAME = 'farmscout-1772385077569'
+const CACHE_NAME = 'farmscout-1772396904054'
 
 // App shell pages to pre-cache on install
 const PRECACHE = [
@@ -24,8 +24,6 @@ self.addEventListener('activate', (event) => {
     caches.keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
-      .then(() => self.clients.matchAll({ type: 'window' }))
-      .then((clients) => clients.forEach((client) => client.postMessage({ type: 'SW_UPDATED' })))
   )
 })
 
