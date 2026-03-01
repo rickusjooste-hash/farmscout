@@ -37,6 +37,7 @@ export default function DashboardPage() {
   const { farmIds, isSuperAdmin, contextLoaded } = useUserContext()
   const [loading, setLoading] = useState(true)
   const [selectedPestId, setSelectedPestId] = useState<string | undefined>()
+  const [effectiveFarmIds, setEffectiveFarmIds] = useState<string[]>([])
   const pressureMapRef = useRef<HTMLDivElement>(null)
 
   function handlePestSelect(pestId: string) {
@@ -62,11 +63,14 @@ export default function DashboardPage() {
           .eq('is_active', true)
           .order('name')
         let trapIdsQuery = supabase.from('traps').select('id').eq('is_active', true)
+        let farmIdsQuery = supabase.from('farms').select('id').eq('is_active', true)
         if (!isSuperAdminUser && farmIds.length > 0) {
           orchardQuery = orchardQuery.in('farm_id', farmIds)
           trapIdsQuery = trapIdsQuery.in('farm_id', farmIds)
+          farmIdsQuery = farmIdsQuery.in('id', farmIds)
         }
-        const [{ data: orchardData }, { data: activeTrapData }] = await Promise.all([orchardQuery, trapIdsQuery])
+        const [{ data: orchardData }, { data: activeTrapData }, { data: farmData }] = await Promise.all([orchardQuery, trapIdsQuery, farmIdsQuery])
+        setEffectiveFarmIds((farmData || []).map((f: any) => f.id))
         const activeTrapIds = (activeTrapData || []).map((t: any) => t.id)
 
         const orchardIds = (orchardData || []).map(o => o.id)
@@ -688,13 +692,13 @@ export default function DashboardPage() {
               )}
             </div>
 
-            <PestAlertSummary farmIds={farmIds} onPestSelect={handlePestSelect} />
+            <PestAlertSummary farmIds={effectiveFarmIds} onPestSelect={handlePestSelect} />
 
             <div ref={pressureMapRef} id="pressure-map">
               <OrchardPressureMap key={selectedPestId ?? 'default'} initialPestId={selectedPestId} />
             </div>
 
-            <TreeScoutingAlertSummary farmIds={farmIds} />
+            <TreeScoutingAlertSummary farmIds={effectiveFarmIds} />
 
             <PestTrendChart />
           </main>
