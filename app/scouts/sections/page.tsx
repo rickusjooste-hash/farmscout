@@ -12,6 +12,7 @@ interface Section {
 interface Orchard {
   id: string
   name: string
+  variety: string | null
   legacy_id: number | null
   section_id: string | null
 }
@@ -92,7 +93,7 @@ export default function SectionsPage() {
     setOrchards([])
     const [{ data: sectionData }, { data: orchardData }] = await Promise.all([
       supabase.from('sections').select('*').eq('farm_id', farmId).order('section_nr'),
-      supabase.from('orchards').select('id, name, legacy_id, section_id').eq('farm_id', farmId).eq('is_active', true).order('name'),
+      supabase.from('orchards').select('id, name, variety, legacy_id, section_id').eq('farm_id', farmId).eq('is_active', true).order('name'),
     ])
     setSections(sectionData || [])
     setOrchards(orchardData || [])
@@ -100,10 +101,14 @@ export default function SectionsPage() {
 
   async function assignOrchard(orchardId: string, sectionId: string | null) {
     setSaving(orchardId)
-    await supabase.from('orchards').update({ section_id: sectionId }).eq('id', orchardId)
     setOrchards(prev =>
       prev.map(o => o.id === orchardId ? { ...o, section_id: sectionId } : o)
     )
+    await fetch('/api/orchards/assign-section', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orchardId, sectionId }),
+    })
     setSaving(null)
   }
 
@@ -304,7 +309,11 @@ export default function SectionsPage() {
                     <div key={o.id} className="orchard-item">
                       <div>
                         <div className="orchard-name">{o.name}</div>
-                        {o.legacy_id && <div className="orchard-id">ID {o.legacy_id}</div>}
+                        {(o.variety || o.legacy_id) && (
+                          <div className="orchard-id">
+                            {[o.variety, o.legacy_id ? `ID ${o.legacy_id}` : null].filter(Boolean).join(' · ')}
+                          </div>
+                        )}
                       </div>
                       <div className="assign-btns">
                         {sections.map(s => (
