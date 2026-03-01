@@ -587,6 +587,18 @@ export default function TreeInspectionView({
             })
           )}
 
+          {/* GPS indicator */}
+          <div style={styles.gpsRow}>
+            <span style={{ color: gpsLocation ? '#6abf4b' : '#e05c4b' }}>
+              {gpsLocation ? '📍 GPS locked' : '⏳ Acquiring GPS…'}
+            </span>
+            {gpsLocation && (
+              <span style={styles.gpsCoords}>
+                {gpsLocation.lat.toFixed(5)}, {gpsLocation.lng.toFixed(5)}
+              </span>
+            )}
+          </div>
+
           {/* Photo section */}
           <div style={styles.photoSection}>
             <div style={styles.sectionLabel}>Photo (optional)</div>
@@ -846,6 +858,20 @@ const styles: Record<string, React.CSSProperties> = {
     height: 36,
     borderRadius: '50%',
     cursor: 'pointer',
+  },
+  gpsRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    fontSize: 12,
+    padding: '10px 0',
+    borderBottom: '1px solid #2a3020',
+    marginBottom: 20,
+  },
+  gpsCoords: {
+    fontSize: 11,
+    color: '#7a8a5a',
+    fontFamily: 'monospace',
   },
   // Photo & comments
   photoSection: {
