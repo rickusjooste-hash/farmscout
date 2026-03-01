@@ -441,7 +441,7 @@ export default function DashboardPage() {
             <div className="logo"><span>Farm</span>Scout</div>
 <a href="/" className="nav-item active"><span className="nav-icon">📊</span> Dashboard</a>
 <a href="/orchards" className="nav-item"><span className="nav-icon">🪤</span> Trap Inspections</a>
-<a className="nav-item"><span className="nav-icon">🐛</span> Pests</a>
+<a href="/pests" className="nav-item"><span className="nav-icon">🐛</span> Pests</a>
 <a className="nav-item"><span className="nav-icon">🪤</span> Traps</a>
 <a className="nav-item"><span className="nav-icon">🔍</span> Inspections</a>
 <a href="/scouts" className="nav-item"><span>👷</span> Scouts</a>
