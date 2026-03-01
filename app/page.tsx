@@ -164,7 +164,10 @@ export default function DashboardPage() {
         /* Sidebar */
         .sidebar {
           width: 220px;
-          min-height: 100vh;
+          height: 100vh;
+          position: sticky;
+          top: 0;
+          overflow-y: auto;
           background: #1c3a2a;
           padding: 32px 20px;
           display: flex;

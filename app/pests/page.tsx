@@ -263,7 +263,7 @@ export default function PestsPage() {
         body { font-family: 'DM Sans', sans-serif; background: #f4f1eb; color: #1a1a1a; }
         .app { display: flex; min-height: 100vh; }
         .sidebar {
-          width: 220px; min-height: 100vh; background: #1c3a2a;
+          width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto; background: #1c3a2a;
           padding: 32px 20px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
         }
         .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a8d5a2; margin-bottom: 32px; }
