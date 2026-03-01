@@ -175,7 +175,7 @@ export default function NewScoutPage() {
         <aside className="sidebar">
           <div className="logo"><span>Farm</span>Scout</div>
           <a href="/" className="nav-item"><span>📊</span> Dashboard</a>
-          <a href="/orchards" className="nav-item"><span>🪤</span> Trap Inspections</a>
+          <a href="/orchards" className="nav-item"><span>🏡</span> Orchards</a>
           <a className="nav-item"><span>🐛</span> Pests</a>
           <a className="nav-item"><span>🪤</span> Traps</a>
           <a className="nav-item"><span>🔍</span> Inspections</a>

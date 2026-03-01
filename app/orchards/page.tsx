@@ -4,254 +4,147 @@ import { createClient } from '@/lib/supabase-auth'
 import { useUserContext } from '@/lib/useUserContext'
 import { useEffect, useState, useRef } from 'react'
 
-interface OrchardInfo {
+interface Orchard {
   id: string
   name: string
-  variety: string
-  ha: number
-  legacy_id: number
+  orchard_nr: number | null
+  farm_id: string
+  organisation_id: string
+  commodity_id: string
+  section_id: string | null
+  variety: string | null
+  variety_group: string | null
+  rootstock: string | null
+  ha: number | null
+  year_planted: number | null
+  trees_per_ha: number | null
+  nr_of_trees: number | null
+  plant_distance: number | null
+  row_width: number | null
+  legacy_id: number | null
   is_active: boolean
-  commodities: { code: string; name: string }
+  commodities: { code: string; name: string } | null
+  sections: { name: string; section_nr: number } | null
 }
 
-interface PestOption {
-  id: string
-  name: string
+interface Commodity { id: string; code: string; name: string }
+interface Section   { id: string; name: string; section_nr: number }
+interface Farm      { id: string; full_name: string; code: string; organisation_id: string }
+
+const COMMODITY_COLORS: Record<string, string> = {
+  POME:   '#6b9fd4',
+  STONE:  '#f0a500',
+  CITRUS: '#8bc34a',
+}
+function orchardColor(code: string | undefined) {
+  return COMMODITY_COLORS[code ?? ''] ?? '#aaaaaa'
 }
 
-interface OrchardPressure {
-  orchard_id: string
-  latest_count: number
-  threshold: number | null
-  last_inspected: string
-  status: 'green' | 'yellow' | 'red' | 'grey' | 'blue'
-}
+const ORCHARD_SELECT = 'id, name, orchard_nr, farm_id, organisation_id, commodity_id, section_id, variety, variety_group, rootstock, ha, year_planted, trees_per_ha, nr_of_trees, plant_distance, row_width, legacy_id, is_active, commodities(code,name), sections!section_id(name,section_nr)'
 
-interface SelectedOrchard {
-  name: string
-  variety: string
-  commodity: string
-  ha: number
-  legacy_id: number
-  status: string
-  latest_count: number | null
-  threshold: number | null
-  last_inspected: string | null
-}
-
-const STATUS_COLORS = {
-  green:  { fill: '#4caf72', label: 'Below threshold' },
-  yellow: { fill: '#f5c842', label: 'Approaching threshold' },
-  red:    { fill: '#e85a4a', label: 'Above threshold' },
-  blue:   { fill: '#6b7fa8', label: 'No threshold set' },
-  grey:   { fill: '#aaaaaa', label: 'No trap data' },
-}
-
-function getCurrentSeason(): string {
-  const now = new Date()
-  const yr = now.getFullYear()
-  const mo = now.getMonth() + 1
-  const startYr = mo < 8 ? yr - 1 : yr
-  return `${startYr}/${(startYr + 1).toString().slice(-2)}`
-}
-
-function buildSeasonOptions(fromYear: number): string[] {
-  const current = getCurrentSeason()
-  const currentStartYr = parseInt(current.split('/')[0])
-  const seasons = []
-  for (let yr = fromYear; yr <= currentStartYr; yr++) {
-    seasons.push(`${yr}/${(yr + 1).toString().slice(-2)}`)
-  }
-  return seasons.reverse()
-}
-
-function getSeasonRange(season: string): { from: Date; to: Date } {
-  const startYr = parseInt(season.split('/')[0])
+function emptyForm() {
   return {
-    from: new Date(`${startYr}-08-01`),
-    to:   new Date(`${startYr + 1}-07-31`),
+    name: '', commodityId: '', orchardNr: '', sectionId: '', farmId: '',
+    variety: '', varietyGroup: '', rootstock: '',
+    ha: '', yearPlanted: '', treesPerHa: '', nrOfTrees: '',
+    plantDistance: '', rowWidth: '', legacyId: '',
   }
-}
-
-function getWeekDates(season: string, weekNr: number): { from: string; to: string } {
-  const startYr = parseInt(season.split('/')[0])
-  // Week 1 starts Aug 1 of start year — use ISO week logic from a date
-  // Simpler: find the actual date for week weekNr of the season
-  // Weeks 31-52 are in startYr, weeks 1-30 are in startYr+1
-  const yr = weekNr >= 31 ? startYr : startYr + 1
-  const jan1 = new Date(yr, 0, 1)
-  const dayOffset = (weekNr - 1) * 7
-  const weekStart = new Date(jan1.getTime() + dayOffset * 86400000)
-  const weekEnd   = new Date(weekStart.getTime() + 6 * 86400000)
-  weekEnd.setHours(23, 59, 59)
-  return { from: weekStart.toISOString(), to: weekEnd.toISOString() }
-}
-
-function getWeeksInSeason(season: string): number[] {
-  // SA fruit season: roughly Aug (W31) to Jun (W26) next year
-  const weeks: number[] = []
-  for (let w = 31; w <= 52; w++) weeks.push(w)
-  for (let w = 1;  w <= 26; w++) weeks.push(w)
-  return weeks
-}
-
-function currentWeekNr(): number {
-  const now = new Date()
-  const yr  = now.getFullYear()
-  const start = new Date(yr, 0, 1)
-  return Math.ceil((now.getTime() - start.getTime()) / 604800000)
 }
 
 export default function OrchardsPage() {
-  const supabase         = createClient()
+  const supabase = createClient()
   const { farmIds, isSuperAdmin, contextLoaded } = useUserContext()
-  const mapRef          = useRef<any>(null)
-  const leafletRef      = useRef<any>(null)
-  const geoLayerRef     = useRef<any>(null)
 
-  
-  const [orchards, setOrchards]           = useState<OrchardInfo[]>([])
-  const [pests, setPests]                 = useState<PestOption[]>([])
-  const [selectedPest, setSelectedPest]   = useState<PestOption | null>(null)
-  const [pressure, setPressure]           = useState<Record<string, OrchardPressure>>({})
-  const [selected, setSelected]           = useState<SelectedOrchard | null>(null)
-  const [mapReady, setMapReady]           = useState(false)
-  const [loadingPressure, setLoadingPressure] = useState(false)
+  const mapRef         = useRef<any>(null)
+  const leafletRef     = useRef<any>(null)
+  const geoLayerRef    = useRef<any>(null)
+  const drawnLayerRef  = useRef<any>(null)
+  const boundaryMapRef = useRef<Record<string, object>>({})
 
-  const seasons = buildSeasonOptions(2023)
-  const [season, setSeason]               = useState(getCurrentSeason())
-  const [selectedWeek, setSelectedWeek]   = useState<number>(currentWeekNr())
-  const weeks = getWeeksInSeason(season)
+  // ── UI state ──────────────────────────────────────────────────────────────
+  const [mapReady,        setMapReady]        = useState(false)
+  const [mode,            setMode]            = useState<'view' | 'add' | 'edit'>('view')
+  const [selectedOrchard, setSelectedOrchard] = useState<Orchard | null>(null)
+  const [editTarget,      setEditTarget]      = useState<Orchard | null>(null)
+  const [drawnBoundary,   setDrawnBoundary]   = useState<object | null>(null)
+  const [boundaryDrawn,   setBoundaryDrawn]   = useState(false)
 
-  
-  // Load orchards — scoped to manager's farm access
+  // ── Data state ────────────────────────────────────────────────────────────
+  const [farms,          setFarms]          = useState<Farm[]>([])
+  const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null)
+  const [orchards,       setOrchards]       = useState<Orchard[]>([])
+  const [commodities,    setCommodities]    = useState<Commodity[]>([])
+  const [sections,       setSections]       = useState<Section[]>([])
+  const [refreshKey,     setRefreshKey]     = useState(0)
+
+  // ── Form state ────────────────────────────────────────────────────────────
+  const [form,    setForm]    = useState(emptyForm())
+  const [saving,  setSaving]  = useState(false)
+  const [saveErr, setSaveErr] = useState('')
+  const [saveOk,  setSaveOk]  = useState(false)
+
+  // ── 1. Load farms ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!contextLoaded) return
-    let query = supabase
-      .from('orchards')
-      .select('id, name, variety, ha, legacy_id, is_active, commodity_id, commodities(code, name)')
-      .eq('is_active', true)
-    if (!isSuperAdmin && farmIds.length > 0) {
-      query = query.in('farm_id', farmIds)
-    }
-    query.then(({ data }) => setOrchards((data as any) || []))
+    let q = supabase.from('farms').select('id, full_name, code, organisation_id').eq('is_active', true).order('full_name')
+    if (!isSuperAdmin && farmIds.length > 0) q = q.in('id', farmIds)
+    q.then(({ data }) => {
+      const list = (data as Farm[]) || []
+      setFarms(list)
+      if (list.length > 0) setSelectedFarmId(list[0].id)
+    })
   }, [contextLoaded])
 
-  // Load pests that have trap counts
+  // ── 2. Load orchards when farm changes (separate from draw) ───────────────
   useEffect(() => {
+    if (!selectedFarmId) return
+    console.log('[orchards] loading for farm:', selectedFarmId)
     supabase
-      .from('trap_counts')
-      .select('pest_id, pests(id, name)')
-      .limit(1000)
-      .then(({ data }) => {
-        if (!data) return
-        const seen = new Set<string>()
-        const unique: PestOption[] = []
-        data.forEach((r: any) => {
-          if (r.pests && !seen.has(r.pests.id)) {
-            seen.add(r.pests.id)
-            unique.push({ id: r.pests.id, name: r.pests.name })
-          }
-        })
-        unique.sort((a, b) => a.name.localeCompare(b.name))
-        setPests(unique)
-        if (unique.length > 0) setSelectedPest(unique[0])
+      .from('orchards')
+      .select(ORCHARD_SELECT)
+      .eq('farm_id', selectedFarmId)
+      .eq('is_active', true)
+      .order('name')
+      .then(({ data, error }) => {
+        console.log('[orchards] loaded:', data?.length ?? 0, 'error:', error)
+        setOrchards((data as any) || [])
       })
-  }, [])
+  }, [selectedFarmId, refreshKey])
 
-  // Load pressure for selected pest + week
+  // ── 3. Load form dropdowns when farm changes ──────────────────────────────
   useEffect(() => {
-    if (!selectedPest || orchards.length === 0) return
+    if (!selectedFarmId) return
+    Promise.all([
+      supabase.from('commodities').select('id, code, name').order('name'),
+      supabase.from('sections').select('id, name, section_nr').eq('farm_id', selectedFarmId).order('section_nr'),
+    ]).then(([{ data: comms }, { data: secs }]) => {
+      setCommodities((comms as Commodity[]) || [])
+      setSections((secs as Section[]) || [])
+    })
+  }, [selectedFarmId])
 
-    async function loadPressure() {
-      setLoadingPressure(true)
+  // ── 3b. Reload sections when farm changes inside the edit form ────────────
+  useEffect(() => {
+    if (mode !== 'edit' || !form.farmId) return
+    supabase.from('sections').select('id, name, section_nr')
+      .eq('farm_id', form.farmId).order('section_nr')
+      .then(({ data }) => setSections((data as Section[]) || []))
+  }, [form.farmId])
 
-      const { from, to } = getWeekDates(season, selectedWeek)
-
-      // Get all inspections in selected week
-      const { data: inspections } = await supabase
-        .from('trap_inspections')
-        .select('id, orchard_id, inspected_at')
-        .gte('inspected_at', from)
-        .lte('inspected_at', to)
-        .order('inspected_at', { ascending: false })
-
-      if (!inspections || inspections.length === 0) {
-        setPressure({})
-        setLoadingPressure(false)
-        return
-      }
-
-      // Latest inspection per orchard within the week
-      const latestPerOrchard: Record<string, any> = {}
-      inspections.forEach(i => {
-        if (i.orchard_id && !latestPerOrchard[i.orchard_id]) {
-          latestPerOrchard[i.orchard_id] = i
-        }
-      })
-
-      const inspectionIds = Object.values(latestPerOrchard).map((i: any) => i.id)
-
-      // Get counts for selected pest
-      const { data: counts } = await supabase
-        .from('trap_counts')
-        .select('inspection_id, count')
-        .eq('pest_id', selectedPest!.id)
-        .in('inspection_id', inspectionIds.slice(0, 500))
-
-      const countByInspection: Record<string, number> = {}
-      counts?.forEach((c: any) => {
-        countByInspection[c.inspection_id] = (countByInspection[c.inspection_id] || 0) + c.count
-      })
-
-      // Get thresholds for this pest
-      const { data: thresholds } = await supabase
-        .from('trap_thresholds')
-        .select('threshold, commodity_id')
-        .eq('pest_id', selectedPest!.id)
-
-      const newPressure: Record<string, OrchardPressure> = {}
-      Object.entries(latestPerOrchard).forEach(([orchardId, inspection]: [string, any]) => {
-        const count     = countByInspection[inspection.id] ?? null
-        const threshold = thresholds?.[0]?.threshold ?? null
-
-        let status: OrchardPressure['status'] = 'grey'
-        if (count === null)           status = 'grey'
-        else if (threshold === null)  status = 'blue'
-        else if (count >= threshold)  status = 'red'
-        else if (count >= threshold * 0.5) status = 'yellow'
-        else                          status = 'green'
-
-        newPressure[orchardId] = {
-          orchard_id:     orchardId,
-          latest_count:   count ?? 0,
-          threshold,
-          last_inspected: inspection.inspected_at,
-          status,
-        }
-      })
-
-      setPressure(newPressure)
-      setLoadingPressure(false)
-    }
-
-    loadPressure()
-  }, [selectedPest, season, selectedWeek, orchards])
-
-  // Init Leaflet
+  // ── 4. Map init — import Geoman BEFORE L.map() so addInitHook fires ────────
   useEffect(() => {
     if (mapReady) return
     async function initMap() {
-       console.log('initMap called, mapRef:', mapRef.current)
       const L = (await import('leaflet')).default
-      console.log('Leaflet loaded:', L)
+      // Must import geoman before creating the map so map.pm is initialised
+      await import('@geoman-io/leaflet-geoman-free')
       leafletRef.current = L
       if (mapRef.current && !mapRef.current._leaflet_id) {
-        console.log('Creating map...')
         const map = L.map(mapRef.current, { center: [-32.785, 18.715], zoom: 13 })
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-          attribution: '© Esri', maxZoom: 19,
-        }).addTo(map)
+        L.tileLayer(
+          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+          { attribution: '© Esri', maxZoom: 19 }
+        ).addTo(map)
         mapRef.current._map = map
         setMapReady(true)
       }
@@ -259,80 +152,229 @@ export default function OrchardsPage() {
     initMap()
   }, [])
 
-  // Redraw polygons when pressure changes
+  // ── 5. Draw polygons when orchards state or map is ready ──────────────────
   useEffect(() => {
-    if (!mapReady || orchards.length === 0) return
+    console.log('[draw] effect triggered — mapReady:', mapReady, 'orchards:', orchards.length, 'mode:', mode)
+    if (!mapReady || orchards.length === 0 || mode !== 'view') return
 
-  async function drawPolygons() {
-  const L = leafletRef.current
-  const map = mapRef.current._map
-  if (geoLayerRef.current) geoLayerRef.current.remove()
+    async function drawPolygons() {
+      const L   = leafletRef.current
+      const map = mapRef.current?._map
+      console.log('[draw] L:', !!L, 'map:', !!map)
+      if (!L || !map) return
 
-  // Fetch boundaries from Supabase instead of static file
- const { data: boundaryData } = await supabase
-    .rpc('get_orchard_boundaries')
+      if (geoLayerRef.current) { geoLayerRef.current.remove(); geoLayerRef.current = null }
 
-  if (!boundaryData?.length) return
+      const { data: boundaryData, error: rpcErr } = await supabase.rpc('get_orchard_boundaries')
+      console.log('[draw] boundaryData:', boundaryData?.length ?? 0, 'rpcErr:', rpcErr)
+      if (!boundaryData?.length) return
 
-  // Convert to GeoJSON format
-  const geojson = {
-    type: 'FeatureCollection',
-    features: boundaryData.map((o: any) => ({
-      type: 'Feature',
-      properties: { OrchardID: o.legacy_id, id: o.id, name: o.name },
-      geometry: o.boundary
-    }))
-  }
+      // Store all boundaries for geoman use in edit mode
+      const bmap: Record<string, object> = {}
+      boundaryData.forEach((b: any) => { if (b.boundary) bmap[b.id] = b.boundary })
+      boundaryMapRef.current = bmap
 
-  const lookup: Record<string, OrchardInfo> = {}
-  orchards.forEach(o => { lookup[o.id] = o })
+      const lookup: Record<string, Orchard> = {}
+      orchards.forEach(o => { lookup[o.id] = o })
 
-  const layer = L.geoJSON(geojson, {
-    style: (feature: any) => {
-      const info = lookup[feature.properties.id]
-      if (!info) return { fillColor: '#000', fillOpacity: 0, color: '#000', weight: 0, opacity: 0 }
-      const p = pressure[info.id]
-      const color = p ? STATUS_COLORS[p.status].fill : STATUS_COLORS.grey.fill
-      return { fillColor: color, fillOpacity: 0.7, color: '#fff', weight: 1.5 }
-    },
-    onEachFeature: (feature: any, lyr: any) => {
-      const info = lookup[feature.properties.id]
-      const p = info ? pressure[info.id] : null
+      // Draw ALL boundaries (like pressure map) — style function hides non-farm ones
+      const features = boundaryData
+        .filter((b: any) => b.boundary)
+        .map((b: any) => ({
+          type: 'Feature' as const,
+          properties: { id: b.id, name: b.name },
+          geometry: b.boundary,
+        }))
 
-      lyr.on('mouseover', () => lyr.setStyle({ fillOpacity: 0.95, weight: 2.5 }))
-      lyr.on('mouseout',  () => lyr.setStyle({ fillOpacity: 0.7,  weight: 1.5 }))
-      lyr.on('click', () => {
-        setSelected(info ? {
-          name:           info.name,
-          variety:        info.variety,
-          commodity:      (info.commodities as any)?.name || '—',
-          ha:             info.ha,
-          legacy_id:      info.legacy_id,
-          status:         p?.status || 'grey',
-          latest_count:   p?.latest_count ?? null,
-          threshold:      p?.threshold ?? null,
-          last_inspected: p?.last_inspected || null,
-        } : null)
-      })
+      const matchCount = features.filter((f: any) => lookup[f.properties.id]).length
+      console.log('[draw] total features:', features.length, 'matching this farm:', matchCount)
 
-      const label = info?.name || feature.properties.name || ''
-      lyr.bindTooltip(label, { permanent: false, direction: 'center', className: 'orchard-tooltip' })
-    },
-  }).addTo(map)
+      if (features.length === 0) return
 
-  geoLayerRef.current = layer
-  if (layer.getBounds().isValid()) map.fitBounds(layer.getBounds(), { padding: [20, 20] })
-}
+      const layer = L.geoJSON(
+        { type: 'FeatureCollection', features },
+        {
+          style: (feature: any) => {
+            const o = lookup[feature.properties.id]
+            // Hide orchards not belonging to selected farm
+            if (!o) return { fillOpacity: 0, color: 'transparent', weight: 0, opacity: 0 }
+            return {
+              fillColor: orchardColor((o.commodities as any)?.code),
+              fillOpacity: 0.6,
+              color: '#fff',
+              weight: 1.5,
+            }
+          },
+          onEachFeature: (feature: any, lyr: any) => {
+            const o = lookup[feature.properties.id]
+            if (!o) return // skip non-farm orchards entirely
+            lyr.on('mouseover', () => lyr.setStyle({ fillOpacity: 0.9, weight: 2.5 }))
+            lyr.on('mouseout',  () => lyr.setStyle({ fillOpacity: 0.6, weight: 1.5 }))
+            lyr.on('click', () => setSelectedOrchard(o))
+            lyr.bindTooltip(o.name, { permanent: false, direction: 'center', className: 'orchard-tooltip' })
+          },
+        }
+      ).addTo(map)
+
+      geoLayerRef.current = layer
+      const bounds = layer.getBounds()
+      console.log('[draw] bounds valid:', bounds.isValid())
+      if (bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] })
+    }
 
     drawPolygons()
-  }, [mapReady, orchards, pressure])
+  }, [mapReady, orchards, mode, refreshKey])
 
-  const formatDate = (iso: string) => {
-    const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
-    if (days === 0) return 'Today'
-    if (days === 1) return 'Yesterday'
-    return `${days} days ago`
+  // ── 6. Geoman tools for add / edit ────────────────────────────────────────
+  useEffect(() => {
+    if (!mapReady || mode === 'view') return
+
+    async function setupGeoman() {
+      const L   = leafletRef.current
+      const map = mapRef.current._map
+      if (!L || !map) return
+
+      // Show other orchards faded
+      if (geoLayerRef.current) { geoLayerRef.current.remove(); geoLayerRef.current = null }
+      const bmap = boundaryMapRef.current
+      const fadedFeatures = orchards
+        .filter((o: Orchard) => bmap[o.id] && (mode !== 'edit' || o.id !== editTarget?.id))
+        .map((o: Orchard) => ({
+          type: 'Feature',
+          properties: { id: o.id },
+          geometry: bmap[o.id] as any,
+        }))
+      if (fadedFeatures.length > 0) {
+        geoLayerRef.current = L.geoJSON(
+          { type: 'FeatureCollection', features: fadedFeatures },
+          { style: () => ({ fillColor: '#888', fillOpacity: 0.25, color: '#fff', weight: 1 }) }
+        ).addTo(map)
+      }
+
+      if (drawnLayerRef.current) { drawnLayerRef.current.remove(); drawnLayerRef.current = null }
+
+      if (mode === 'edit' && editTarget && bmap[editTarget.id]) {
+        // addControls FIRST — this initialises map.pm.globalOptions which editLayer.pm.enable() needs
+        map.pm.addControls({
+          position: 'topleft',
+          drawMarker: false, drawPolyline: false, drawCircle: false, drawCircleMarker: false,
+          drawRectangle: false, drawPolygon: false,
+          editMode: true, dragMode: true,
+          cutPolygon: false, removalMode: false,
+        })
+
+        const editLayer = L.geoJSON(
+          { type: 'Feature', properties: {}, geometry: bmap[editTarget.id] as any },
+          { style: () => ({ fillColor: orchardColor((editTarget.commodities as any)?.code), fillOpacity: 0.5, color: '#f0a500', weight: 2 }) }
+        ).addTo(map)
+        drawnLayerRef.current = editLayer
+        setDrawnBoundary(bmap[editTarget.id])
+        setBoundaryDrawn(true)
+
+        // Enable PM on each polygon sub-layer (GeoJSON returns a FeatureGroup)
+        editLayer.eachLayer((sublayer: any) => {
+          sublayer.pm.enable({ allowSelfIntersection: false })
+          sublayer.on('pm:edit', () => {
+            setDrawnBoundary(sublayer.toGeoJSON().geometry)
+          })
+        })
+      } else {
+        map.pm.addControls({
+          position: 'topleft',
+          drawMarker: false, drawPolyline: false, drawCircle: false, drawCircleMarker: false,
+          drawRectangle: true, drawPolygon: true,
+          editMode: false, dragMode: false,
+          cutPolygon: false, removalMode: false,
+        })
+        map.on('pm:create', (e: any) => {
+          if (drawnLayerRef.current) drawnLayerRef.current.remove()
+          drawnLayerRef.current = e.layer
+          setDrawnBoundary(e.layer.toGeoJSON().geometry)
+          setBoundaryDrawn(true)
+          map.pm.disableDraw()
+        })
+      }
+    }
+
+    setupGeoman()
+
+    return () => {
+      const map = mapRef.current?._map
+      if (map?.pm) { map.pm.removeControls(); map.off('pm:create') }
+      if (drawnLayerRef.current) { drawnLayerRef.current.remove(); drawnLayerRef.current = null }
+    }
+  }, [mapReady, mode, editTarget])
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function enterAdd() {
+    setForm(emptyForm())
+    setDrawnBoundary(null); setBoundaryDrawn(false)
+    setSaveErr(''); setSaveOk(false)
+    setSelectedOrchard(null); setEditTarget(null)
+    setMode('add')
   }
+
+  function enterEdit(o: Orchard) {
+    setForm({
+      name: o.name, commodityId: o.commodity_id,
+      orchardNr: o.orchard_nr?.toString() ?? '',
+      sectionId: o.section_id ?? '',
+      farmId: o.farm_id,
+      variety: o.variety ?? '', varietyGroup: o.variety_group ?? '',
+      rootstock: o.rootstock ?? '',
+      ha: o.ha?.toString() ?? '', yearPlanted: o.year_planted?.toString() ?? '',
+      treesPerHa: o.trees_per_ha?.toString() ?? '', nrOfTrees: o.nr_of_trees?.toString() ?? '',
+      plantDistance: o.plant_distance?.toString() ?? '', rowWidth: o.row_width?.toString() ?? '',
+      legacyId: o.legacy_id?.toString() ?? '',
+    })
+    setDrawnBoundary(null); setBoundaryDrawn(false)
+    setSaveErr(''); setSaveOk(false)
+    setEditTarget(o); setSelectedOrchard(null)
+    setMode('edit')
+  }
+
+  function cancelEdit() {
+    setMode('view')
+    setEditTarget(null)
+    setDrawnBoundary(null); setBoundaryDrawn(false)
+    setSaveErr(''); setSaveOk(false)
+  }
+
+  async function handleSave() {
+    setSaving(true); setSaveErr(''); setSaveOk(false)
+    const body: Record<string, any> = {
+      type: mode === 'add' ? 'create' : 'update',
+      farmId: mode === 'edit' ? form.farmId : selectedFarmId,
+      name: form.name, commodityId: form.commodityId,
+      sectionId:     form.sectionId     || null,
+      orchardNr:     form.orchardNr     ? parseInt(form.orchardNr)       : null,
+      variety:       form.variety       || null,
+      varietyGroup:  form.varietyGroup  || null,
+      rootstock:     form.rootstock     || null,
+      ha:            form.ha            ? parseFloat(form.ha)            : null,
+      yearPlanted:   form.yearPlanted   ? parseInt(form.yearPlanted)     : null,
+      treesPerHa:    form.treesPerHa    ? parseInt(form.treesPerHa)      : null,
+      nrOfTrees:     form.nrOfTrees     ? parseInt(form.nrOfTrees)       : null,
+      plantDistance: form.plantDistance ? parseFloat(form.plantDistance) : null,
+      rowWidth:      form.rowWidth      ? parseFloat(form.rowWidth)      : null,
+      legacyId:      form.legacyId      ? parseInt(form.legacyId)        : null,
+      boundary: drawnBoundary ?? null,
+    }
+    if (mode === 'edit') body.id = editTarget!.id
+
+    const res  = await fetch('/api/orchards/manage', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    })
+    const json = await res.json()
+    if (!res.ok || json.error) { setSaveErr(json.error || 'Save failed'); setSaving(false); return }
+
+    setSaveOk(true); setSaving(false)
+    setRefreshKey(k => k + 1)
+    setTimeout(() => setMode('view'), 600)
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  const o = selectedOrchard
 
   return (
     <>
@@ -342,8 +384,9 @@ export default function OrchardsPage() {
         body { font-family: 'DM Sans', sans-serif; background: #f4f1eb; }
         .app { display: flex; min-height: 100vh; }
         .sidebar {
-          width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto; background: #1c3a2a;
-          padding: 32px 20px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
+          width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto;
+          background: #1c3a2a; padding: 32px 20px;
+          display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
         }
         .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a8d5a2; margin-bottom: 32px; }
         .logo span { color: #fff; }
@@ -356,73 +399,77 @@ export default function OrchardsPage() {
         .nav-item.active { background: #2a4f38; color: #a8d5a2; }
         .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #2a4f38; font-size: 12px; color: #4a7a5a; }
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-
         .top-bar {
           padding: 12px 24px; background: #fff; border-bottom: 1px solid #e8e4dc;
-          display: flex; align-items: center; gap: 16px; flex-shrink: 0; flex-wrap: wrap;
+          display: flex; align-items: center; gap: 16px; flex-shrink: 0;
         }
-        .page-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: #1c3a2a; flex-shrink: 0; margin-right: 4px; }
-        .divider { width: 1px; height: 24px; background: #e8e4dc; flex-shrink: 0; }
-        .filter-group { display: flex; align-items: center; gap: 8px; }
-        .filter-label { font-size: 11px; color: #9aaa9f; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; flex-shrink: 0; }
-        .filter-pills { display: flex; gap: 5px; flex-wrap: wrap; }
-        .pill {
-          padding: 5px 12px; border-radius: 20px; border: 1.5px solid #e0ddd6;
-          background: #fff; color: #6a7a70; font-size: 12px; font-weight: 600;
-          cursor: pointer; transition: all 0.15s; font-family: 'DM Sans', sans-serif;
+        .page-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: #1c3a2a; }
+        .btn-primary {
+          margin-left: auto; padding: 8px 18px; background: #1c3a2a; color: #a8d5a2;
+          border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
+          cursor: pointer; font-family: 'DM Sans', sans-serif;
         }
-        .pill:hover { border-color: #2a6e45; color: #2a6e45; }
-        .pill.active { background: #1c3a2a; color: #a8d5a2; border-color: #1c3a2a; }
-
-        .week-select {
-          padding: 5px 10px; border-radius: 8px; border: 1.5px solid #e0ddd6;
-          font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
-          color: #1c3a2a; background: #fff; cursor: pointer; outline: none;
+        .btn-primary:hover { background: #2a4f38; }
+        .btn-cancel {
+          padding: 8px 18px; background: none; color: #6a7a70;
+          border: 1.5px solid #e0ddd6; border-radius: 8px; font-size: 13px; font-weight: 600;
+          cursor: pointer; font-family: 'DM Sans', sans-serif;
         }
-        .week-select:focus { border-color: #2a6e45; }
-
-        .loading-bar { height: 3px; background: linear-gradient(90deg, #2a6e45, #a8d5a2); animation: pulse 1s infinite; }
-        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-
-        .map-container { flex: 1; position: relative; min-height: 600px; }
-        #map { width: 100%; height: 100%; min-height: 600px; }
-
+        .btn-cancel:hover { background: #f4f1eb; }
+        .btn-save {
+          padding: 8px 20px; background: #2a6e45; color: #fff;
+          border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
+          cursor: pointer; font-family: 'DM Sans', sans-serif;
+        }
+        .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-edit {
+          width: 100%; margin-top: 16px; padding: 9px; background: #f0f7f2; color: #2a6e45;
+          border: 1.5px solid #c8e6c9; border-radius: 8px; font-size: 13px; font-weight: 600;
+          cursor: pointer; font-family: 'DM Sans', sans-serif;
+        }
+        .btn-edit:hover { background: #e0f0e4; }
+        .farm-select {
+          padding: 6px 10px; border-radius: 8px; border: 1.5px solid #e0ddd6;
+          font-family: 'DM Sans', sans-serif; font-size: 13px; color: #1c3a2a;
+          background: #fff; cursor: pointer; outline: none;
+        }
+        .content { flex: 1; display: flex; overflow: hidden; }
+        .form-panel {
+          width: 340px; flex-shrink: 0; background: #fff; border-right: 1px solid #e8e4dc;
+          overflow-y: auto; padding: 24px 20px; display: flex; flex-direction: column; gap: 14px;
+        }
+        .field-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.7px; color: #9aaa9f; margin-bottom: 4px; }
+        .field-input {
+          width: 100%; padding: 8px 10px; border: 1.5px solid #e0ddd6; border-radius: 8px;
+          font-family: 'DM Sans', sans-serif; font-size: 13px; color: #1c3a2a; background: #fff; outline: none;
+        }
+        .field-input:focus { border-color: #2a6e45; }
+        .field-row { display: flex; gap: 10px; }
+        .field-row .field-wrap { flex: 1; }
+        .field-wrap { display: flex; flex-direction: column; }
+        .required { color: #e85a4a; }
+        .save-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+        .save-err { font-size: 12px; color: #e85a4a; }
+        .save-ok  { font-size: 12px; color: #2a6e45; font-weight: 600; }
+        .map-wrap { flex: 1; position: relative; min-height: 600px; }
+        #orchards-map { width: 100%; height: 100%; min-height: 600px; }
         .info-panel {
-          position: absolute; top: 16px; right: 16px; width: 240px;
+          position: absolute; top: 16px; right: 16px; width: 260px;
           background: #fff; border-radius: 12px; border: 1px solid #e8e4dc;
           padding: 20px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); z-index: 1000;
         }
-        .info-title { font-family: 'DM Serif Display', serif; font-size: 16px; color: #1c3a2a; margin-bottom: 3px; }
-        .info-sub { font-size: 12px; color: #9aaa9f; margin-bottom: 12px; }
-        .status-badge {
-          display: inline-flex; align-items: center; gap: 6px;
-          padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
-          text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;
-        }
-        .status-dot { width: 7px; height: 7px; border-radius: 50%; }
-        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f4f1eb; font-size: 13px; }
-        .info-row:last-child { border-bottom: none; }
+        .info-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: #1c3a2a; margin-bottom: 2px; }
+        .info-sub { font-size: 12px; color: #9aaa9f; margin-bottom: 14px; }
+        .info-divider { height: 1px; background: #f0ede6; margin: 12px 0; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 13px; }
         .info-label { color: #9aaa9f; }
         .info-value { font-weight: 500; color: #1c3a2a; }
-
-        .legend {
-          position: absolute; bottom: 32px; left: 16px; background: #fff;
-          border-radius: 10px; border: 1px solid #e8e4dc; padding: 14px 16px;
-          z-index: 1000; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        .placeholder-panel { color: #9aaa9f; font-size: 13px; font-style: italic; text-align: center; padding-top: 8px; }
+        .boundary-badge {
+          position: absolute; top: 16px; left: 16px; z-index: 1100;
+          background: #1c3a2a; color: #a8d5a2; padding: 6px 14px;
+          border-radius: 20px; font-size: 12px; font-weight: 600; font-family: 'DM Sans', sans-serif;
         }
-        .legend-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: #9aaa9f; margin-bottom: 10px; }
-        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #3a4a40; margin-bottom: 6px; }
-        .legend-item:last-child { margin-bottom: 0; }
-        .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
-
-        .week-indicator {
-          position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
-          background: rgba(28,58,42,0.85); color: #a8d5a2; padding: 8px 18px;
-          border-radius: 20px; font-size: 13px; font-weight: 600; z-index: 1000;
-          font-family: 'DM Sans', sans-serif; backdrop-filter: blur(4px);
-        }
-
-        .placeholder { color: #9aaa9f; font-size: 13px; font-style: italic; text-align: center; padding-top: 8px; }
         .orchard-tooltip {
           background: #1c3a2a !important; color: #fff !important; border: none !important;
           border-radius: 6px !important; font-family: 'DM Sans', sans-serif !important;
@@ -432,145 +479,188 @@ export default function OrchardsPage() {
       `}</style>
 
       <div className="app">
+        {/* Sidebar */}
         <aside className="sidebar">
           <div className="logo"><span>Farm</span>Scout</div>
           <a href="/" className="nav-item"><span>📊</span> Dashboard</a>
-          <a href="/orchards" className="nav-item active"><span>🪤</span> Trap Inspections</a>
+          <a href="/orchards" className="nav-item active"><span>🏡</span> Orchards</a>
           <a href="/pests" className="nav-item"><span>🐛</span> Pests</a>
           <a className="nav-item"><span>🪤</span> Traps</a>
           <a className="nav-item"><span>🔍</span> Inspections</a>
           <a href="/scouts" className="nav-item"><span>👷</span> Scouts</a>
-<a href="/scouts/sections" className="nav-item sub"><span>🗂️</span> Sections</a>
-           <div className="sidebar-footer">
+          <a href="/scouts/sections" className="nav-item"><span>🗂️</span> Sections</a>
+          <div className="sidebar-footer">
             Mouton's Valley Group<br />
-            <span style={{ color: '#2a6e45' }}>●</span> Connected
-            <br />
-            <button onClick={async () => {
-              await supabase.auth.signOut()
-              window.location.href = '/login'
-            }} style={{
-              marginTop: 10, background: 'none', border: '1px solid #2a4f38',
-              color: '#6aaa80', borderRadius: 6, padding: '4px 10px',
-              fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif'
-            }}>
+            <span style={{ color: '#2a6e45' }}>●</span> Connected<br />
+            <button onClick={async () => { await supabase.auth.signOut(); window.location.href = '/login' }}
+              style={{ marginTop: 10, background: 'none', border: '1px solid #2a4f38', color: '#6aaa80',
+                borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
               Sign out
             </button>
           </div>
         </aside>
 
         <div className="main">
+          {/* Top bar */}
           <div className="top-bar">
-            <div className="page-title">Trap Inspections</div>
-            <div className="divider" />
-
-            {/* Season */}
-            <div className="filter-group">
-              <span className="filter-label">Season</span>
-              <div className="filter-pills">
-                {seasons.map(s => (
-                  <button key={s} className={`pill${season === s ? ' active' : ''}`}
-                    onClick={() => { setSeason(s); setSelectedWeek(currentWeekNr()) }}>
-                    {s}
-                  </button>
-                ))}
-              </div>
+            {mode !== 'view' && <button className="btn-cancel" onClick={cancelEdit}>← Cancel</button>}
+            <div className="page-title">
+              {mode === 'add' ? 'Add New Orchard' : mode === 'edit' ? `Edit: ${editTarget?.name}` : 'Orchards'}
             </div>
-
-            <div className="divider" />
-
-             {/* Week */}
-            <div className="filter-group">
-              <span className="filter-label">Week {selectedWeek}</span>
-              <input
-                type="range"
-                min={0}
-                max={weeks.length - 1}
-                value={weeks.indexOf(selectedWeek)}
-                onChange={e => setSelectedWeek(weeks[parseInt(e.target.value)])}
-                style={{
-                  width: 160,
-                  accentColor: '#2a6e45',
-                  cursor: 'pointer',
-                }}
-              />
-            </div>
-
-            <div className="divider" />
-
-            {/* Pest */}
-            <div className="filter-group">
-              <span className="filter-label">Pest</span>
-              <div className="filter-pills">
-                {pests.map(p => (
-                  <button key={p.id} className={`pill${selectedPest?.id === p.id ? ' active' : ''}`}
-                    onClick={() => setSelectedPest(p)}>
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {mode === 'view' && farms.length > 1 && (
+              <select className="farm-select" value={selectedFarmId ?? ''}
+                onChange={e => { setSelectedFarmId(e.target.value); setSelectedOrchard(null) }}>
+                {farms.map(f => <option key={f.id} value={f.id}>{f.full_name}</option>)}
+              </select>
+            )}
+            {mode === 'view' && <button className="btn-primary" onClick={enterAdd}>+ Add Orchard</button>}
           </div>
 
-          {loadingPressure && <div className="loading-bar" />}
-
-          <div className="map-container">
-            <div id="map" ref={mapRef} />
-
-            {/* Info panel */}
-            <div className="info-panel">
-              {selected ? (
-                <>
-                  <div className="info-title">{selected.name}</div>
-                  <div className="info-sub">{selected.variety || selected.commodity}</div>
-                  <div className="status-badge" style={{
-                    background: STATUS_COLORS[selected.status as keyof typeof STATUS_COLORS]?.fill + '22',
-                    color:      STATUS_COLORS[selected.status as keyof typeof STATUS_COLORS]?.fill,
-                  }}>
-                    <div className="status-dot" style={{ background: STATUS_COLORS[selected.status as keyof typeof STATUS_COLORS]?.fill }} />
-                    {STATUS_COLORS[selected.status as keyof typeof STATUS_COLORS]?.label}
-                  </div>
-                  <div className="info-row">
-                    <span className="info-label">Count (W{selectedWeek})</span>
-                    <span className="info-value">{selected.latest_count !== null ? selected.latest_count : '—'}</span>
-                  </div>
-                  <div className="info-row">
-                    <span className="info-label">Threshold</span>
-                    <span className="info-value">{selected.threshold !== null ? selected.threshold : 'Not set'}</span>
-                  </div>
-                  <div className="info-row">
-                    <span className="info-label">Inspected</span>
-                    <span className="info-value">{selected.last_inspected ? formatDate(selected.last_inspected) : '—'}</span>
-                  </div>
-                  <div className="info-row">
-                    <span className="info-label">Hectares</span>
-                    <span className="info-value">{selected.ha ? `${selected.ha} ha` : '—'}</span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="info-title" style={{ marginBottom: 8 }}>
-                    {selectedPest ? selectedPest.name : 'Select a pest'}
-                  </div>
-                  <div className="info-sub">Season {season} · Week {selectedWeek}</div>
-                  <div className="placeholder">Click an orchard polygon to see trap details</div>
-                </>
-              )}
-            </div>
-
-            {/* Week indicator */}
-            <div className="week-indicator">
-              {season} · Week {selectedWeek} · {selectedPest?.name || '—'}
-            </div>
-
-            {/* Legend */}
-            <div className="legend">
-              <div className="legend-title">Trap Pressure</div>
-              {Object.entries(STATUS_COLORS).map(([key, val]) => (
-                <div className="legend-item" key={key}>
-                  <div className="legend-dot" style={{ background: val.fill }} />
-                  {val.label}
+          {/* Content */}
+          <div className="content">
+            {/* Form panel (add / edit mode) */}
+            {mode !== 'view' && (
+              <div className="form-panel">
+                <div className="field-wrap">
+                  <div className="field-label">Name <span className="required">*</span></div>
+                  <input className="field-input" value={form.name}
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Block A" />
                 </div>
-              ))}
+                {mode === 'edit' && (
+                  <div className="field-wrap">
+                    <div className="field-label">Farm <span className="required">*</span></div>
+                    <select className="field-input" value={form.farmId}
+                      onChange={e => setForm(f => ({ ...f, farmId: e.target.value, sectionId: '' }))}>
+                      <option value="">— select —</option>
+                      {farms.map(f => <option key={f.id} value={f.id}>{f.full_name}</option>)}
+                    </select>
+                  </div>
+                )}
+                <div className="field-wrap">
+                  <div className="field-label">Commodity <span className="required">*</span></div>
+                  <select className="field-input" value={form.commodityId}
+                    onChange={e => setForm(f => ({ ...f, commodityId: e.target.value }))}>
+                    <option value="">— select —</option>
+                    {commodities.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
+                  </select>
+                </div>
+                <div className="field-row">
+                  <div className="field-wrap">
+                    <div className="field-label">Orchard #</div>
+                    <input className="field-input" type="number" value={form.orchardNr}
+                      onChange={e => setForm(f => ({ ...f, orchardNr: e.target.value }))} />
+                  </div>
+                  <div className="field-wrap">
+                    <div className="field-label">Section</div>
+                    <select className="field-input" value={form.sectionId}
+                      onChange={e => setForm(f => ({ ...f, sectionId: e.target.value }))}>
+                      <option value="">—</option>
+                      {sections.map(s => <option key={s.id} value={s.id}>{s.name || `Section ${s.section_nr}`}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="field-wrap">
+                  <div className="field-label">Variety</div>
+                  <input className="field-input" value={form.variety}
+                    onChange={e => setForm(f => ({ ...f, variety: e.target.value }))} />
+                </div>
+                <div className="field-wrap">
+                  <div className="field-label">Variety Group</div>
+                  <input className="field-input" value={form.varietyGroup}
+                    onChange={e => setForm(f => ({ ...f, varietyGroup: e.target.value }))} />
+                </div>
+                <div className="field-wrap">
+                  <div className="field-label">Rootstock</div>
+                  <input className="field-input" value={form.rootstock}
+                    onChange={e => setForm(f => ({ ...f, rootstock: e.target.value }))} />
+                </div>
+                <div className="field-row">
+                  <div className="field-wrap">
+                    <div className="field-label">Hectares</div>
+                    <input className="field-input" type="number" step="0.01" value={form.ha}
+                      onChange={e => setForm(f => ({ ...f, ha: e.target.value }))} />
+                  </div>
+                  <div className="field-wrap">
+                    <div className="field-label">Year Planted</div>
+                    <input className="field-input" type="number" value={form.yearPlanted}
+                      onChange={e => setForm(f => ({ ...f, yearPlanted: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="field-row">
+                  <div className="field-wrap">
+                    <div className="field-label">Trees / ha</div>
+                    <input className="field-input" type="number" value={form.treesPerHa}
+                      onChange={e => setForm(f => ({ ...f, treesPerHa: e.target.value }))} />
+                  </div>
+                  <div className="field-wrap">
+                    <div className="field-label">Nr of Trees</div>
+                    <input className="field-input" type="number" value={form.nrOfTrees}
+                      onChange={e => setForm(f => ({ ...f, nrOfTrees: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="field-row">
+                  <div className="field-wrap">
+                    <div className="field-label">Plant Distance (m)</div>
+                    <input className="field-input" type="number" step="0.1" value={form.plantDistance}
+                      onChange={e => setForm(f => ({ ...f, plantDistance: e.target.value }))} />
+                  </div>
+                  <div className="field-wrap">
+                    <div className="field-label">Row Width (m)</div>
+                    <input className="field-input" type="number" step="0.1" value={form.rowWidth}
+                      onChange={e => setForm(f => ({ ...f, rowWidth: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="field-wrap">
+                  <div className="field-label">Legacy ID</div>
+                  <input className="field-input" type="number" value={form.legacyId}
+                    onChange={e => setForm(f => ({ ...f, legacyId: e.target.value }))} />
+                </div>
+                <div className="save-row">
+                  <button className="btn-save" onClick={handleSave}
+                    disabled={saving || !form.name || !form.commodityId || (mode === 'edit' && !form.farmId)}>
+                    {saving ? 'Saving…' : 'Save Orchard'}
+                  </button>
+                  {saveErr && <span className="save-err">{saveErr}</span>}
+                  {saveOk  && <span className="save-ok">Saved!</span>}
+                </div>
+              </div>
+            )}
+
+            {/* Map */}
+            <div className="map-wrap">
+              <div id="orchards-map" ref={mapRef} />
+
+              {mode !== 'view' && boundaryDrawn && (
+                <div className="boundary-badge">✓ Boundary drawn</div>
+              )}
+
+              {mode === 'view' && (
+                <div className="info-panel">
+                  {o ? (
+                    <>
+                      <div className="info-title">{o.name}</div>
+                      <div className="info-sub">
+                        {(o.commodities as any)?.name || '—'}
+                        {o.variety ? ` · ${o.variety}` : ''}
+                        {(o.sections as any)?.name ? ` · ${(o.sections as any).name}` : ''}
+                        {o.ha ? ` · ${o.ha} ha` : ''}
+                      </div>
+                      <div className="info-divider" />
+                      <div className="info-row"><span className="info-label">Orchard #</span><span className="info-value">{o.orchard_nr ?? '—'}</span></div>
+                      <div className="info-row"><span className="info-label">Rootstock</span><span className="info-value">{o.rootstock || '—'}</span></div>
+                      <div className="info-row"><span className="info-label">Year</span><span className="info-value">{o.year_planted ?? '—'}</span></div>
+                      <div className="info-row"><span className="info-label">Trees/ha</span><span className="info-value">{o.trees_per_ha ?? '—'}</span></div>
+                      <div className="info-row"><span className="info-label">Nr trees</span><span className="info-value">{o.nr_of_trees?.toLocaleString() ?? '—'}</span></div>
+                      <div className="info-row"><span className="info-label">Row width</span><span className="info-value">{o.row_width ? `${o.row_width} m` : '—'}</span></div>
+                      <div className="info-row"><span className="info-label">Legacy ID</span><span className="info-value">{o.legacy_id ?? '—'}</span></div>
+                      <div className="info-divider" />
+                      <button className="btn-edit" onClick={() => enterEdit(o)}>Edit Orchard</button>
+                    </>
+                  ) : (
+                    <div className="placeholder-panel">Click an orchard polygon to view details</div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

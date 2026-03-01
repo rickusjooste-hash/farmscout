@@ -51,7 +51,23 @@ export default function ScoutApp() {
     }
   }, [])
 
+  function getCurrentWeekKey() {
+    const now = new Date()
+    const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7))
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+    const week = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
+    return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`
+  }
+
   async function checkTrapStatus() {
+    // Check localStorage first — instant and works offline
+    const storedWeek = localStorage.getItem('farmscout_week_completed')
+    if (storedWeek === getCurrentWeekKey()) {
+      setTrapStatus('completed')
+      return
+    }
+
     const token = localStorage.getItem('farmscout_access_token')
     const userId = localStorage.getItem('farmscout_user_id')
     if (!token || !userId) return
@@ -71,6 +87,10 @@ export default function ScoutApp() {
       )
       const data = await res.json()
       setTrapStatus(data.status)
+      // Persist completion so it survives going offline
+      if (data.status === 'completed') {
+        localStorage.setItem('farmscout_week_completed', getCurrentWeekKey())
+      }
     } catch { }
   }
 

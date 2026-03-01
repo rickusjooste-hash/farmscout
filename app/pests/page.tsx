@@ -245,7 +245,9 @@ export default function PestsPage() {
   }
 
   const activeCommodityObj = commodities.find(c => c.code === activeCommodity)
-  const filteredRows = pestRows.filter(r => r.commodity_id === activeCommodityObj?.id)
+  const filteredRows = pestRows
+    .filter(r => r.commodity_id === activeCommodityObj?.id)
+    .sort((a, b) => a.display_order - b.display_order)
 
   if (loading) {
     return (
@@ -373,7 +375,7 @@ export default function PestsPage() {
         <aside className="sidebar">
           <div className="logo"><span>Farm</span>Scout</div>
           <a href="/" className="nav-item"><span>📊</span> Dashboard</a>
-          <a href="/orchards" className="nav-item"><span>🪤</span> Trap Inspections</a>
+          <a href="/orchards" className="nav-item"><span>🏡</span> Orchards</a>
           <a href="/pests" className="nav-item active"><span>🐛</span> Pests</a>
           <a className="nav-item"><span>🪤</span> Traps</a>
           <a className="nav-item"><span>🔍</span> Inspections</a>
@@ -445,7 +447,15 @@ export default function PestsPage() {
                     <button
                       className="btn-ghost"
                       style={{ fontSize: 12, padding: '6px 14px' }}
-                      onClick={() => { setShowAddPanel(p => !p); setEditingRowId(null); setAddError('') }}
+                      onClick={() => {
+                      const willShow = !showAddPanel
+                      setShowAddPanel(willShow)
+                      setEditingRowId(null)
+                      setAddError('')
+                      if (willShow && activeCommodityObj) {
+                        setAddForm(f => ({ ...f, commodityId: activeCommodityObj.id }))
+                      }
+                    }}
                     >
                       {showAddPanel ? '✕ Close' : '+ Add Pest'}
                     </button>

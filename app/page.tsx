@@ -4,7 +4,11 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase-auth'
 import { useUserContext } from '@/lib/useUserContext'
 import PestTrendChart from '@/app/components/PestTrendChart'
+import OrchardPressureMap from '@/app/components/OrchardPressureMap'
 import { useRouter } from 'next/navigation'
+import { Inter } from 'next/font/google'
+
+const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500', '600', '700'] })
 
 
 interface Orchard {
@@ -15,32 +19,19 @@ interface Orchard {
   is_active: boolean
 }
 
-interface PestSummary {
-  pest_name: string
-  total: number
-}
-
-interface RecentSession {
-  id: string
-  inspected_at: string
-  orchard_id: string
-  orchard_name?: string
-}
-
-interface Stats {
-  orchards: number
-  sessions: number
-  observations: number
-  pests: number
-}
 
 export default function DashboardPage() {
   const supabase = createClient()
   const router = useRouter()
   const [orchards, setOrchards] = useState<Orchard[]>([])
-  const [pestSummary, setPestSummary] = useState<PestSummary[]>([])
-  const [recentSessions, setRecentSessions] = useState<RecentSession[]>([])
-  const [stats, setStats] = useState<Stats>({ orchards: 0, sessions: 0, observations: 0, pests: 0 })
+  const [weekSessions, setWeekSessions] = useState<string[]>([])
+  const [weekExpanded, setWeekExpanded] = useState(false)
+  const [trapWeekExpanded, setTrapWeekExpanded] = useState(false)
+  const [trapWeekData, setTrapWeekData] = useState<{
+    totalTraps: number
+    inspectedTraps: number
+    perScout: Array<{ name: string; count: number }>
+  }>({ totalTraps: 0, inspectedTraps: 0, perScout: [] })
   const { farmIds, isSuperAdmin, contextLoaded } = useUserContext()
   const [loading, setLoading] = useState(true)
 
@@ -52,108 +43,105 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!contextLoaded) return
     async function fetchData() {
-      const isSuperAdminUser = isSuperAdmin
+      try {
+        const isSuperAdminUser = isSuperAdmin
 
-      // Orchards — scoped to accessible farms
-      let orchardQuery = supabase
-        .from('orchards')
-        .select('id, name, variety, ha, is_active')
-        .eq('is_active', true)
-        .order('name')
-      if (!isSuperAdminUser && farmIds.length > 0) {
-        orchardQuery = orchardQuery.in('farm_id', farmIds)
-      }
-      const { data: orchardData } = await orchardQuery
-
-      const orchardIds = (orchardData || []).map(o => o.id)
-      const orchardLookup: Record<string, string> = {}
-      orchardData?.forEach(o => { orchardLookup[o.id] = o.name })
-
-      // Recent inspection sessions — scoped to accessible orchards
-      let sessionQuery = supabase
-        .from('inspection_sessions')
-        .select('id, inspected_at, orchard_id')
-        .order('inspected_at', { ascending: false })
-        .limit(8)
-      if (!isSuperAdminUser && orchardIds.length > 0) {
-        sessionQuery = sessionQuery.in('orchard_id', orchardIds)
-      }
-      const { data: sessionData } = await sessionQuery
-
-      // Top pests — scoped to accessible orchards via sessions
-      let obsQuery = supabase
-        .from('inspection_observations')
-        .select('pest_id, count, pests(name)')
-        .gt('count', 0)
-        .limit(1000)
-      if (!isSuperAdminUser && orchardIds.length > 0) {
-        const sessionIds = (sessionData || []).map(s => s.id)
-        if (sessionIds.length > 0) {
-          obsQuery = obsQuery.in('session_id', sessionIds)
+        // Orchards + active trap IDs — scoped to accessible farms, fetched in parallel
+        let orchardQuery = supabase
+          .from('orchards')
+          .select('id, name, variety, ha, is_active')
+          .eq('is_active', true)
+          .order('name')
+        let trapIdsQuery = supabase.from('traps').select('id').eq('is_active', true)
+        if (!isSuperAdminUser && farmIds.length > 0) {
+          orchardQuery = orchardQuery.in('farm_id', farmIds)
+          trapIdsQuery = trapIdsQuery.in('farm_id', farmIds)
         }
+        const [{ data: orchardData }, { data: activeTrapData }] = await Promise.all([orchardQuery, trapIdsQuery])
+        const activeTrapIds = (activeTrapData || []).map((t: any) => t.id)
+
+        const orchardIds = (orchardData || []).map(o => o.id)
+
+        // ISO Monday of current week
+        const weekStart = new Date()
+        weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7))
+        weekStart.setHours(0, 0, 0, 0)
+
+        // Build scout query scoped to all accessible farms
+        let scoutQuery = supabase.from('scouts').select('user_id, full_name').eq('is_active', true)
+        if (!isSuperAdminUser && farmIds.length > 0) {
+          scoutQuery = scoutQuery.in('farm_id', farmIds)
+        }
+
+        // Run all remaining queries in parallel
+        const [
+          { data: weekData },
+          { data: trapInspData },
+          { data: scoutData },
+        ] = await Promise.all([
+          orchardIds.length > 0
+            ? supabase.from('inspection_sessions')
+                .select('orchard_id')
+                .gte('inspected_at', weekStart.toISOString())
+                .in('orchard_id', orchardIds)
+            : Promise.resolve({ data: [], error: null, count: null, status: 200, statusText: 'OK' }),
+          // Trap inspections this week — just IDs and scout_id, no join
+          activeTrapIds.length > 0
+            ? supabase.from('trap_inspections')
+                .select('trap_id, scout_id')
+                .gte('inspected_at', weekStart.toISOString())
+                .in('trap_id', activeTrapIds)
+            : Promise.resolve({ data: [], error: null, count: null, status: 200, statusText: 'OK' }),
+          scoutQuery,
+        ])
+
+        // Build scout lookup: user_id → name
+        const scoutLookup: Record<string, string> = {}
+        ;(scoutData || []).forEach((s: any) => { scoutLookup[s.user_id] = s.full_name })
+
+        // Aggregate trap inspections per scout this week
+        const scoutInspMap: Record<string, { name: string; traps: Set<string> }> = {}
+        ;(trapInspData || []).forEach((r: any) => {
+          const sid = r.scout_id || 'unknown'
+          const name = scoutLookup[sid] || 'Unknown'
+          if (!scoutInspMap[sid]) scoutInspMap[sid] = { name, traps: new Set() }
+          scoutInspMap[sid].traps.add(r.trap_id)
+        })
+        const inspectedThisWeek = new Set((trapInspData || []).map((r: any) => r.trap_id)).size
+        const perScout = Object.values(scoutInspMap)
+          .map(s => ({ name: s.name, count: s.traps.size }))
+          .sort((a, b) => b.count - a.count)
+
+        setTrapWeekData({ totalTraps: activeTrapIds.length, inspectedTraps: inspectedThisWeek, perScout })
+        setOrchards(orchardData || [])
+        setWeekSessions([...new Set((weekData || []).map((r: any) => r.orchard_id))])
+      } catch (err) {
+        console.error('Dashboard fetchData error:', err)
+      } finally {
+        setLoading(false)
       }
-      const { data: obsData } = await obsQuery
-
-      // Aggregate pest counts
-      const pestTotals: Record<string, { name: string; total: number }> = {}
-      obsData?.forEach((o: any) => {
-        const name = o.pests?.name || 'Unknown'
-        if (!pestTotals[o.pest_id]) pestTotals[o.pest_id] = { name, total: 0 }
-        pestTotals[o.pest_id].total += o.count || 0
-      })
-      const sorted = Object.values(pestTotals)
-        .sort((a, b) => b.total - a.total)
-        .slice(0, 8)
-        .map(p => ({ pest_name: p.name, total: p.total }))
-
-      const enrichedSessions = sessionData?.map(s => ({
-        ...s,
-        orchard_name: orchardLookup[s.orchard_id] || 'Unknown'
-      })) || []
-
-      // Stats counts — scoped
-      let sessionCountQuery = supabase.from('inspection_sessions').select('*', { count: 'exact', head: true })
-      let obsCountQuery = supabase.from('inspection_observations').select('*', { count: 'exact', head: true })
-      if (!isSuperAdminUser && orchardIds.length > 0) {
-        sessionCountQuery = sessionCountQuery.in('orchard_id', orchardIds)
-      }
-      const [{ count: sessionCount }, { count: obsCount }, { count: pestCount }] = await Promise.all([
-        sessionCountQuery,
-        obsCountQuery,
-        supabase.from('pests').select('*', { count: 'exact', head: true }),
-      ])
-
-      setOrchards(orchardData || [])
-      setPestSummary(sorted)
-      setRecentSessions(enrichedSessions)
-      setStats({
-        orchards: orchardData?.length || 0,
-        sessions: sessionCount || 0,
-        observations: obsCount || 0,
-        pests: pestCount || 0,
-      })
-      setLoading(false)
     }
 
     fetchData()
   }, [contextLoaded])
 
-  const maxPest = pestSummary[0]?.total || 1
+  // Week label from ISO Monday
+  const weekStartLabel = new Date()
+  weekStartLabel.setDate(weekStartLabel.getDate() - ((weekStartLabel.getDay() + 6) % 7))
+  weekStartLabel.setHours(0, 0, 0, 0)
+  const weekLabel = weekStartLabel.toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })
 
-  const formatDate = (iso: string) => {
-    const d = new Date(iso)
-    return d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
-  }
+  const totalOrchards = orchards.length
+  const weekPct = totalOrchards > 0 ? Math.round((weekSessions.length / totalOrchards) * 100) : 0
+  const trapPct = trapWeekData.totalTraps > 0 ? Math.round((trapWeekData.inspectedTraps / trapWeekData.totalTraps) * 100) : 0
 
   return (
-    <>
+    <div className={inter.className}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
-
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'Inter', sans-serif;
           background: #f4f1eb;
           color: #1a1a1a;
           min-height: 100vh;
@@ -176,7 +164,7 @@ export default function DashboardPage() {
           flex-shrink: 0;
         }
         .logo {
-          font-family: 'DM Serif Display', serif;
+          font-family: 'Inter', sans-serif;
           font-size: 22px;
           color: #a8d5a2;
           margin-bottom: 32px;
@@ -214,10 +202,10 @@ export default function DashboardPage() {
           display: flex;
           align-items: flex-end;
           justify-content: space-between;
-          margin-bottom: 36px;
+          margin-bottom: 28px;
         }
         .page-title {
-          font-family: 'DM Serif Display', serif;
+          font-family: 'Inter', sans-serif;
           font-size: 32px;
           color: #1c3a2a;
           letter-spacing: -0.5px;
@@ -253,12 +241,122 @@ export default function DashboardPage() {
           50% { opacity: 0.4; }
         }
 
+        /* Week scouting card */
+        .week-card {
+          background: #fff;
+          border-radius: 14px;
+          border: 1px solid #e8e4dc;
+          padding: 24px 28px;
+          margin-bottom: 28px;
+          position: relative;
+          overflow: hidden;
+        }
+        .week-card::before {
+          content: '';
+          position: absolute;
+          top: 0; left: 0; right: 0;
+          height: 3px;
+          background: linear-gradient(90deg, #2a6e45, #a8d5a2);
+        }
+        .week-card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 14px;
+        }
+        .week-card-title {
+          font-family: 'Inter', sans-serif;
+          font-size: 18px;
+          color: #1c3a2a;
+        }
+        .week-card-meta {
+          font-size: 13px;
+          color: #9aaa9f;
+        }
+        .week-progress-row {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          margin-bottom: 16px;
+        }
+        .week-progress-bar-bg {
+          flex: 1;
+          height: 12px;
+          background: #f0ede6;
+          border-radius: 6px;
+          overflow: hidden;
+        }
+        .week-progress-bar-fill {
+          height: 100%;
+          border-radius: 6px;
+          background: linear-gradient(90deg, #2a6e45, #6abf7a);
+          transition: width 0.6s ease;
+        }
+        .week-progress-label {
+          font-size: 14px;
+          font-weight: 600;
+          color: #1c3a2a;
+          white-space: nowrap;
+        }
+        .orchard-pills {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .orchard-pill {
+          padding: 4px 12px;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 500;
+        }
+        .orchard-pill.done {
+          background: #e8f5ee;
+          color: #2a6e45;
+          border: 1px solid #c0e0cc;
+        }
+        .orchard-pill.pending {
+          background: #f4f1eb;
+          color: #9aaa9f;
+          border: 1px solid #e0ddd5;
+        }
+
+        /* Trap week card accent */
+        .week-card.trap-card::before {
+          background: linear-gradient(90deg, #b36a00, #f0a500);
+        }
+
+        /* Per-scout rows (inside trap week expansion) */
+        .scout-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 10px;
+        }
+        .scout-row:last-child { margin-bottom: 0; }
+        .scout-name {
+          font-size: 13px;
+          color: #3a4a40;
+          width: 160px;
+          flex-shrink: 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .scout-count {
+          font-size: 13px;
+          font-weight: 600;
+          color: #1c3a2a;
+          width: 70px;
+          text-align: right;
+          flex-shrink: 0;
+        }
+
         /* Stats grid */
         .stats-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
           gap: 16px;
-          margin-bottom: 32px;
+          margin-bottom: 28px;
         }
         .stat-card {
           background: #fff;
@@ -275,6 +373,9 @@ export default function DashboardPage() {
           height: 3px;
           background: linear-gradient(90deg, #2a6e45, #a8d5a2);
         }
+        .stat-card.alert-card::before {
+          background: linear-gradient(90deg, #c0392b, #e05c4b);
+        }
         .stat-label {
           font-size: 11px;
           text-transform: uppercase;
@@ -284,23 +385,59 @@ export default function DashboardPage() {
           margin-bottom: 10px;
         }
         .stat-value {
-          font-family: 'DM Serif Display', serif;
+          font-family: 'Inter', sans-serif;
           font-size: 38px;
           color: #1c3a2a;
           line-height: 1;
         }
+        .stat-value.alert-value { color: #c0392b; }
         .stat-sub {
           font-size: 12px;
           color: #b0bdb5;
           margin-top: 6px;
         }
 
-        /* Two column layout */
-        .two-col {
+        /* Map + right col layout */
+        .map-row {
           display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: 55fr 45fr;
           gap: 20px;
           margin-bottom: 20px;
+        }
+        .map-card {
+          background: #fff;
+          border-radius: 14px;
+          border: 1px solid #e8e4dc;
+          overflow: hidden;
+        }
+        .map-card-header {
+          padding: 16px 20px 14px;
+          border-bottom: 1px solid #f0ede6;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .map-legend {
+          display: flex;
+          gap: 14px;
+          font-size: 12px;
+          color: #7a8a80;
+          align-items: center;
+        }
+        .legend-item {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+        }
+        .legend-dot {
+          width: 10px; height: 10px;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+        .right-col {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
         }
 
         /* Cards */
@@ -318,7 +455,7 @@ export default function DashboardPage() {
           justify-content: space-between;
         }
         .card-title {
-          font-family: 'DM Serif Display', serif;
+          font-family: 'Inter', sans-serif;
           font-size: 17px;
           color: #1c3a2a;
         }
@@ -339,12 +476,13 @@ export default function DashboardPage() {
           display: flex;
           align-items: center;
           gap: 12px;
-          margin-bottom: 14px;
+          margin-bottom: 12px;
         }
+        .pest-row:last-child { margin-bottom: 0; }
         .pest-name {
           font-size: 13px;
           color: #3a4a40;
-          width: 160px;
+          width: 130px;
           flex-shrink: 0;
           white-space: nowrap;
           overflow: hidden;
@@ -352,7 +490,7 @@ export default function DashboardPage() {
         }
         .pest-bar-bg {
           flex: 1;
-          height: 8px;
+          height: 7px;
           background: #f0ede6;
           border-radius: 4px;
           overflow: hidden;
@@ -367,49 +505,17 @@ export default function DashboardPage() {
           font-size: 13px;
           font-weight: 600;
           color: #1c3a2a;
-          width: 50px;
+          width: 42px;
           text-align: right;
           flex-shrink: 0;
         }
-
-        /* Table */
-        .data-table { width: 100%; border-collapse: collapse; }
-        .data-table th {
-          text-align: left;
-          font-size: 11px;
-          text-transform: uppercase;
-          letter-spacing: 0.8px;
-          color: #9aaa9f;
-          font-weight: 600;
-          padding: 0 0 12px 0;
-          border-bottom: 1px solid #f0ede6;
-        }
-        .data-table td {
-          padding: 12px 0;
-          font-size: 13.5px;
-          color: #3a4a40;
-          border-bottom: 1px solid #f9f7f3;
-          vertical-align: middle;
-        }
-        .data-table tr:last-child td { border-bottom: none; }
-        .orchard-name { font-weight: 500; color: #1c3a2a; }
-        .variety-tag {
-          display: inline-block;
-          background: #f0f7f2;
-          color: #3a7a52;
-          font-size: 11px;
-          padding: 2px 8px;
-          border-radius: 4px;
-          font-weight: 500;
-        }
-        .ha-val { color: #9aaa9f; font-size: 13px; }
 
         /* Activity */
         .activity-item {
           display: flex;
           align-items: center;
           gap: 14px;
-          padding: 10px 0;
+          padding: 9px 0;
           border-bottom: 1px solid #f9f7f3;
         }
         .activity-item:last-child { border-bottom: none; }
@@ -428,7 +534,7 @@ export default function DashboardPage() {
           align-items: center;
           justify-content: center;
           height: 100vh;
-          font-family: 'DM Serif Display', serif;
+          font-family: 'Inter', sans-serif;
           font-size: 24px;
           color: #1c3a2a;
           background: #f4f1eb;
@@ -443,7 +549,7 @@ export default function DashboardPage() {
           <aside className="sidebar">
             <div className="logo"><span>Farm</span>Scout</div>
 <a href="/" className="nav-item active"><span className="nav-icon">📊</span> Dashboard</a>
-<a href="/orchards" className="nav-item"><span className="nav-icon">🪤</span> Trap Inspections</a>
+<a href="/orchards" className="nav-item"><span className="nav-icon">🏡</span> Orchards</a>
 <a href="/pests" className="nav-item"><span className="nav-icon">🐛</span> Pests</a>
 <a className="nav-item"><span className="nav-icon">🪤</span> Traps</a>
 <a className="nav-item"><span className="nav-icon">🔍</span> Inspections</a>
@@ -451,14 +557,14 @@ export default function DashboardPage() {
 <a href="/scouts/new" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>➕</span> New Scout</a>
 <a href="/scouts/sections" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>🗂️</span> Sections</a>
 {isSuperAdmin && <a href="/admin" className="nav-item"><span>⚙️</span> Admin</a>}
-         <div className="sidebar-footer">
+            <div className="sidebar-footer">
   Mouton's Valley Group<br />
   <span style={{ color: '#2a6e45' }}>●</span> Connected
   <br />
   <button onClick={handleLogout} style={{
     marginTop: 10, background: 'none', border: '1px solid #2a4f38',
     color: '#6aaa80', borderRadius: 6, padding: '4px 10px',
-    fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif'
+    fontSize: 11, cursor: 'pointer', fontFamily: 'Inter, sans-serif'
   }}>
     Sign out
   </button>
@@ -478,102 +584,107 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Stats */}
-            <div className="stats-grid">
-              <div className="stat-card">
-                <div className="stat-label">Active Orchards</div>
-                <div className="stat-value">{stats.orchards}</div>
-                <div className="stat-sub">across all farms</div>
+            {/* This Week's Scouting */}
+            <div className="week-card">
+              <div className="week-card-header">
+                <div className="week-card-title">This Week's Scouting</div>
+                <div className="week-card-meta">Week of {weekLabel}</div>
               </div>
-              <div className="stat-card">
-                <div className="stat-label">Inspections</div>
-                <div className="stat-value">{stats.sessions.toLocaleString()}</div>
-                <div className="stat-sub">total recorded</div>
+              <div className="week-progress-row">
+                <div className="week-progress-bar-bg">
+                  <div className="week-progress-bar-fill" style={{ width: `${weekPct}%` }} />
+                </div>
+                <div className="week-progress-label">
+                  {weekSessions.length} of {totalOrchards} orchards ({weekPct}%)
+                </div>
+                <button
+                  onClick={() => setWeekExpanded(e => !e)}
+                  style={{
+                    marginLeft: 12, background: 'none', border: '1px solid #e0ddd5',
+                    borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
+                    fontSize: 13, color: '#7a8a80', transition: 'all 0.15s',
+                    display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+                  }}
+                  title={weekExpanded ? 'Hide orchards' : 'Show orchards'}
+                >
+                  <span style={{ display: 'inline-block', transition: 'transform 0.2s', transform: weekExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+                </button>
               </div>
-              <div className="stat-card">
-                <div className="stat-label">Observations</div>
-                <div className="stat-value">{(stats.observations / 1000).toFixed(0)}k</div>
-                <div className="stat-sub">pest data points</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">Pest Types</div>
-                <div className="stat-value">{stats.pests}</div>
-                <div className="stat-sub">being monitored</div>
-              </div>
+              {weekExpanded && (
+                <div className="orchard-pills">
+                  {orchards.map(o => (
+                    <div
+                      key={o.id}
+                      className={`orchard-pill ${weekSessions.includes(o.id) ? 'done' : 'pending'}`}
+                    >
+                      {weekSessions.includes(o.id) ? '✓ ' : ''}{o.name}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Two columns */}
-            <div className="two-col">
-              {/* Top pests */}
-              <div className="card">
-                <div className="card-header">
-                  <div className="card-title">Top Pest Pressure</div>
-                  <div className="card-badge">All Time</div>
+            {/* This Week's Trap Inspections */}
+            <div className="week-card trap-card">
+              <div className="week-card-header">
+                <div className="week-card-title">This Week's Trap Inspections</div>
+                <div className="week-card-meta">Week of {weekLabel}</div>
+              </div>
+              <div className="week-progress-row">
+                <div className="week-progress-bar-bg">
+                  <div
+                    className="week-progress-bar-fill"
+                    style={{
+                      width: `${trapPct}%`,
+                      background: 'linear-gradient(90deg, #b36a00, #f0a500)',
+                    }}
+                  />
                 </div>
-                <div className="card-body">
-                  {pestSummary.map(p => (
-                    <div className="pest-row" key={p.pest_name}>
-                      <div className="pest-name">{p.pest_name}</div>
+                <div className="week-progress-label">
+                  {trapWeekData.inspectedTraps} of {trapWeekData.totalTraps} traps ({trapPct}%)
+                </div>
+                <button
+                  onClick={() => setTrapWeekExpanded(e => !e)}
+                  style={{
+                    marginLeft: 12, background: 'none', border: '1px solid #e0ddd5',
+                    borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
+                    fontSize: 13, color: '#7a8a80', transition: 'all 0.15s',
+                    display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+                  }}
+                  title={trapWeekExpanded ? 'Hide scouts' : 'Show per scout'}
+                >
+                  <span style={{ display: 'inline-block', transition: 'transform 0.2s', transform: trapWeekExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+                </button>
+              </div>
+              {trapWeekExpanded && (
+                <div style={{ marginTop: 4 }}>
+                  {trapWeekData.perScout.length === 0 ? (
+                    <div style={{ fontSize: 13, color: '#9aaa9f' }}>No trap inspections recorded this week.</div>
+                  ) : trapWeekData.perScout.map(s => (
+                    <div className="scout-row" key={s.name}>
+                      <div className="scout-name">{s.name}</div>
                       <div className="pest-bar-bg">
                         <div
                           className="pest-bar-fill"
-                          style={{ width: `${(p.total / maxPest) * 100}%` }}
+                          style={{
+                            width: `${trapWeekData.totalTraps > 0 ? (s.count / trapWeekData.totalTraps) * 100 : 0}%`,
+                            background: 'linear-gradient(90deg, #b36a00, #f0a500)',
+                          }}
                         />
                       </div>
-                      <div className="pest-count">{p.total.toLocaleString()}</div>
+                      <div className="scout-count">{s.count} traps</div>
                     </div>
                   ))}
                 </div>
-              </div>
+              )}
+            </div>
 
-              {/* Recent activity */}
-              <div className="card">
-                <div className="card-header">
-                  <div className="card-title">Recent Inspections</div>
-                  <div className="card-badge">Latest 8</div>
-                </div>
-                <div className="card-body">
-                  {recentSessions.map(s => (
-                    <div className="activity-item" key={s.id}>
-                      <div className="activity-dot" />
-                      <div className="activity-orchard">{s.orchard_name}</div>
-                      <div className="activity-date">{formatDate(s.inspected_at)}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <OrchardPressureMap />
+
             <PestTrendChart />
-            {/* Orchard table */}
-            <div className="card">
-              <div className="card-header">
-                <div className="card-title">Active Orchards</div>
-                <div className="card-badge">{stats.orchards} total</div>
-              </div>
-              <div className="card-body">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Orchard</th>
-                      <th>Variety</th>
-                      <th>Hectares</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orchards.map(o => (
-                      <tr key={o.id}>
-                        <td><span className="orchard-name">{o.name}</span></td>
-                        <td>{o.variety ? <span className="variety-tag">{o.variety}</span> : '—'}</td>
-                        <td><span className="ha-val">{o.ha ? `${o.ha} ha` : '—'}</span></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
           </main>
         </div>
       )}
-    </>
+    </div>
   )
 }

@@ -139,7 +139,11 @@ export default function TrapInspectionView({ onBack }: { onBack: () => void }) {
           body: JSON.stringify({ scout_user_id: userId }),
         })
         const status = await statusRes.json()
-        if (status.completed) { onBack(); return }
+        if (status.status === 'completed') {
+          localStorage.setItem('farmscout_week_completed', getCurrentWeekKey())
+          onBack()
+          return
+        }
         if (status.resume_trap_id) startTrapId = status.resume_trap_id
 
         const doneRes = await fetch(
@@ -171,6 +175,15 @@ export default function TrapInspectionView({ onBack }: { onBack: () => void }) {
       setError('Could not load traps. Please try again.')
     }
     setLoading(false)
+  }
+
+  function getCurrentWeekKey() {
+    const now = new Date()
+    const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7))
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+    const week = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
+    return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`
   }
 
   function getWeekStart() {
@@ -244,6 +257,8 @@ export default function TrapInspectionView({ onBack }: { onBack: () => void }) {
         setRebaited(false)
         window.scrollTo(0, 0)
       } else {
+        // Mark route as completed for this week (persists offline)
+        localStorage.setItem('farmscout_week_completed', getCurrentWeekKey())
         setSaving(false)
         alert('All traps completed! Great work.')
         onBack()
