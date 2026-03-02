@@ -6,6 +6,31 @@ import { runFullSync } from '../../lib/scout-sync'
 import TrapInspectionView from './TrapInspectionView'
 import TreeInspectionView from './TreeInspectionView'
 
+const SUPABASE_URL = 'https://agktzdeskpyevurhabpg.supabase.co'
+
+/** Silently refresh the access token using the stored refresh token. */
+async function refreshAccessToken(): Promise<boolean> {
+  const refreshToken = localStorage.getItem('farmscout_refresh_token')
+  if (!refreshToken) return false
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    })
+    if (!res.ok) return false
+    const data = await res.json()
+    localStorage.setItem('farmscout_access_token', data.access_token)
+    localStorage.setItem('farmscout_refresh_token', data.refresh_token)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export default function ScoutApp() {
   const [isOnline, setIsOnline] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
@@ -15,8 +40,8 @@ export default function ScoutApp() {
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
   const [trapStatus, setTrapStatus] = useState<'not_started' | 'in_progress' | 'completed'>('not_started')
   const [view, setView] = useState<'home' | 'trap-inspection' | 'tree-inspection'>('home')
+  const [rebaitDueCount, setRebaitDueCount] = useState(0)
   const [commodityCode, setCommodityCode] = useState<string | null>(null)
-  const SUPABASE_URL = 'https://agktzdeskpyevurhabpg.supabase.co'
 
   useEffect(() => {
     // Check if logged in — if not, redirect to login
@@ -29,7 +54,11 @@ export default function ScoutApp() {
     // Load scout name
     const name = localStorage.getItem('farmscout_scout_name') || ''
     setScoutName(name)
-    
+
+    // Load rebait due count (synchronous, works offline)
+    const rebaitDue = parseInt(localStorage.getItem('farmscout_rebait_due') || '0', 10)
+    setRebaitDueCount(isNaN(rebaitDue) ? 0 : rebaitDue)
+
     // Check online status
     setIsOnline(navigator.onLine)
     const handleOnline = () => { setIsOnline(true); handleSync(); loadPendingCount() }
@@ -37,13 +66,19 @@ export default function ScoutApp() {
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
 
-    // Load pending count
-    loadPendingCount()
-    checkTrapStatus()
-    // Auto sync if online
-    if (navigator.onLine) {
-      handleSync()
+    // Refresh token if online (access tokens expire after ~1hr)
+    // then load data — this prevents login redirects after lunch breaks
+    async function init() {
+      if (navigator.onLine) {
+        await refreshAccessToken()
+      }
+      loadPendingCount()
+      checkTrapStatus()
+      if (navigator.onLine) {
+        handleSync()
+      }
     }
+    init()
 
     return () => {
       window.removeEventListener('online', handleOnline)
@@ -61,37 +96,42 @@ export default function ScoutApp() {
   }
 
   async function checkTrapStatus() {
-    // Check localStorage first — instant and works offline
+    const token = localStorage.getItem('farmscout_access_token')
+    const userId = localStorage.getItem('farmscout_user_id')
+
+    // When online, always check the server (source of truth)
+    if (navigator.onLine && token && userId) {
+      try {
+        const res = await fetch(
+          `${SUPABASE_URL}/rest/v1/rpc/get_scout_weekly_status`,
+          {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ scout_user_id: userId }),
+          }
+        )
+        const data = await res.json()
+        setTrapStatus(data.status)
+        // Cache for offline use
+        if (data.status === 'completed') {
+          localStorage.setItem('farmscout_week_completed', getCurrentWeekKey())
+        } else {
+          // Clear stale completion flag (e.g. route ended short by mistake)
+          localStorage.removeItem('farmscout_week_completed')
+        }
+        return
+      } catch { /* fall through to offline check */ }
+    }
+
+    // Offline fallback: use cached status
     const storedWeek = localStorage.getItem('farmscout_week_completed')
     if (storedWeek === getCurrentWeekKey()) {
       setTrapStatus('completed')
-      return
     }
-
-    const token = localStorage.getItem('farmscout_access_token')
-    const userId = localStorage.getItem('farmscout_user_id')
-    if (!token || !userId) return
-
-    try {
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/rpc/get_scout_weekly_status`,
-        {
-          method: 'POST',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ scout_user_id: userId }),
-        }
-      )
-      const data = await res.json()
-      setTrapStatus(data.status)
-      // Persist completion so it survives going offline
-      if (data.status === 'completed') {
-        localStorage.setItem('farmscout_week_completed', getCurrentWeekKey())
-      }
-    } catch { }
   }
 
   async function loadPendingCount() {
@@ -111,6 +151,9 @@ export default function ScoutApp() {
       const token = localStorage.getItem('farmscout_access_token') ?? undefined
       await runFullSync(supabaseKey, token)
       await loadPendingCount()
+      // Refresh rebait count after sync
+      const rebaitDue = parseInt(localStorage.getItem('farmscout_rebait_due') || '0', 10)
+      setRebaitDueCount(isNaN(rebaitDue) ? 0 : rebaitDue)
     } catch { }
     setIsSyncing(false)
   }
@@ -215,6 +258,22 @@ export default function ScoutApp() {
 
           </div>
         </div>
+
+        {/* Rebait reminder chip */}
+        {rebaitDueCount > 0 && (
+          <div style={{
+            margin: '0 16px 16px',
+            background: '#3a2a00',
+            border: '1px solid #f0a500',
+            color: '#f0a500',
+            padding: '8px 16px',
+            borderRadius: 8,
+            fontSize: 13,
+            fontWeight: 600,
+          }}>
+            ⚠ {rebaitDueCount} trap{rebaitDueCount !== 1 ? 's' : ''} need rebaiting
+          </div>
+        )}
 
       </div>
 

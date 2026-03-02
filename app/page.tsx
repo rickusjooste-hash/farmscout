@@ -33,7 +33,7 @@ export default function DashboardPage() {
   const [trapWeekData, setTrapWeekData] = useState<{
     totalTraps: number
     inspectedTraps: number
-    perScout: Array<{ name: string; count: number }>
+    perScout: Array<{ name: string; count: number; routeLength: number }>
   }>({ totalTraps: 0, inspectedTraps: 0, perScout: [] })
   const { farmIds, isSuperAdmin, contextLoaded, orgId } = useUserContext()
   const [loading, setLoading] = useState(true)
@@ -86,7 +86,7 @@ export default function DashboardPage() {
         weekStart.setHours(0, 0, 0, 0)
 
         // Build scout query scoped to all accessible farms
-        let scoutQuery = supabase.from('scouts').select('user_id, full_name').eq('is_active', true)
+        let scoutQuery = supabase.from('scouts').select('user_id, full_name, first_trap_id').eq('is_active', true)
         if (!isSuperAdminUser && farmIds.length > 0) {
           scoutQuery = scoutQuery.in('farm_id', farmIds)
         }
@@ -113,21 +113,41 @@ export default function DashboardPage() {
           scoutQuery,
         ])
 
-        // Build scout lookup: user_id → name
-        const scoutLookup: Record<string, string> = {}
-        ;(scoutData || []).forEach((s: any) => { scoutLookup[s.user_id] = s.full_name })
+        // Build scout lookup: user_id → { name, first_trap_id }
+        const scoutLookup: Record<string, { name: string; firstTrapId: string | null }> = {}
+        ;(scoutData || []).forEach((s: any) => { scoutLookup[s.user_id] = { name: s.full_name, firstTrapId: s.first_trap_id } })
 
-        // Aggregate trap inspections per scout this week
+        // Fetch route lengths for each scout that has a route
+        const scoutRouteLengths: Record<string, number> = {}
+        const routeLengthPromises = (scoutData || [])
+          .filter((s: any) => s.first_trap_id)
+          .map(async (s: any) => {
+            try {
+              const { data } = await supabase.rpc('get_route_length', { first_trap_id: s.first_trap_id })
+              scoutRouteLengths[s.user_id] = typeof data === 'number' ? data : 0
+            } catch { scoutRouteLengths[s.user_id] = 0 }
+          })
+        await Promise.all(routeLengthPromises)
+
+        // Seed all active scouts with routes (so scouts with 0 inspections still appear)
         const scoutInspMap: Record<string, { name: string; traps: Set<string> }> = {}
+        ;(scoutData || []).forEach((s: any) => {
+          if (s.first_trap_id) {
+            scoutInspMap[s.user_id] = { name: s.full_name, traps: new Set() }
+          }
+        })
+        // Aggregate trap inspections per scout this week
         ;(trapInspData || []).forEach((r: any) => {
           const sid = r.scout_id || 'unknown'
-          const name = scoutLookup[sid] || 'Unknown'
+          const name = scoutLookup[sid]?.name || 'Unknown'
           if (!scoutInspMap[sid]) scoutInspMap[sid] = { name, traps: new Set() }
           scoutInspMap[sid].traps.add(r.trap_id)
         })
         const inspectedThisWeek = new Set((trapInspData || []).map((r: any) => r.trap_id)).size
-        const perScout = Object.values(scoutInspMap)
-          .map(s => ({ name: s.name, count: s.traps.size }))
+        const perScout = Object.entries(scoutInspMap)
+          .map(([sid, s]) => ({
+            name: s.name, count: s.traps.size, routeLength: scoutRouteLengths[sid] || 0,
+          }))
           .sort((a, b) => b.count - a.count)
 
         setTrapWeekData({ totalTraps: activeTrapIds.length, inspectedTraps: inspectedThisWeek, perScout })
@@ -679,36 +699,38 @@ export default function DashboardPage() {
                 <div style={{ marginTop: 4 }}>
                   {trapWeekData.perScout.length === 0 ? (
                     <div style={{ fontSize: 13, color: '#9aaa9f' }}>No trap inspections recorded this week.</div>
-                  ) : trapWeekData.perScout.map(s => (
+                  ) : trapWeekData.perScout.map(s => {
+                    const pct = s.routeLength > 0 ? (s.count / s.routeLength) * 100 : 0
+                    return (
                     <div className="scout-row" key={s.name}>
                       <div className="scout-name">{s.name}</div>
                       <div className="pest-bar-bg">
                         <div
                           className="pest-bar-fill"
                           style={{
-                            width: `${trapWeekData.totalTraps > 0 ? (s.count / trapWeekData.totalTraps) * 100 : 0}%`,
-                            background: 'linear-gradient(90deg, #b36a00, #f0a500)',
+                            width: `${pct}%`,
+                            background: pct >= 100 ? 'linear-gradient(90deg, #2a6e45, #4caf72)' : 'linear-gradient(90deg, #b36a00, #f0a500)',
                           }}
                         />
                       </div>
-                      <div className="scout-count">{s.count} traps</div>
+                      <div className="scout-count">{s.count}/{s.routeLength}</div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               )}
             </div>
-
-            <PestAlertSummary farmIds={effectiveFarmIds} onPestSelect={handlePestSelect} />
 
             {orgId && farms.map(farm => (
               <RebaitSummaryPanel key={farm.id} orgId={orgId} farmId={farm.id} farmName={farm.full_name} />
             ))}
 
+            <PestAlertSummary farmIds={effectiveFarmIds} onPestSelect={handlePestSelect} />
+
             <div ref={pressureMapRef} id="pressure-map">
               <OrchardPressureMap key={selectedPestId ?? 'default'} initialPestId={selectedPestId} />
             </div>
 
-            <TreeScoutingAlertSummary farmIds={effectiveFarmIds} />
+            <TreeScoutingAlertSummary farmIds={effectiveFarmIds} onPestSelect={() => router.push('/inspections')} />
 
             <PestTrendChart />
           </main>

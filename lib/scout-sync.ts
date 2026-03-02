@@ -87,6 +87,27 @@ export async function pullReferenceData(supabaseKey: string, accessToken?: strin
         })))
         console.log(`[Sync] Pulled ${configs.length} farm pest config overrides`)
       }
+
+      // Fetch rebait due count for the scout's trap route
+      const firstTrapId = typeof window !== 'undefined' ? localStorage.getItem('farmscout_first_trap_id') : null
+      if (firstTrapId) {
+        try {
+          const rebaitRes = await fetch(`${SUPABASE_REST}/rpc/get_scout_rebait_due_count`, {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ p_farm_id: farmId, p_first_trap_id: firstTrapId }),
+          })
+          if (rebaitRes.ok) {
+            const count = await rebaitRes.json()
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('farmscout_rebait_due', String(typeof count === 'number' ? count : 0))
+            }
+          }
+        } catch (err) {
+          console.error('[Sync] Rebait due count fetch failed:', err)
+          // Non-fatal — don't throw
+        }
+      }
     }
 
     // Fetch scout's zone assignments via server-side route (bypasses RLS)

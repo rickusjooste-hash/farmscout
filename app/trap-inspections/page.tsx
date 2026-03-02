@@ -121,6 +121,7 @@ export default function TrapInspectionsPage() {
 
   const [selectedScoutId, setSelectedScoutId] = useState<string | null>(null)
   const [selectedPestId, setSelectedPestId] = useState<string | null>(null)
+  const [selectedOrchardId, setSelectedOrchardId] = useState<string | null>(null)
   const [selectedDot, setSelectedDot] = useState<TrapDot | null>(null)
   const [trapCounts, setTrapCounts] = useState<TrapCountRow[]>([])
   const [loadingDetail, setLoadingDetail] = useState(false)
@@ -150,26 +151,39 @@ export default function TrapInspectionsPage() {
       .map(d => ({ id: d.pest_id, name: d.pest_name }))
   }, [dots])
 
+  const uniqueOrchards = useMemo(() => {
+    const seen = new Set<string>()
+    return dots
+      .filter(d => { if (seen.has(d.orchard_id)) return false; seen.add(d.orchard_id); return true })
+      .map(d => ({ id: d.orchard_id, name: d.orchard_name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [dots])
+
   const visibleDots = useMemo(() =>
     dots.filter(d =>
       d.has_location &&
-      (!selectedScoutId || d.scout_id === selectedScoutId) &&
-      (!selectedPestId  || d.pest_id  === selectedPestId)
+      (!selectedScoutId   || d.scout_id   === selectedScoutId) &&
+      (!selectedPestId    || d.pest_id    === selectedPestId) &&
+      (!selectedOrchardId || d.orchard_id === selectedOrchardId)
     ),
-    [dots, selectedScoutId, selectedPestId]
+    [dots, selectedScoutId, selectedPestId, selectedOrchardId]
   )
 
   const filteredCoverage = useMemo(() =>
-    coverage.filter(c => !selectedPestId || c.pest_id === selectedPestId),
-    [coverage, selectedPestId]
+    coverage.filter(c =>
+      (!selectedPestId    || c.pest_id    === selectedPestId) &&
+      (!selectedOrchardId || c.orchard_id === selectedOrchardId)
+    ),
+    [coverage, selectedPestId, selectedOrchardId]
   )
 
   const totalInspected = useMemo(() =>
     dots.filter(d =>
-      (!selectedScoutId || d.scout_id === selectedScoutId) &&
-      (!selectedPestId  || d.pest_id  === selectedPestId)
+      (!selectedScoutId   || d.scout_id   === selectedScoutId) &&
+      (!selectedPestId    || d.pest_id    === selectedPestId) &&
+      (!selectedOrchardId || d.orchard_id === selectedOrchardId)
     ).length,
-    [dots, selectedScoutId, selectedPestId]
+    [dots, selectedScoutId, selectedPestId, selectedOrchardId]
   )
 
   const inspectedTraps = filteredCoverage.filter(c => c.inspected).length
@@ -198,6 +212,7 @@ export default function TrapInspectionsPage() {
       setSelectedDot(null)
       setSelectedScoutId(null)
       setSelectedPestId(null)
+      setSelectedOrchardId(null)
       const { from, to } = isoWeekRange(weekYear, weekNum)
       const params = {
         p_farm_ids: effectiveFarmIds,
@@ -594,6 +609,24 @@ export default function TrapInspectionsPage() {
                 </span>
               )}
             </button>
+
+            {/* Orchard filter */}
+            <select
+              value={selectedOrchardId ?? ''}
+              onChange={e => setSelectedOrchardId(e.target.value || null)}
+              style={{
+                padding: '5px 10px', borderRadius: 8, border: '1.5px solid #d0cdc6',
+                background: selectedOrchardId ? '#eef5f1' : '#fff',
+                color: selectedOrchardId ? '#1c3a2a' : '#6a7a70',
+                fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+                maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis',
+              }}
+            >
+              <option value="">All Orchards</option>
+              {uniqueOrchards.map(o => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </select>
 
             {/* Stats */}
             <div style={{ marginLeft: 'auto', fontSize: 13, color: '#6a7a70', display: 'flex', alignItems: 'center', gap: 8 }}>

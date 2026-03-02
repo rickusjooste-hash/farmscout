@@ -50,6 +50,7 @@ export default function PestAlertSummary({ farmIds, onPestSelect }: Props) {
   const supabase = createClient()
   const [rows, setRows] = useState<PestSummaryRow[]>([])
   const [loading, setLoading] = useState(() => farmIds.length > 0)
+  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     if (farmIds.length === 0) return
@@ -75,12 +76,17 @@ export default function PestAlertSummary({ farmIds, onPestSelect }: Props) {
 
   return (
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 20 }}>
-      <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0ede6' }}>
-        <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a' }}>Pest Alerts</div>
-        <div style={{ fontSize: 12, color: '#9aaa9f', marginTop: 3 }}>This week vs last week — click View to jump to map</div>
+      <div style={{ padding: '16px 20px', borderBottom: expanded ? '1px solid #f0ede6' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => setExpanded(e => !e)}>
+        <div>
+          <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a' }}>Pest Alerts</div>
+          <div style={{ fontSize: 12, color: '#9aaa9f', marginTop: 3 }}>
+            {expanded ? 'This week vs last week — click View to jump to map' : `${rows.length} pest${rows.length !== 1 ? 's' : ''} tracked · ${rows.filter(r => Number(r.red_orchards) > 0).length} with alerts`}
+          </div>
+        </div>
+        <span style={{ fontSize: 13, color: '#7a8a80', transition: 'transform 0.2s', display: 'inline-block', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
       </div>
 
-      <div>
+      {expanded && <div>
         {rows.map(row => {
           const muted = Number(row.red_orchards) === 0 && Number(row.yellow_orchards) === 0
           const borderColor = rowBorderColor(row)
@@ -149,7 +155,7 @@ export default function PestAlertSummary({ farmIds, onPestSelect }: Props) {
             </div>
           )
         })}
-      </div>
+      </div>}
     </div>
   )
 }

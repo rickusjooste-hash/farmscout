@@ -122,7 +122,6 @@ export default function RebaitSummaryPanel({ orgId, farmId, farmName }: Props) {
         onClick={() => setPanelExpanded(e => !e)}
         style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}
       >
-        <span style={{ fontSize: 13, color: '#9aaa9f', display: 'inline-block', transition: 'transform 0.2s', transform: panelExpanded ? 'rotate(90deg)' : 'none' }}>▶</span>
         <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a', flex: 1 }}>
           Rebait Reminder{farmName ? <span style={{ fontSize: 13, fontWeight: 400, color: '#7a8a80', marginLeft: 8 }}>{farmName}</span> : null}
         </div>
@@ -136,6 +135,7 @@ export default function RebaitSummaryPanel({ orgId, farmId, farmName }: Props) {
             🟡 {dueSoonCount} due soon
           </span>
         )}
+        <span style={{ fontSize: 13, color: '#7a8a80', display: 'inline-block', transition: 'transform 0.2s', transform: panelExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
       </button>
 
       {panelExpanded && <>
