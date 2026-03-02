@@ -7,12 +7,14 @@ interface UserContext {
   farmIds: string[]
   isSuperAdmin: boolean
   contextLoaded: boolean
+  orgId: string | null
 }
 
 export function useUserContext(): UserContext {
   const supabase = createClient()
   const [farmIds, setFarmIds] = useState<string[] | null>(null)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const [orgId, setOrgId] = useState<string | null>(null)
 
   useEffect(() => {
     // Safety net: if the auth call hangs (e.g. stale session trying to refresh),
@@ -29,6 +31,8 @@ export function useUserContext(): UserContext {
           .select('role, organisation_id')
           .eq('user_id', user.id)
           .single()
+
+        if (orgUser?.organisation_id) setOrgId(orgUser.organisation_id)
 
         if (orgUser?.role === 'super_admin') {
           setIsSuperAdmin(true)
@@ -65,5 +69,6 @@ export function useUserContext(): UserContext {
     farmIds: farmIds ?? [],
     isSuperAdmin,
     contextLoaded: farmIds !== null,
+    orgId,
   }
 }
