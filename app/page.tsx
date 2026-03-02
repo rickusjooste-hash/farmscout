@@ -29,6 +29,8 @@ export default function DashboardPage() {
   const [orchards, setOrchards] = useState<Orchard[]>([])
   const [weekSessions, setWeekSessions] = useState<string[]>([])
   const [weekExpanded, setWeekExpanded] = useState(false)
+  const [weekScoutMap, setWeekScoutMap] = useState<Record<string, { name: string; orchardIds: string[] }>>({})
+  const [expandedWeekScout, setExpandedWeekScout] = useState<string | null>(null)
   const [trapWeekExpanded, setTrapWeekExpanded] = useState(false)
   const [trapWeekData, setTrapWeekData] = useState<{
     totalTraps: number
@@ -99,7 +101,7 @@ export default function DashboardPage() {
         ] = await Promise.all([
           orchardIds.length > 0
             ? supabase.from('inspection_sessions')
-                .select('orchard_id')
+                .select('orchard_id, scout_id')
                 .gte('inspected_at', weekStart.toISOString())
                 .in('orchard_id', orchardIds)
             : Promise.resolve({ data: [], error: null, count: null, status: 200, statusText: 'OK' }),
@@ -153,6 +155,19 @@ export default function DashboardPage() {
         setTrapWeekData({ totalTraps: activeTrapIds.length, inspectedTraps: inspectedThisWeek, perScout })
         setOrchards(orchardData || [])
         setWeekSessions([...new Set((weekData || []).map((r: any) => r.orchard_id))])
+
+        // Build per-scout tree scouting map
+        const scoutOrchardSets: Record<string, Set<string>> = {}
+        ;(weekData || []).forEach((r: any) => {
+          const sid = r.scout_id || 'unknown'
+          if (!scoutOrchardSets[sid]) scoutOrchardSets[sid] = new Set()
+          scoutOrchardSets[sid].add(r.orchard_id)
+        })
+        const scoutMapResult: Record<string, { name: string; orchardIds: string[] }> = {}
+        Object.entries(scoutOrchardSets).forEach(([sid, orchardSet]) => {
+          scoutMapResult[sid] = { name: scoutLookup[sid]?.name || 'Unknown', orchardIds: [...orchardSet] }
+        })
+        setWeekScoutMap(scoutMapResult)
       } catch (err) {
         console.error('Dashboard fetchData error:', err)
       } finally {
@@ -650,15 +665,48 @@ export default function DashboardPage() {
                 </button>
               </div>
               {weekExpanded && (
-                <div className="orchard-pills">
-                  {orchards.map(o => (
-                    <div
-                      key={o.id}
-                      className={`orchard-pill ${weekSessions.includes(o.id) ? 'done' : 'pending'}`}
-                    >
-                      {weekSessions.includes(o.id) ? '✓ ' : ''}{o.name}
-                    </div>
-                  ))}
+                <div style={{ marginTop: 4 }}>
+                  {Object.keys(weekScoutMap).length === 0 ? (
+                    <div style={{ fontSize: 13, color: '#9aaa9f' }}>No tree scouting recorded this week.</div>
+                  ) : (
+                    Object.entries(weekScoutMap)
+                      .sort((a, b) => b[1].orchardIds.length - a[1].orchardIds.length)
+                      .map(([scoutId, { name, orchardIds }]) => {
+                        const pct = totalOrchards > 0 ? (orchardIds.length / totalOrchards) * 100 : 0
+                        const isScoutExpanded = expandedWeekScout === scoutId
+                        return (
+                          <div key={scoutId}>
+                            <div
+                              className="scout-row"
+                              onClick={() => setExpandedWeekScout(prev => prev === scoutId ? null : scoutId)}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <div className="scout-name">{name}</div>
+                              <div className="pest-bar-bg">
+                                <div className="pest-bar-fill" style={{ width: `${pct}%` }} />
+                              </div>
+                              <div className="scout-count">{orchardIds.length}/{totalOrchards}</div>
+                              <span style={{
+                                fontSize: 11, color: '#7a8a80', transition: 'transform 0.2s',
+                                display: 'inline-block', transform: isScoutExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                              }}>▼</span>
+                            </div>
+                            {isScoutExpanded && (
+                              <div className="orchard-pills" style={{ paddingLeft: 12, marginBottom: 8 }}>
+                                {orchards.map(o => {
+                                  const done = orchardIds.includes(o.id)
+                                  return (
+                                    <div key={o.id} className={`orchard-pill ${done ? 'done' : 'pending'}`}>
+                                      {done ? '✓ ' : ''}{o.name}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })
+                  )}
                 </div>
               )}
             </div>
