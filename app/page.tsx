@@ -7,6 +7,7 @@ import PestTrendChart from '@/app/components/PestTrendChart'
 import OrchardPressureMap from '@/app/components/OrchardPressureMap'
 import PestAlertSummary from '@/app/components/PestAlertSummary'
 import TreeScoutingAlertSummary from '@/app/components/TreeScoutingAlertSummary'
+import RebaitSummaryPanel from '@/app/components/RebaitSummaryPanel'
 import { useRouter } from 'next/navigation'
 import { Inter } from 'next/font/google'
 
@@ -34,10 +35,11 @@ export default function DashboardPage() {
     inspectedTraps: number
     perScout: Array<{ name: string; count: number }>
   }>({ totalTraps: 0, inspectedTraps: 0, perScout: [] })
-  const { farmIds, isSuperAdmin, contextLoaded } = useUserContext()
+  const { farmIds, isSuperAdmin, contextLoaded, orgId } = useUserContext()
   const [loading, setLoading] = useState(true)
   const [selectedPestId, setSelectedPestId] = useState<string | undefined>()
   const [effectiveFarmIds, setEffectiveFarmIds] = useState<string[]>([])
+  const [farms, setFarms] = useState<{ id: string; full_name: string }[]>([])
   const pressureMapRef = useRef<HTMLDivElement>(null)
 
   function handlePestSelect(pestId: string) {
@@ -63,14 +65,17 @@ export default function DashboardPage() {
           .eq('is_active', true)
           .order('name')
         let trapIdsQuery = supabase.from('traps').select('id').eq('is_active', true)
-        let farmIdsQuery = supabase.from('farms').select('id').eq('is_active', true)
+        let farmIdsQuery = supabase.from('farms').select('id, full_name').eq('is_active', true)
         if (!isSuperAdminUser && farmIds.length > 0) {
           orchardQuery = orchardQuery.in('farm_id', farmIds)
           trapIdsQuery = trapIdsQuery.in('farm_id', farmIds)
           farmIdsQuery = farmIdsQuery.in('id', farmIds)
         }
         const [{ data: orchardData }, { data: activeTrapData }, { data: farmData }] = await Promise.all([orchardQuery, trapIdsQuery, farmIdsQuery])
-        setEffectiveFarmIds((farmData || []).map((f: any) => f.id))
+        const farmList = (farmData || []) as { id: string; full_name: string }[]
+        setEffectiveFarmIds(farmList.map(f => f.id))
+        setFarms(farmList)
+
         const activeTrapIds = (activeTrapData || []).map((t: any) => t.id)
 
         const orchardIds = (orchardData || []).map(o => o.id)
@@ -564,11 +569,12 @@ export default function DashboardPage() {
 <a href="/" className="nav-item active"><span className="nav-icon">📊</span> Dashboard</a>
 <a href="/orchards" className="nav-item"><span className="nav-icon">🏡</span> Orchards</a>
 <a href="/pests" className="nav-item"><span className="nav-icon">🐛</span> Pests</a>
-<a className="nav-item"><span className="nav-icon">🪤</span> Traps</a>
-<a className="nav-item"><span className="nav-icon">🔍</span> Inspections</a>
+<a href="/trap-inspections" className="nav-item"><span className="nav-icon">🪤</span> Trap Inspections</a>
+<a href="/inspections" className="nav-item"><span className="nav-icon">🔍</span> Inspections</a>
 <a href="/scouts" className="nav-item"><span>👷</span> Scouts</a>
 <a href="/scouts/new" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>➕</span> New Scout</a>
 <a href="/scouts/sections" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>🗂️</span> Sections</a>
+<a href="/settings" className="nav-item"><span className="nav-icon">🔔</span> Settings</a>
 {isSuperAdmin && <a href="/admin" className="nav-item"><span>⚙️</span> Admin</a>}
             <div className="sidebar-footer">
   Mouton's Valley Group<br />
@@ -693,6 +699,10 @@ export default function DashboardPage() {
             </div>
 
             <PestAlertSummary farmIds={effectiveFarmIds} onPestSelect={handlePestSelect} />
+
+            {orgId && farms.map(farm => (
+              <RebaitSummaryPanel key={farm.id} orgId={orgId} farmId={farm.id} farmName={farm.full_name} />
+            ))}
 
             <div ref={pressureMapRef} id="pressure-map">
               <OrchardPressureMap key={selectedPestId ?? 'default'} initialPestId={selectedPestId} />

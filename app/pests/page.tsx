@@ -602,8 +602,8 @@ export default function PestsPage() {
           <a href="/" className="nav-item"><span>📊</span> Dashboard</a>
           <a href="/orchards" className="nav-item"><span>🏡</span> Orchards</a>
           <a href="/pests" className="nav-item active"><span>🐛</span> Pests</a>
-          <a className="nav-item"><span>🪤</span> Traps</a>
-          <a className="nav-item"><span>🔍</span> Inspections</a>
+          <a href="/trap-inspections" className="nav-item"><span>🪤</span> Trap Inspections</a>
+          <a href="/inspections" className="nav-item"><span>🔍</span> Inspections</a>
           <a href="/scouts" className="nav-item"><span>👷</span> Scouts</a>
           <a href="/scouts/new" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>➕</span> New Scout</a>
           <a href="/scouts/sections" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>🗂️</span> Sections</a>

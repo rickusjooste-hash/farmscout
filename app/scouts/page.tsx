@@ -3,6 +3,11 @@
 import { createClient } from '@/lib/supabase-auth'
 import { useUserContext } from '@/lib/useUserContext'
 import { useEffect, useState } from 'react'
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent,
+} from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface Scout {
   id: string
@@ -45,6 +50,33 @@ interface AvailableTrap {
   orchard_name: string
 }
 
+function SortableRouteRow({
+  trap, isLast, onRemove, saving,
+}: {
+  trap: RouteTrap; isLast: boolean; onRemove: (id: string) => void; saving: boolean
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: trap.trap_id })
+  return (
+    <div
+      ref={setNodeRef}
+      className="route-row"
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1, zIndex: isDragging ? 1 : 0 }}
+    >
+      <div {...attributes} {...listeners} className="drag-handle">⠿</div>
+      <div className="route-col-stop">
+        <div className={isLast ? 'last-stop-nr' : 'stop-nr'}>{trap.stop_number}</div>
+      </div>
+      <div className="route-col-trap"><strong>{trap.trap_nr ?? '—'}</strong></div>
+      <div className="route-col-zone">{trap.zone_name ?? '—'}</div>
+      <div className="route-col-pest">{trap.pest_name ?? '—'}</div>
+      <div className="route-col-lure">{trap.lure_name ?? '—'}</div>
+      <div className="route-col-remove">
+        <button className="remove-btn" onClick={() => onRemove(trap.trap_id)} disabled={saving} title="Remove from route">✕</button>
+      </div>
+    </div>
+  )
+}
+
 export default function ScoutsPage() {
   const supabase = createClient()
   const { farmIds, isSuperAdmin, contextLoaded } = useUserContext()
@@ -67,7 +99,8 @@ export default function ScoutsPage() {
   const [saving, setSaving] = useState(false)
   const [showAvailable, setShowAvailable] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [insertAfterTrap, setInsertAfterTrap] = useState<RouteTrap | null>(null)
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   // Load farms on context ready
   useEffect(() => {
@@ -125,7 +158,6 @@ export default function ScoutsPage() {
     setSelectedScout(scout)
     setView('route-manager')
     setShowAvailable(false)
-    setInsertAfterTrap(null)
   }
 
   // Load route when scout selected for route manager
@@ -159,36 +191,42 @@ export default function ScoutsPage() {
     setShowAvailable(true)
   }
 
-  async function addTrap(trapId: string) {
-    if (!selectedScout || saving) return
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = route.findIndex(t => t.trap_id === active.id)
+    const newIndex = route.findIndex(t => t.trap_id === over.id)
+    const newRoute = arrayMove(route, oldIndex, newIndex)
+    setRoute(newRoute)  // optimistic
+    await supabase.rpc('reorder_trap_route', {
+      p_scout_id: selectedScout!.id,
+      p_trap_ids: newRoute.map(t => t.trap_id),
+    })
+  }
+
+  async function handleRemoveTrap(trapId: string) {
+    if (saving) return
     setSaving(true)
-    if (insertAfterTrap) {
-      await supabase.rpc('insert_trap_after', {
-        after_trap_id: insertAfterTrap.trap_id,
-        new_trap_id: trapId,
-      })
-      setInsertAfterTrap(null)
-    } else {
-      await supabase.rpc('add_trap_to_route', {
-        scout_id: selectedScout.id,
-        new_trap_id: trapId,
-      })
+    const newRoute = route.filter(t => t.trap_id !== trapId)
+    setRoute(newRoute)  // optimistic
+    await supabase.rpc('reorder_trap_route', {
+      p_scout_id: selectedScout!.id,
+      p_trap_ids: newRoute.map(t => t.trap_id),
+    })
+    if (showAvailable) {
+      const { data } = await supabase.rpc('get_available_traps', { scout_id: selectedScout!.id })
+      setAvailableTraps(data || [])
     }
-    await loadRoute()
-    const { data } = await supabase.rpc('get_available_traps', { scout_id: selectedScout.id })
-    setAvailableTraps(data || [])
     setSaving(false)
   }
 
-  async function removeLastTrap() {
-    if (!selectedScout || saving || route.length === 0) return
+  async function addTrap(trapId: string) {
+    if (!selectedScout || saving) return
     setSaving(true)
-    await supabase.rpc('remove_last_trap_from_route', { scout_id: selectedScout.id })
+    await supabase.rpc('add_trap_to_route', { scout_id: selectedScout.id, new_trap_id: trapId })
     await loadRoute()
-    if (showAvailable) {
-      const { data } = await supabase.rpc('get_available_traps', { scout_id: selectedScout.id })
-      setAvailableTraps(data || [])
-    }
+    const { data } = await supabase.rpc('get_available_traps', { scout_id: selectedScout.id })
+    setAvailableTraps(data || [])
     setSaving(false)
   }
 
@@ -246,17 +284,30 @@ export default function ScoutsPage() {
         .btn-secondary { background: #f4f1eb; color: #3a4a40; border: 1px solid #e0ddd6; }
         .btn-secondary:hover { background: #e8e4dc; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .route-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid #e8e4dc; }
-        .route-table th {
-          padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 600;
-          text-transform: uppercase; letter-spacing: 0.8px; color: #9aaa9f;
-          background: #f9f7f3; border-bottom: 1px solid #e8e4dc;
+        .drag-handle {
+          width: 28px; flex-shrink: 0; color: #b0bdb5; font-size: 15px;
+          text-align: center; cursor: grab; user-select: none; touch-action: none;
         }
-        .route-table td { padding: 12px 16px; font-size: 13px; color: #2a3a30; border-bottom: 1px solid #f4f1eb; }
-        .route-table tr:last-child td { border-bottom: none; }
-        .route-table tr:hover .insert-btn { opacity: 1 !important; }
-        .insert-btn:hover { background: #f0f7f2 !important; border-color: #2a6e45 !important; }
-        .route-table tr:hover td { background: #f9f7f3; }
+        .drag-handle:active { cursor: grabbing; }
+        .route-row {
+          display: flex; align-items: center; padding: 12px 16px;
+          border-bottom: 1px solid #f4f1eb; background: #fff;
+        }
+        .route-row:last-child { border-bottom: none; }
+        .route-row:hover { background: #f9f7f3; }
+        .route-col-stop  { width: 48px; flex-shrink: 0; }
+        .route-col-trap  { width: 72px; flex-shrink: 0; font-size: 13px; color: #2a3a30; }
+        .route-col-zone  { flex: 1; min-width: 80px; font-size: 13px; color: #2a3a30; }
+        .route-col-pest  { flex: 1; min-width: 80px; font-size: 13px; color: #2a3a30; }
+        .route-col-lure  { flex: 1; min-width: 80px; font-size: 13px; color: #2a3a30; }
+        .route-col-remove { width: 32px; flex-shrink: 0; text-align: right; }
+        .remove-btn {
+          background: none; border: none; cursor: pointer; color: #c0ccc5;
+          font-size: 14px; padding: 0; width: 24px; height: 24px; border-radius: 50%;
+          display: flex; align-items: center; justify-content: center; transition: all 0.1s;
+        }
+        .remove-btn:hover { background: #fdecea; color: #e85a4a; }
+        .remove-btn:disabled { opacity: 0.3; cursor: not-allowed; }
         .stop-nr {
           width: 28px; height: 28px; border-radius: 50%; background: #1c3a2a;
           color: #a8d5a2; display: inline-flex; align-items: center; justify-content: center;
@@ -267,9 +318,6 @@ export default function ScoutsPage() {
           color: #000; display: inline-flex; align-items: center; justify-content: center;
           font-size: 11px; font-weight: 700;
         }
-        .badge-green { display: inline-flex; align-items: center; gap: 4px; color: #4caf72; font-size: 11px; font-weight: 600; }
-        .badge-end { display: inline-flex; align-items: center; gap: 4px; color: #6b7fa8; font-size: 11px; font-weight: 600; background: #eef0f7; padding: 2px 8px; border-radius: 20px; }
-        .badge-broken { display: inline-flex; align-items: center; gap: 4px; color: #e85a4a; font-size: 11px; font-weight: 600; background: #fdf0ee; padding: 2px 8px; border-radius: 20px; }
         .available-panel { background: #fff; border-radius: 12px; border: 1px solid #e8e4dc; overflow: hidden; }
         .available-header { padding: 16px; border-bottom: 1px solid #e8e4dc; }
         .available-title { font-size: 14px; font-weight: 600; color: #1c3a2a; margin-bottom: 8px; }
@@ -332,8 +380,8 @@ export default function ScoutsPage() {
           <a href="/" className="nav-item"><span>📊</span> Dashboard</a>
           <a href="/orchards" className="nav-item"><span>🏡</span> Orchards</a>
           <a href="/pests" className="nav-item"><span>🐛</span> Pests</a>
-          <a className="nav-item"><span>🪤</span> Traps</a>
-          <a className="nav-item"><span>🔍</span> Inspections</a>
+          <a href="/trap-inspections" className="nav-item"><span>🪤</span> Trap Inspections</a>
+          <a href="/inspections" className="nav-item"><span>🔍</span> Inspections</a>
           <a href="/scouts" className="nav-item active"><span>👷</span> Scouts</a>
           <a href="/scouts/new" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>➕</span> New Scout</a>
           <a href="/scouts/sections" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>🗂️</span> Sections</a>
@@ -449,7 +497,6 @@ export default function ScoutsPage() {
                 <button className="back-btn" onClick={() => {
                   setView('directory')
                   setShowAvailable(false)
-                  setInsertAfterTrap(null)
                 }}>
                   ← Back to Scouts
                 </button>
@@ -473,7 +520,6 @@ export default function ScoutsPage() {
                       onClick={() => {
                         if (showAvailable) {
                           setShowAvailable(false)
-                          setInsertAfterTrap(null)
                         } else {
                           loadAvailableTraps()
                         }
@@ -482,15 +528,6 @@ export default function ScoutsPage() {
                     >
                       {showAvailable ? '✕ Close' : '+ Add Trap'}
                     </button>
-                    {route.length > 0 && (
-                      <button
-                        className="btn btn-danger"
-                        onClick={removeLastTrap}
-                        disabled={saving}
-                      >
-                        {saving ? 'Saving...' : '− Remove Last Trap'}
-                      </button>
-                    )}
                   </div>
 
                   {loadingRoute ? (
@@ -498,65 +535,30 @@ export default function ScoutsPage() {
                   ) : route.length === 0 ? (
                     <div className="empty">No route found. Add traps using the button above.</div>
                   ) : (
-                    <table className="route-table">
-                      <thead>
-                        <tr>
-                          <th>Stop</th>
-                          <th>Trap #</th>
-                          <th>Zone</th>
-                          <th>Pest</th>
-                          <th>Lure</th>
-                          <th>Status</th>
-                          <th></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {route.map((trap) => (
-                          <tr key={trap.trap_id}>
-                            <td>
-                              {trap.stop_number === route.length ? (
-                                <div className="last-stop-nr">{trap.stop_number}</div>
-                              ) : (
-                                <div className="stop-nr">{trap.stop_number}</div>
-                              )}
-                            </td>
-                            <td><strong>{trap.trap_nr || '—'}</strong></td>
-                            <td>{trap.zone_name || '—'}</td>
-                            <td>{trap.pest_name || '—'}</td>
-                            <td>{trap.lure_name || '—'}</td>
-                            <td>
-                              {trap.next_trap_id ? (
-                                <span className="badge-green">✓ Linked</span>
-                              ) : trap.stop_number === route.length ? (
-                                <span className="badge-end">⚑ End of route</span>
-                              ) : (
-                                <span className="badge-broken">⚠ Chain broken</span>
-                              )}
-                            </td>
-                            <td>
-                              <button
-                                onClick={() => {
-                                  setInsertAfterTrap(trap)
-                                  if (!showAvailable) loadAvailableTraps()
-                                  setShowAvailable(true)
-                                }}
-                                style={{
-                                  background: 'none', border: '1.5px solid #e0ddd6',
-                                  borderRadius: '50%', width: 24, height: 24,
-                                  cursor: 'pointer', fontSize: 16, color: '#2a6e45',
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  opacity: 0, transition: 'opacity 0.1s',
-                                }}
-                                className="insert-btn"
-                                title={`Insert trap after stop ${trap.stop_number}`}
-                              >
-                                +
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                      <SortableContext items={route.map(t => t.trap_id)} strategy={verticalListSortingStrategy}>
+                        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e8e4dc', overflow: 'hidden' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', padding: '10px 16px', background: '#f9f7f3', borderBottom: '1px solid #e8e4dc' }}>
+                            <div style={{ width: 28 }} />
+                            {['Stop', 'Trap #', 'Zone', 'Pest', 'Lure', ''].map((h, i) => (
+                              <div key={i} className={['route-col-stop','route-col-trap','route-col-zone','route-col-pest','route-col-lure','route-col-remove'][i]}
+                                style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#9aaa9f' }}>
+                                {h}
+                              </div>
+                            ))}
+                          </div>
+                          {route.map(trap => (
+                            <SortableRouteRow
+                              key={trap.trap_id}
+                              trap={trap}
+                              isLast={trap.stop_number === route.length}
+                              onRemove={handleRemoveTrap}
+                              saving={saving}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
                   )}
                 </div>
 
@@ -565,10 +567,7 @@ export default function ScoutsPage() {
                     <div className="available-panel">
                       <div className="available-header">
                         <div className="available-title">
-                          {insertAfterTrap
-                            ? `Insert after Stop ${insertAfterTrap.stop_number} (Trap #${insertAfterTrap.trap_nr})`
-                            : 'Available Traps'
-                          }
+                          Available Traps
                           {!loadingAvailable && (
                             <span style={{ color: '#9aaa9f', fontWeight: 400, marginLeft: 6 }}>
                               ({filteredAvailable.length})
