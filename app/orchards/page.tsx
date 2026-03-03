@@ -143,7 +143,7 @@ export default function OrchardsPage() {
         const map = L.map(mapRef.current, { center: [-32.785, 18.715], zoom: 13, maxZoom: 19 })
         L.tileLayer(
           'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          { attribution: '© Esri', maxZoom: 19 }
+          { attribution: '© Esri', maxZoom: 19, maxNativeZoom: 18 }
         ).addTo(map)
         mapRef.current._map = map
         setMapReady(true)

@@ -267,7 +267,7 @@ export default function TrapInspectionsPage() {
         })
         L.tileLayer(
           'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          { maxZoom: 19 }
+          { maxZoom: 19, maxNativeZoom: 18 }
         ).addTo(map)
         map.createPane('dotsPane')
         ;(map.getPane('dotsPane') as HTMLElement).style.zIndex = '650'

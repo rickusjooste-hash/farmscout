@@ -176,7 +176,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
       map = L.map(container, { zoomControl: true, attributionControl: false, scrollWheelZoom: true, maxZoom: 19 })
       L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        { maxZoom: 19 },
+        { maxZoom: 19, maxNativeZoom: 18 },
       ).addTo(map)
       mapInstanceRef.current = map
       setTimeout(() => { if (!cancelled) map.invalidateSize() }, 150)

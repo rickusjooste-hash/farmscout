@@ -203,7 +203,7 @@ export default function InspectionsPage() {
         })
         L.tileLayer(
           'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          { maxZoom: 19 }
+          { maxZoom: 19, maxNativeZoom: 18 }
         ).addTo(map)
         // Custom pane for tree dots — sits above the default overlayPane (z-index 400)
         // so dots are always clickable regardless of polygon add order
