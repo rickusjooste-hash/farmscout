@@ -263,6 +263,7 @@ export default function AdminPage() {
           <a href="/pests" className="nav-item"><span>🐛</span> Pests</a>
           <a href="/trap-inspections" className="nav-item"><span>🪤</span> Trap Inspections</a>
           <a href="/inspections" className="nav-item"><span>🔍</span> Inspections</a>
+          <a href="/heatmap" className="nav-item"><span>🌡️</span> Heat Map</a>
           <a href="/scouts" className="nav-item"><span>👷</span> Scouts</a>
           <a href="/scouts/new" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>➕</span> New Scout</a>
           <a href="/scouts/sections" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>🗂️</span> Sections</a>

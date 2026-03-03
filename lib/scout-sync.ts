@@ -122,6 +122,24 @@ export async function pullReferenceData(supabaseKey: string, accessToken?: strin
       }
     }
 
+    // Restore this week's inspection progress from Supabase (in case IndexedDB was cleared)
+    if (token) {
+      const progressRes = await fetch('/api/scout/pull-week-progress', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (progressRes.ok) {
+        const { sessions, trees } = await progressRes.json()
+        if (sessions.length > 0) {
+          await upsertMany('inspection_sessions', sessions.map((s: any) => ({ ...s, _syncStatus: 'synced' })))
+          console.log(`[Sync] Restored ${sessions.length} inspection sessions`)
+        }
+        if (trees.length > 0) {
+          await upsertMany('inspection_trees', trees.map((t: any) => ({ ...t, _syncStatus: 'synced' })))
+          console.log(`[Sync] Restored ${trees.length} inspection trees`)
+        }
+      }
+    }
+
     return { success: true }
   } catch (err) {
     console.error('[Sync] Pull failed:', err)

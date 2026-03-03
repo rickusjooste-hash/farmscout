@@ -329,7 +329,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
       const L = (await import('leaflet')).default
       leafletRef.current = L
       if (!mapRef.current._leaflet_id) {
-        const map = L.map(mapRef.current, { zoomControl: true, attributionControl: false, scrollWheelZoom: true })
+        const map = L.map(mapRef.current, { zoomControl: true, attributionControl: false, scrollWheelZoom: true, maxZoom: 19 })
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map)
         mapRef.current._map = map
         setMapReady(true)

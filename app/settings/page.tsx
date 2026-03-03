@@ -14,6 +14,8 @@ interface Recipient {
   full_name: string | null
   receives_purchase_list: boolean
   receives_rebait_schedule: boolean
+  receives_scout_report: boolean
+  receives_tree_report: boolean
 }
 
 interface FarmConfig {
@@ -245,6 +247,9 @@ export default function SettingsPage() {
           <a href="/" className="nav-item"><span>📊</span> Dashboard</a>
           <a href="/orchards" className="nav-item"><span>🏡</span> Orchards</a>
           <a href="/pests" className="nav-item"><span>🐛</span> Pests</a>
+          <a href="/trap-inspections" className="nav-item"><span>🪤</span> Trap Inspections</a>
+          <a href="/inspections" className="nav-item"><span>🔍</span> Inspections</a>
+          <a href="/heatmap" className="nav-item"><span>🌡️</span> Heat Map</a>
           <a href="/scouts" className="nav-item"><span>👷</span> Scouts</a>
           <a href="/settings" className="nav-item active"><span>⚙️</span> Settings</a>
         </aside>
@@ -324,6 +329,22 @@ export default function SettingsPage() {
                           onChange={e => updateRecipient(r.id, { receives_rebait_schedule: e.target.checked })}
                         />
                         Schedule
+                      </label>
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={r.receives_scout_report ?? false}
+                          onChange={e => updateRecipient(r.id, { receives_scout_report: e.target.checked })}
+                        />
+                        Scout Report
+                      </label>
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={r.receives_tree_report ?? false}
+                          onChange={e => updateRecipient(r.id, { receives_tree_report: e.target.checked })}
+                        />
+                        Tree Report
                       </label>
                       <button className="btn btn-danger" onClick={() => removeRecipient(r.id)}>Remove</button>
                     </div>

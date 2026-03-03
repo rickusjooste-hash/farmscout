@@ -140,7 +140,7 @@ export default function OrchardsPage() {
       await import('@geoman-io/leaflet-geoman-free')
       leafletRef.current = L
       if (mapRef.current && !mapRef.current._leaflet_id) {
-        const map = L.map(mapRef.current, { center: [-32.785, 18.715], zoom: 13 })
+        const map = L.map(mapRef.current, { center: [-32.785, 18.715], zoom: 13, maxZoom: 19 })
         L.tileLayer(
           'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
           { attribution: '© Esri', maxZoom: 19 }
@@ -487,6 +487,7 @@ export default function OrchardsPage() {
           <a href="/pests" className="nav-item"><span>🐛</span> Pests</a>
           <a href="/trap-inspections" className="nav-item"><span>🪤</span> Trap Inspections</a>
           <a href="/inspections" className="nav-item"><span>🔍</span> Inspections</a>
+          <a href="/heatmap" className="nav-item"><span>🌡️</span> Heat Map</a>
           <a href="/scouts" className="nav-item"><span>👷</span> Scouts</a>
           <a href="/scouts/sections" className="nav-item"><span>🗂️</span> Sections</a>
           <div className="sidebar-footer">

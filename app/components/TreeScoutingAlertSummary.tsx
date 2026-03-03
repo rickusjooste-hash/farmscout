@@ -173,7 +173,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
       const L = (await import('leaflet')).default
       if (cancelled) return
       leafletRef.current = L
-      map = L.map(container, { zoomControl: true, attributionControl: false, scrollWheelZoom: true })
+      map = L.map(container, { zoomControl: true, attributionControl: false, scrollWheelZoom: true, maxZoom: 19 })
       L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         { maxZoom: 19 },
