@@ -143,6 +143,16 @@ export default function QcHome() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [scanning, setScanning] = useState(false)
   const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pendingStreamRef = useRef<MediaStream | null>(null)
+
+  // Attach stream to video element once it mounts (scanning state flip renders the <video>)
+  useEffect(() => {
+    if (pendingStreamRef.current && videoRef.current && !videoRef.current.srcObject) {
+      videoRef.current.srcObject = pendingStreamRef.current
+      videoRef.current.play().catch(() => {})
+      pendingStreamRef.current = null
+    }
+  }, [scanning])
 
   // Unique commodities from orchards (for offline commodity picker)
   const availableCommodities = useCallback(() => {
@@ -211,7 +221,7 @@ export default function QcHome() {
     if (!('BarcodeDetector' in window)) { alert('QR scanning requires Chrome on Android.'); return }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
+      pendingStreamRef.current = stream
       setScanning(true)
       const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] })
       scanIntervalRef.current = setInterval(async () => {
@@ -314,7 +324,7 @@ export default function QcHome() {
     if (!('BarcodeDetector' in window)) { alert('QR scanning requires Chrome on Android.'); return }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
+      pendingStreamRef.current = stream
       setScanning(true)
       const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] })
       scanIntervalRef.current = setInterval(async () => {
@@ -326,10 +336,10 @@ export default function QcHome() {
 
   function stopScanner() {
     if (scanIntervalRef.current) { clearInterval(scanIntervalRef.current); scanIntervalRef.current = null }
-    if (videoRef.current?.srcObject) {
-      (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop())
-      videoRef.current.srcObject = null
-    }
+    const stream = (videoRef.current?.srcObject as MediaStream | null) || pendingStreamRef.current
+    stream?.getTracks().forEach(t => t.stop())
+    if (videoRef.current) videoRef.current.srcObject = null
+    pendingStreamRef.current = null
     setScanning(false)
   }
 
