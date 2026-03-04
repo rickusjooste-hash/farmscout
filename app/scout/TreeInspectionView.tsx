@@ -89,12 +89,21 @@ export default function TreeInspectionView({
 
   const photoInputRef = useRef<HTMLInputElement>(null)
 
-  // GPS watch
+  // GPS watch — check permission state first so we can show fix instructions immediately
   useEffect(() => {
     if (!navigator.geolocation) {
       setGpsUnavailable(true)
       setGpsErrorMsg('This device does not support GPS')
       return
+    }
+    // Proactively check if permission was previously denied (e.g. user pressed back on dialog)
+    if (typeof navigator.permissions !== 'undefined') {
+      navigator.permissions.query({ name: 'geolocation' as PermissionName }).then(result => {
+        if (result.state === 'denied') {
+          setGpsUnavailable(true)
+          setGpsErrorMsg('Location blocked — long-press the FarmScout icon › Site settings › Location › Allow, then restart the app')
+        }
+      }).catch(() => {})
     }
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
