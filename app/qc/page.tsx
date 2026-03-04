@@ -411,9 +411,8 @@ export default function QcHome() {
       setKeypadInput(''); weightBuffer.current = []
       // Visual + audio feedback
       beep()
-      const binText = confirmingBin?.label ?? ''
-      setAddedFlash(`✓ ${confirmingWeight}g ${binText}`)
-      setTimeout(() => setAddedFlash(null), 1200)
+      setAddedFlash('✓')
+      setTimeout(() => setAddedFlash(null), 500)
     }
     confirmDismissedAt.current = Date.now()
     setShowWeightConfirm(false)
@@ -822,33 +821,26 @@ export default function QcHome() {
             )}
           </div>
 
-          {/* Weight display — shows confirm weight when pending, or flash after add */}
+          {/* Weight display — shows confirm weight when pending */}
           <div style={{
             ...s.weightSection,
-            ...(addedFlash ? { background: '#1a3a1a', borderRadius: 16, margin: '0 12px', transition: 'background 0.3s' } : {}),
+            ...(addedFlash ? { background: '#224a22', borderRadius: 16, margin: '0 12px' } : {}),
           }}>
-            {addedFlash ? (
-              <>
-                <div style={{ fontSize: 36, fontWeight: 900, color: '#7cbe4a', lineHeight: 1 }}>{addedFlash}</div>
-                <div style={{ ...s.binLabel, color: '#7cbe4a' }}>Fruit #{fruit.length} added</div>
-              </>
-            ) : (
-              <>
-                <div style={{
-                  ...s.weightDisplay,
-                  color: showWeightConfirm ? '#7cbe4a' : (keypadInput ? '#e8f0e0' : '#3a5a3a'),
-                  fontSize: showWeightConfirm ? 80 : 64,
-                }}>
-                  {showWeightConfirm ? `${confirmingWeight} g` : displayWeight}
-                </div>
-                <div style={s.binLabel}>
-                  {showWeightConfirm
-                    ? (confirmingBin?.label ?? 'No bin match')
-                    : (binLabel || (bleConnected ? 'Place on scale…' : 'Enter weight'))
-                  }
-                </div>
-              </>
-            )}
+            <div style={{
+              ...s.weightDisplay,
+              color: addedFlash ? '#7cbe4a' : (showWeightConfirm ? '#7cbe4a' : (keypadInput ? '#e8f0e0' : '#3a5a3a')),
+              fontSize: showWeightConfirm ? 80 : 64,
+            }}>
+              {showWeightConfirm ? `${confirmingWeight} g` : displayWeight}
+            </div>
+            <div style={{ ...s.binLabel, color: addedFlash ? '#7cbe4a' : undefined }}>
+              {addedFlash
+                ? `Fruit #${fruit.length} added`
+                : showWeightConfirm
+                  ? (confirmingBin?.label ?? 'No bin match')
+                  : (binLabel || (bleConnected ? 'Place on scale…' : 'Enter weight'))
+              }
+            </div>
           </div>
 
           {/* Mini histogram — compact horizontal pills */}
