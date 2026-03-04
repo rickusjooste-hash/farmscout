@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
     farm_ids?: string[]
     employee_nr?: string
     type: 'scout' | 'manager'
+    role?: string
   }
 
   try {
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  const { full_name, email, password, organisation_id, farm_id, farm_ids, employee_nr, type } = body
+  const { full_name, email, password, organisation_id, farm_id, farm_ids, employee_nr, type, role } = body
 
   if (!full_name || !email || !password || !organisation_id || !type) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -103,7 +104,7 @@ export async function POST(req: NextRequest) {
     // 3. Insert organisation_users
     const { error: orgUserError } = await supabase
       .from('organisation_users')
-      .insert({ organisation_id, user_id: userId, role: 'farm_manager' })
+      .insert({ organisation_id, user_id: userId, role: role || 'farm_manager' })
 
     if (orgUserError) {
       await supabase.auth.admin.deleteUser(userId)

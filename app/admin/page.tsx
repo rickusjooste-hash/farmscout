@@ -21,7 +21,7 @@ export default function AdminPage() {
   const router = useRouter()
 
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'org' | 'farm' | 'manager'>('org')
+  const [activeTab, setActiveTab] = useState<'org' | 'farm' | 'user'>('org')
 
   const [organisations, setOrganisations] = useState<Organisation[]>([])
   const [allFarms, setAllFarms] = useState<Farm[]>([])
@@ -45,11 +45,12 @@ export default function AdminPage() {
   const [farmError, setFarmError] = useState('')
   const [farmSuccess, setFarmSuccess] = useState('')
 
-  // Add Manager form
+  // Add User form
   const [mgFullName, setMgFullName] = useState('')
   const [mgEmail, setMgEmail] = useState('')
   const [mgPassword, setMgPassword] = useState('')
   const [mgOrgId, setMgOrgId] = useState('')
+  const [mgRole, setMgRole] = useState('farm_manager')
   const [mgSelectedFarms, setMgSelectedFarms] = useState<string[]>([])
   const [mgSubmitting, setMgSubmitting] = useState(false)
   const [mgError, setMgError] = useState('')
@@ -167,6 +168,7 @@ export default function AdminPage() {
         organisation_id: mgOrgId,
         farm_ids: mgSelectedFarms,
         type: 'manager',
+        role: mgRole,
       }),
     })
 
@@ -176,10 +178,11 @@ export default function AdminPage() {
     if (!res.ok || json.error) {
       setMgError(json.error || 'An error occurred')
     } else {
-      setMgSuccess(`Manager "${mgFullName}" created successfully.`)
+      setMgSuccess(`User "${mgFullName}" created successfully.`)
       setMgFullName('')
       setMgEmail('')
       setMgPassword('')
+      setMgRole('farm_manager')
       setMgSelectedFarms([])
     }
   }
@@ -300,10 +303,10 @@ export default function AdminPage() {
               Add Farm
             </button>
             <button
-              className={`tab${activeTab === 'manager' ? ' active' : ''}`}
-              onClick={() => setActiveTab('manager')}
+              className={`tab${activeTab === 'user' ? ' active' : ''}`}
+              onClick={() => setActiveTab('user')}
             >
-              Add Manager
+              Add User
             </button>
           </div>
 
@@ -434,9 +437,9 @@ export default function AdminPage() {
             </div>
           )}
 
-          {activeTab === 'manager' && (
+          {activeTab === 'user' && (
             <div className="form-card">
-              <div className="section-title">New Production Manager</div>
+              <div className="section-title">New User</div>
               {mgError && <div className="error">{mgError}</div>}
               {mgSuccess && <div className="success">{mgSuccess}</div>}
 
@@ -470,9 +473,19 @@ export default function AdminPage() {
                     type="text"
                     value={mgPassword}
                     onChange={e => setMgPassword(e.target.value)}
-                    placeholder="Share this with the manager"
+                    placeholder="Share this with the user"
                     required
                   />
+                </div>
+
+                <div className="field">
+                  <label>Role</label>
+                  <select value={mgRole} onChange={e => setMgRole(e.target.value)} required>
+                    <option value="farm_manager">Farm Manager</option>
+                    <option value="production_manager">Production Manager</option>
+                    <option value="crop_protection_advisor">Crop Protection Advisor</option>
+                    <option value="org_admin">Org Admin</option>
+                  </select>
                 </div>
 
                 <div className="field">
@@ -511,7 +524,7 @@ export default function AdminPage() {
                 )}
 
                 <button type="submit" className="btn-submit" disabled={mgSubmitting}>
-                  {mgSubmitting ? 'Creating manager…' : 'Create Manager'}
+                  {mgSubmitting ? 'Creating user…' : 'Create User'}
                 </button>
               </form>
             </div>
