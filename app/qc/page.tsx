@@ -218,7 +218,6 @@ export default function QcHome() {
   }
 
   async function startLabelScanner() {
-    if (!('BarcodeDetector' in window)) { alert('QR scanning requires Chrome on Android.'); return }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       pendingStreamRef.current = stream
