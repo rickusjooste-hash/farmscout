@@ -163,7 +163,7 @@ export default function ScoutApp() {
       const token = localStorage.getItem('farmscout_access_token') ?? undefined
       const result = await runFullSync(supabaseKey, token)
       if (result.push.failed > 0) {
-        setSyncError(`${result.push.failed} record(s) failed to upload — will retry`)
+        setSyncError(`${result.push.failed} failed: ${result.push.firstError || 'unknown error'}`)
       }
       await loadPendingCount()
       const rebaitDue = parseInt(localStorage.getItem('farmscout_rebait_due') || '0', 10)

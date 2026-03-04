@@ -306,6 +306,7 @@ export async function pushPendingRecords(supabaseKey: string) {
 
   let pushed = 0
   let failed = 0
+  let firstError: string | null = null
 
   // ── Batch server-side records (one request per table, respecting FK order) ──
   if (freshToken) {
@@ -363,6 +364,7 @@ export async function pushPendingRecords(supabaseKey: string) {
             }
           } catch (err: any) {
             console.error(`[Sync] Batch failed for ${table}:`, err.message)
+            if (!firstError) firstError = `${table}: ${err.message}`
             const db = await import('./scout-db').then(m => m.getScoutDB())
             for (const item of batch) {
               await db.put('sync_queue', {
@@ -409,6 +411,7 @@ export async function pushPendingRecords(supabaseKey: string) {
       }
     } catch (err: any) {
       console.error(`[Sync] Failed to upload ${item.tableName}:`, err.message)
+      if (!firstError) firstError = `${item.tableName}: ${err.message}`
       const db = await import('./scout-db').then(m => m.getScoutDB())
       await db.put('sync_queue', {
         ...item,
@@ -421,7 +424,7 @@ export async function pushPendingRecords(supabaseKey: string) {
   }
 
   console.log(`[Sync] Done: ${pushed} uploaded, ${failed} failed`)
-  return { pushed, failed }
+  return { pushed, failed, firstError }
 }
 
 // ── Full sync: pull down + push up ────────────────────────────────────────
