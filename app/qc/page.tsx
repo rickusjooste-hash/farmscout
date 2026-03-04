@@ -797,7 +797,7 @@ export default function QcHome() {
           {/* Header */}
           <div style={s.topBar}>
             <button style={s.backBtn} onClick={() => setQcView('queue')}>← Queue</button>
-            <div style={s.topTitle}>{activeSession?._orchard_name} · {activeSession?._employee_name}</div>
+            <div style={s.topTitle}>Bag #{activeSession?.bag_seq ?? '?'} · {activeSession?._orchard_name} · {activeSession?._employee_name}</div>
             {fruit.length > 0 && (
               <button style={s.doneSmallBtn} onClick={() => setQcView('issues')}>
                 {fruit.length} fruit — Done →
