@@ -116,12 +116,12 @@ export default function DashboardPage() {
                 .gte('inspected_at', weekStart.toISOString())
                 .in('orchard_id', orchardIds)
             : Promise.resolve({ data: [], error: null, count: null, status: 200, statusText: 'OK' }),
-          // Trap inspections this week — just IDs and scout_id, no join
-          activeTrapIds.length > 0
+          // Trap inspections this week — filter by orchard_id (avoids huge trap ID list in URL)
+          orchardIds.length > 0
             ? supabase.from('trap_inspections')
                 .select('trap_id, scout_id')
                 .gte('inspected_at', weekStart.toISOString())
-                .in('trap_id', activeTrapIds)
+                .in('orchard_id', orchardIds)
             : Promise.resolve({ data: [], error: null, count: null, status: 200, statusText: 'OK' }),
           scoutQuery,
         ])
