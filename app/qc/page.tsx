@@ -400,6 +400,7 @@ export default function QcHome() {
   }
 
   function confirmWeightOK() {
+    alert(`DEBUG: confirmWeightOK fired. activeSession=${!!activeSession}, weight=${confirmingWeight}`)
     const orgId = localStorage.getItem('qcapp_org_id') || ''
     if (activeSession) {
       const newFruit: QcFruit = {
