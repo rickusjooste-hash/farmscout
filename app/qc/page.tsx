@@ -797,7 +797,7 @@ export default function QcHome() {
           {/* Header */}
           <div style={s.topBar}>
             <button style={s.backBtn} onClick={() => setQcView('queue')}>← Queue</button>
-            <div style={s.topTitle}>Bag #{activeSession?.bag_seq ?? '?'} · {activeSession?._orchard_name} · {activeSession?._employee_name}</div>
+            <div style={s.topTitle}>Fruit Weighing</div>
             {fruit.length > 0 && (
               <button style={s.doneSmallBtn} onClick={() => setQcView('issues')}>
                 {fruit.length} fruit — Done →
@@ -844,8 +844,14 @@ export default function QcHome() {
             ))}
           </div>
 
+          {/* Bag info */}
+          <div style={{ padding: '4px 12px 0', textAlign: 'center' as const }}>
+            <span style={{ fontSize: 13, color: '#7aaa6a', fontWeight: 600 }}>Bag #{activeSession?.bag_seq ?? '?'}</span>
+            <span style={{ fontSize: 13, color: '#4a6a4a' }}> · {activeSession?._orchard_name} · {activeSession?._employee_name}</span>
+          </div>
+
           {/* BLE connect — compact */}
-          <div style={{ padding: '0 12px 8px' }}>
+          <div style={{ padding: '4px 12px 8px' }}>
             <button
               style={{ ...s.outlineBtn, fontSize: 13, padding: '9px', borderColor: bleConnected ? '#7cbe4a' : '#2e4a2e' }}
               onClick={bleConnected ? undefined : connectScale}
