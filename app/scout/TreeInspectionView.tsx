@@ -84,17 +84,37 @@ export default function TreeInspectionView({
   const [comments, setComments] = useState('')
   const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [gpsUnavailable, setGpsUnavailable] = useState(false)
+  const [gpsErrorMsg, setGpsErrorMsg] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   const photoInputRef = useRef<HTMLInputElement>(null)
 
   // GPS watch
   useEffect(() => {
-    if (!navigator.geolocation) { setGpsUnavailable(true); return }
+    if (!navigator.geolocation) {
+      setGpsUnavailable(true)
+      setGpsErrorMsg('This device does not support GPS')
+      return
+    }
     const watchId = navigator.geolocation.watchPosition(
-      (pos) => { setGpsLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setGpsUnavailable(false) },
-      () => setGpsUnavailable(true),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+      (pos) => {
+        setGpsLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setGpsUnavailable(false)
+        setGpsErrorMsg(null)
+      },
+      (err) => {
+        if (err.code === 1) {
+          // PERMISSION_DENIED — need to grant browser location access
+          setGpsUnavailable(true)
+          setGpsErrorMsg('Location permission denied — go to Android Settings › Apps › Chrome › Permissions › Location and allow it, then restart FarmScout')
+        } else if (err.code === 2) {
+          // POSITION_UNAVAILABLE
+          setGpsUnavailable(true)
+          setGpsErrorMsg('GPS signal unavailable — move to open sky and wait')
+        }
+        // code 3 = TIMEOUT — watchPosition keeps retrying, don't block
+      },
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 }
     )
     return () => navigator.geolocation.clearWatch(watchId)
   }, [])
@@ -601,12 +621,12 @@ export default function TreeInspectionView({
               gap: 4,
             } : {}),
           }}>
-            <span style={{ color: gpsLocation ? '#6abf4b' : '#e05c4b', fontWeight: gpsLocation ? 400 : 700 }}>
+            <span style={{ color: gpsLocation ? '#6abf4b' : gpsUnavailable ? '#e05c4b' : '#f0a500', fontWeight: gpsLocation ? 400 : 700 }}>
               {gpsLocation
                 ? '📍 GPS locked'
                 : gpsUnavailable
-                  ? '⛔ GPS disabled — enable location in phone settings to continue'
-                  : '⏳ Waiting for GPS…'}
+                  ? `⛔ ${gpsErrorMsg || 'GPS unavailable'}`
+                  : '⏳ Acquiring GPS…'}
             </span>
             {gpsLocation && (
               <span style={styles.gpsCoords}>
@@ -659,7 +679,7 @@ export default function TreeInspectionView({
             onClick={handleSaveTree}
             disabled={saving || !gpsLocation}
           >
-            {saving ? 'Saving…' : !gpsLocation ? 'Waiting for GPS…' : 'Save Tree'}
+            {saving ? 'Saving…' : !gpsLocation ? (gpsUnavailable ? 'GPS unavailable' : 'Acquiring GPS…') : 'Save Tree'}
           </button>
         </div>
       </div>
