@@ -171,7 +171,12 @@ export default function QcHome() {
     setIsLoggedIn(true)
     loadData()
     window.addEventListener('online', handleSync)
-    return () => window.removeEventListener('online', handleSync)
+    // Poll for new bags every 30 seconds
+    const pollInterval = setInterval(() => handleSync(), 30000)
+    return () => {
+      window.removeEventListener('online', handleSync)
+      clearInterval(pollInterval)
+    }
   }, [])
 
   async function handleSync() {
