@@ -914,6 +914,15 @@ export default function QcHome() {
       }
 
       return (
+        <>
+        <input
+          ref={unknownFileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={{ display: 'none' }}
+          onChange={handleUnknownFileChange}
+        />
         <div style={s.page}>
           <div style={s.topBar}>
             <button style={s.backBtn} onClick={() => setQcView('weighing')}>← Weighing</button>
@@ -985,21 +994,12 @@ export default function QcHome() {
             </button>
           </div>
         </div>
+        </>
       )
     }
   }
 
-  // Hidden file input for unknown issue photo (works on iOS + Android natively)
-  return (
-    <input
-      ref={unknownFileInputRef}
-      type="file"
-      accept="image/*"
-      capture="environment"
-      style={{ display: 'none' }}
-      onChange={handleUnknownFileChange}
-    />
-  )
+  return null
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
