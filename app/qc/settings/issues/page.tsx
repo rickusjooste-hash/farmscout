@@ -171,7 +171,7 @@ export default function QcIssueSettingsPage() {
       seen.add(key)
       return true
     })
-    setRows(deduped as QcIssueRow[])
+    setRows(deduped as unknown as QcIssueRow[])
     setLoading(false)
   }
 

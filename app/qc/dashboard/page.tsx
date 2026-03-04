@@ -560,7 +560,7 @@ export default function QcDashboardPage() {
                         <LabelList
                           dataKey="pct_of_total"
                           position="top"
-                          formatter={(v: number) => v > 0 ? `${v}%` : ''}
+                          formatter={(v: unknown) => (typeof v === 'number' && v > 0) ? `${v}%` : ''}
                           style={{ fontSize: 11, fill: '#5a6a60', fontWeight: 600 }}
                         />
                         {sizeData.map((entry, index) => (
