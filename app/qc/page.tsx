@@ -134,6 +134,7 @@ export default function QcHome() {
   const bleCharRef = useRef<any>(null)
   const [bleConnected, setBleConnected] = useState(false)
   const weightBuffer = useRef<number[]>([])
+  const confirmDismissedAt = useRef(0)
 
   // Shared camera scanner (runner label + QC queue)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -377,6 +378,8 @@ export default function QcHome() {
   function handleWeightNotification(event: Event) {
     const rawG = ((event.target as any).value as DataView).getUint16(0, true)
     if (rawG <= 0) return
+    // Guard: don't re-trigger confirm within 1s of dismissal (prevents BLE re-show)
+    if (Date.now() - confirmDismissedAt.current < 1000) return
     weightBuffer.current = [...weightBuffer.current.slice(-4), rawG]
     const buf = weightBuffer.current
     if (buf.length >= 3 && Math.max(...buf) - Math.min(...buf) <= 2) {
@@ -406,10 +409,12 @@ export default function QcHome() {
       setFruit(prev => [...prev, newFruit])
       setKeypadInput(''); weightBuffer.current = []
     }
+    confirmDismissedAt.current = Date.now()
     setShowWeightConfirm(false)
   }
 
   function confirmWeightReenter() {
+    confirmDismissedAt.current = Date.now()
     setKeypadInput(''); setShowWeightConfirm(false)
   }
 
@@ -831,43 +836,42 @@ export default function QcHome() {
             </div>
           )}
 
-          {/* Keypad — or inline confirm (same view, same event handling) */}
-          {showWeightConfirm ? (
-            <div style={{ padding: '16px 20px 8px', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 12 }}>
-              <div style={{ fontSize: 13, color: '#7aaa6a', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>
-                {confirmingBin?.label ?? 'No bin match'}
-              </div>
-              <div style={{ fontSize: 80, fontWeight: 900, color: '#7cbe4a', lineHeight: 1 }}>
-                {confirmingWeight} g
-              </div>
-              <div style={{ display: 'flex', gap: 12, width: '100%', marginTop: 8 }}>
-                <button style={s.weightConfirmReenter}
-                  onTouchEnd={(e) => { e.preventDefault(); confirmWeightReenter() }}
-                  onClick={confirmWeightReenter}>Re-enter</button>
-                <button style={{ ...s.weightConfirmOk, flex: 2 } as React.CSSProperties}
-                  onTouchEnd={(e) => { e.preventDefault(); confirmWeightOK() }}
-                  onClick={confirmWeightOK}>OK ✓</button>
-              </div>
+          {/* Weight confirm — always in DOM, toggled via display */}
+          <div style={{ padding: '16px 20px 8px', display: showWeightConfirm ? 'flex' : 'none', flexDirection: 'column' as const, alignItems: 'center', gap: 12, touchAction: 'manipulation' as const }}>
+            <div style={{ fontSize: 13, color: '#7aaa6a', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>
+              {confirmingBin?.label ?? 'No bin match'}
             </div>
-          ) : (
-            <div style={s.keypad}>
-              {['1','2','3','4','5','6','7','8','9','⌫','0','✓'].map(key => (
-                <button
-                  key={key}
-                  style={{
-                    ...s.keypadKey,
-                    ...(key === '✓' ? s.keypadKeyConfirm : {}),
-                    ...(key === '⌫' ? s.keypadKeyBack : {}),
-                    opacity: key === '✓' && !keypadInput ? 0.35 : 1,
-                  }}
-                  onClick={() => keypadPress(key, bins)}
-                  disabled={key === '✓' && !keypadInput}
-                >
-                  {key}
-                </button>
-              ))}
+            <div style={{ fontSize: 80, fontWeight: 900, color: '#7cbe4a', lineHeight: 1 }}>
+              {confirmingWeight} g
             </div>
-          )}
+            <div style={{ display: 'flex', gap: 12, width: '100%', marginTop: 8 }}>
+              <button style={s.weightConfirmReenter}
+                onTouchEnd={(e) => { e.preventDefault(); confirmWeightReenter() }}
+                onClick={confirmWeightReenter}>Re-enter</button>
+              <button style={{ ...s.weightConfirmOk, flex: 2 } as React.CSSProperties}
+                onTouchEnd={(e) => { e.preventDefault(); confirmWeightOK() }}
+                onClick={confirmWeightOK}>OK ✓</button>
+            </div>
+          </div>
+
+          {/* Keypad — always in DOM, toggled via display */}
+          <div style={{ ...s.keypad, display: showWeightConfirm ? 'none' : 'grid' }}>
+            {['1','2','3','4','5','6','7','8','9','⌫','0','✓'].map(key => (
+              <button
+                key={key}
+                style={{
+                  ...s.keypadKey,
+                  ...(key === '✓' ? s.keypadKeyConfirm : {}),
+                  ...(key === '⌫' ? s.keypadKeyBack : {}),
+                  opacity: key === '✓' && !keypadInput ? 0.35 : 1,
+                }}
+                onClick={() => keypadPress(key, bins)}
+                disabled={key === '✓' && !keypadInput}
+              >
+                {key}
+              </button>
+            ))}
+          </div>
 
           {/* Bag info */}
           <div style={{ padding: '4px 12px 0', textAlign: 'center' as const }}>
