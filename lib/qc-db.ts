@@ -36,6 +36,7 @@ export interface QcIssue {
 export interface QcOrchard {
   id: string
   name: string
+  variety?: string | null
   farm_id: string
   commodity_id: string
   commodity_name?: string | null

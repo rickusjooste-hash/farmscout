@@ -634,7 +634,7 @@ export default function QcHome() {
             {!detectedOrchard && !gpsLoading && (
               <select style={s.select} value={manualOrchard?.id || ''} onChange={e => setManualOrchard(orchards.find(x => x.id === e.target.value) || null)}>
                 <option value="">— Select orchard —</option>
-                {orchards.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                {orchards.map(o => <option key={o.id} value={o.id}>{o.name}{o.variety ? ` (${o.variety})` : ''}</option>)}
               </select>
             )}
           </div>
