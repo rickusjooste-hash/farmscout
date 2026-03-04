@@ -844,7 +844,10 @@ export default function QcHome() {
       const issues = sessionQcIssues()
       const bins = sessionBins()
       const totalIssues = Object.values(bagIssues).reduce((a, b) => a + b, 0)
-      const issueError = totalIssues > fruit.length
+      const nonPickerTotal = issues
+        .filter(i => i.category !== 'picking_issue')
+        .reduce((sum, i) => sum + (bagIssues[i.pest_id] || 0), 0)
+      const issueError = nonPickerTotal > fruit.length
       const unknownCount = issues
         .filter(i => i.display_name.toLowerCase() === 'unknown' || (i.display_name_af?.toLowerCase() ?? '') === 'onbekend')
         .reduce((sum, i) => sum + (bagIssues[i.pest_id] || 0), 0)
@@ -920,7 +923,7 @@ export default function QcHome() {
           {/* Validation error */}
           {issueError && (
             <div style={{ margin: '8px 16px', padding: '10px 14px', background: '#2a0e0e', border: '1px solid #7a2a2a', borderRadius: 8, color: '#f08080', fontSize: 13 }}>
-              ⚠️ Total issues ({totalIssues}) cannot exceed fruit weighed ({fruit.length})
+              ⚠️ Non-picker issues ({nonPickerTotal}) cannot exceed fruit weighed ({fruit.length})
             </div>
           )}
 
