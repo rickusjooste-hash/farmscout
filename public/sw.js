@@ -1,9 +1,11 @@
-const CACHE_NAME = 'farmscout-1772533164729'
+const CACHE_NAME = 'farmscout-1772566244668'
 
 // App shell pages to pre-cache on install
 const PRECACHE = [
   '/scout',
   '/scout/login',
+  '/qc',
+  '/qc/login',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
@@ -37,7 +39,7 @@ self.addEventListener('fetch', (event) => {
   if (url.hostname.includes('supabase.co')) return
 
   // Network-first for Next.js data/navigation, cache-first for scout pages
-  const isScoutPage = url.pathname.startsWith('/scout')
+  const isScoutPage = url.pathname.startsWith('/scout') || url.pathname.startsWith('/qc')
   const isAsset = url.pathname.startsWith('/_next/static')
 
   if (isAsset) {

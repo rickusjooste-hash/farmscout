@@ -588,9 +588,17 @@ export default function TreeInspectionView({
           )}
 
           {/* GPS indicator */}
-          <div style={styles.gpsRow}>
-            <span style={{ color: gpsLocation ? '#6abf4b' : '#e05c4b' }}>
-              {gpsLocation ? '📍 GPS locked' : '⏳ Acquiring GPS…'}
+          <div style={{
+            ...styles.gpsRow,
+            ...(!gpsLocation ? {
+              background: '#3a1a0e',
+              border: '1px solid #e05c4b',
+              borderRadius: 8,
+              padding: '10px 14px',
+            } : {}),
+          }}>
+            <span style={{ color: gpsLocation ? '#6abf4b' : '#e05c4b', fontWeight: gpsLocation ? 400 : 700 }}>
+              {gpsLocation ? '📍 GPS locked' : '⏳ Waiting for GPS — cannot save yet'}
             </span>
             {gpsLocation && (
               <span style={styles.gpsCoords}>
@@ -639,11 +647,11 @@ export default function TreeInspectionView({
         {/* Footer save button */}
         <div style={styles.footer}>
           <button
-            style={{ ...styles.saveBtn, opacity: saving ? 0.5 : 1 }}
+            style={{ ...styles.saveBtn, opacity: (saving || !gpsLocation) ? 0.4 : 1, cursor: (saving || !gpsLocation) ? 'not-allowed' : 'pointer' }}
             onClick={handleSaveTree}
-            disabled={saving}
+            disabled={saving || !gpsLocation}
           >
-            {saving ? 'Saving…' : 'Save Tree'}
+            {saving ? 'Saving…' : !gpsLocation ? 'Waiting for GPS…' : 'Save Tree'}
           </button>
         </div>
       </div>

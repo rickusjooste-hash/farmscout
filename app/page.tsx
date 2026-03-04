@@ -42,6 +42,7 @@ export default function DashboardPage() {
   const [selectedPestId, setSelectedPestId] = useState<string | undefined>()
   const [effectiveFarmIds, setEffectiveFarmIds] = useState<string[]>([])
   const [farms, setFarms] = useState<{ id: string; full_name: string }[]>([])
+  const [unknownQcCount, setUnknownQcCount] = useState(0)
   const pressureMapRef = useRef<HTMLDivElement>(null)
 
   function handlePestSelect(pestId: string) {
@@ -75,8 +76,18 @@ export default function DashboardPage() {
         }
         const [{ data: orchardData }, { data: activeTrapData }, { data: farmData }] = await Promise.all([orchardQuery, trapIdsQuery, farmIdsQuery])
         const farmList = (farmData || []) as { id: string; full_name: string }[]
-        setEffectiveFarmIds(farmList.map(f => f.id))
+        const resolvedFarmIds = farmList.map(f => f.id)
+        setEffectiveFarmIds(resolvedFarmIds)
         setFarms(farmList)
+
+        // Count unresolved unknown QC issues
+        if (resolvedFarmIds.length > 0) {
+          supabase.rpc('get_unknown_qc_issues', { p_farm_ids: resolvedFarmIds })
+            .then(({ data }) => {
+              const pending = (data ?? []).filter((i: any) => !i.resolved_pest_id).length
+              setUnknownQcCount(pending)
+            }, () => {})
+        }
 
         const activeTrapIds = (activeTrapData || []).map((t: any) => t.id)
 
@@ -612,6 +623,11 @@ export default function DashboardPage() {
 <a href="/scouts/sections" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>🗂️</span> Sections</a>
 <a href="/settings" className="nav-item"><span className="nav-icon">🔔</span> Settings</a>
 {isSuperAdmin && <a href="/admin" className="nav-item"><span>⚙️</span> Admin</a>}
+<div style={{ fontSize: 10, color: '#5a7a6a', padding: '16px 16px 4px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>QC</div>
+<a href="/qc/dashboard" className="nav-item"><span>⚖️</span> QC Dashboard</a>
+<a href="/qc/unknowns" className="nav-item"><span>📷</span> Unknown Issues</a>
+<a href="/qc/settings/issues" className="nav-item"><span>🐛</span> Issue Setup</a>
+<a href="/qc/settings/size-bins" className="nav-item"><span>📏</span> Size Bins</a>
             <div className="sidebar-footer">
   Mouton's Valley Group<br />
   <span style={{ color: '#2a6e45' }}>●</span> Connected
@@ -774,6 +790,26 @@ export default function DashboardPage() {
             ))}
 
             <PestAlertSummary farmIds={effectiveFarmIds} onPestSelect={handlePestSelect} />
+
+            {unknownQcCount > 0 && (
+              <a
+                href="/qc/unknowns"
+                className="block bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 hover:bg-amber-100 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">📷</span>
+                    <div>
+                      <div className="font-semibold text-amber-900">
+                        {unknownQcCount} Unknown QC {unknownQcCount === 1 ? 'Issue' : 'Issues'} Need Review
+                      </div>
+                      <div className="text-sm text-amber-700">QC workers flagged unidentified defects — click to classify</div>
+                    </div>
+                  </div>
+                  <span className="text-amber-500 text-xl">→</span>
+                </div>
+              </a>
+            )}
 
             <div ref={pressureMapRef} id="pressure-map">
               <OrchardPressureMap key={selectedPestId ?? 'default'} initialPestId={selectedPestId} />
