@@ -26,7 +26,7 @@ import {
 
 type AppMode = 'home' | 'runner' | 'qc'
 type RunnerView = 'picker' | 'confirm' | 'scanning_label' | 'logged'
-type QcView = 'queue' | 'commodity_select' | 'weighing' | 'issues'
+type QcView = 'queue' | 'commodity_select' | 'weighing' | 'weight_confirm' | 'issues'
 type Lang = 'en' | 'af'
 
 const SCALE_SERVICE = '0000fff0-0000-1000-8000-00805f9b34fb'
@@ -99,7 +99,6 @@ export default function QcHome() {
   const [currentBin, setCurrentBin] = useState<QcSizeBin | null>(null)
   const [savingSession, setSavingSession] = useState(false)
   const [keypadInput, setKeypadInput] = useState('')
-  const [showWeightConfirm, setShowWeightConfirm] = useState(false)
   const [confirmingWeight, setConfirmingWeight] = useState(0)
   const [confirmingBin, setConfirmingBin] = useState<QcSizeBin | null>(null)
   // Bag-level issue counts: pest_id → count
@@ -295,7 +294,7 @@ export default function QcHome() {
   function openSession(session: QcBagSession) {
     setActiveSession(session); setFruit([])
     setCurrentWeight(null); setCurrentBin(null); setKeypadInput('')
-    setShowWeightConfirm(false); setBagIssues({})
+    setBagIssues({})
     setUnknownPhoto(null); stopUnknownCamera()
     setQcView('weighing'); stopScanner()
   }
@@ -380,8 +379,8 @@ export default function QcHome() {
     weightBuffer.current = [...weightBuffer.current.slice(-4), rawG]
     const buf = weightBuffer.current
     if (buf.length >= 3 && Math.max(...buf) - Math.min(...buf) <= 2) {
-      setConfirmingWeight(rawG); setConfirmingBin(findSizeBin(rawG, sizeBins)); setShowWeightConfirm(true)
-      weightBuffer.current = []
+      setConfirmingWeight(rawG); setConfirmingBin(findSizeBin(rawG, sizeBins))
+      setQcView('weight_confirm'); weightBuffer.current = []
     }
   }
 
@@ -390,7 +389,7 @@ export default function QcHome() {
       setKeypadInput(prev => prev.slice(0, -1))
     } else if (key === '✓') {
       const w = parseInt(keypadInput)
-      if (w > 0) { setConfirmingWeight(w); setConfirmingBin(findSizeBin(w, bins)); setShowWeightConfirm(true) }
+      if (w > 0) { setConfirmingWeight(w); setConfirmingBin(findSizeBin(w, bins)); setQcView('weight_confirm') }
     } else {
       setKeypadInput(prev => prev.length < 4 ? prev + key : prev)
     }
@@ -398,20 +397,19 @@ export default function QcHome() {
 
   function confirmWeightOK() {
     const orgId = localStorage.getItem('qcapp_org_id') || ''
-    const session = activeSession
-    if (session) {
+    if (activeSession) {
       const newFruit: QcFruit = {
-        id: crypto.randomUUID(), session_id: session.id, organisation_id: orgId,
+        id: crypto.randomUUID(), session_id: activeSession.id, organisation_id: orgId,
         seq: fruit.length + 1, weight_g: confirmingWeight, size_bin_id: confirmingBin?.id ?? null,
       }
       setFruit(prev => [...prev, newFruit])
       setKeypadInput(''); weightBuffer.current = []
     }
-    setShowWeightConfirm(false)
+    setQcView('weighing')
   }
 
   function confirmWeightReenter() {
-    setKeypadInput(''); setShowWeightConfirm(false)
+    setKeypadInput(''); setQcView('weighing')
   }
 
   function isUnknownPest(pestId: string): boolean {
@@ -867,17 +865,24 @@ export default function QcHome() {
             </button>
           </div>
 
-          {/* Weight confirmation popup */}
-          {showWeightConfirm && (
-            <div style={s.weightConfirmOverlay}>
-              <div style={s.weightConfirmBin}>{confirmingBin?.label ?? 'No bin match'}</div>
-              <div style={s.weightConfirmWeight}>{confirmingWeight} g</div>
-              <div style={s.weightConfirmActions}>
-                <button type="button" style={s.weightConfirmReenter} onClick={confirmWeightReenter}>Re-enter</button>
-                <button type="button" style={s.weightConfirmOk} autoFocus onClick={confirmWeightOK}>OK ✓</button>
-              </div>
-            </div>
-          )}
+        </div>
+      )
+    }
+
+    // Weight confirmation — full page (avoids fixed-overlay touch issues on Android)
+    if (qcView === 'weight_confirm') {
+      return (
+        <div style={{ ...s.page, justifyContent: 'center', alignItems: 'center', gap: 0 }}>
+          <div style={{ fontSize: 13, color: '#7aaa6a', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>
+            {confirmingBin?.label ?? 'No bin match'}
+          </div>
+          <div style={{ fontSize: 88, fontWeight: 900, color: '#7cbe4a', lineHeight: 1, marginBottom: 32 }}>
+            {confirmingWeight} g
+          </div>
+          <div style={{ display: 'flex', gap: 16, width: '100%', padding: '0 24px' }}>
+            <button style={{ ...s.weightConfirmReenter, flex: 1 }} onClick={confirmWeightReenter}>Re-enter</button>
+            <button style={{ ...s.weightConfirmOk, flex: 2 }} onClick={confirmWeightOK}>OK ✓</button>
+          </div>
         </div>
       )
     }
