@@ -877,8 +877,12 @@ export default function QcHome() {
               <div style={s.weightConfirmBin}>{confirmingBin?.label ?? 'No bin match'}</div>
               <div style={s.weightConfirmWeight}>{confirmingWeight} g</div>
               <div style={s.weightConfirmActions}>
-                <button style={s.weightConfirmReenter} onClick={confirmWeightReenter}>Re-enter</button>
-                <button style={s.weightConfirmOk} onClick={confirmWeightOK}>OK ✓</button>
+                <button style={s.weightConfirmReenter}
+                  onTouchEnd={e => { e.preventDefault(); confirmWeightReenter() }}
+                  onClick={confirmWeightReenter}>Re-enter</button>
+                <button style={s.weightConfirmOk}
+                  onTouchEnd={e => { e.preventDefault(); confirmWeightOK() }}
+                  onClick={confirmWeightOK}>OK ✓</button>
               </div>
             </div>
           )}
