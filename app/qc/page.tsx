@@ -26,7 +26,7 @@ import {
 
 type AppMode = 'home' | 'runner' | 'qc'
 type RunnerView = 'picker' | 'confirm' | 'scanning_label' | 'logged'
-type QcView = 'queue' | 'commodity_select' | 'weighing' | 'weight_confirm' | 'issues'
+type QcView = 'queue' | 'commodity_select' | 'weighing' | 'issues'
 type Lang = 'en' | 'af'
 
 const SCALE_SERVICE = '0000fff0-0000-1000-8000-00805f9b34fb'
@@ -99,6 +99,7 @@ export default function QcHome() {
   const [currentBin, setCurrentBin] = useState<QcSizeBin | null>(null)
   const [savingSession, setSavingSession] = useState(false)
   const [keypadInput, setKeypadInput] = useState('')
+  const [showWeightConfirm, setShowWeightConfirm] = useState(false)
   const [confirmingWeight, setConfirmingWeight] = useState(0)
   const [confirmingBin, setConfirmingBin] = useState<QcSizeBin | null>(null)
   // Bag-level issue counts: pest_id → count
@@ -294,7 +295,7 @@ export default function QcHome() {
   function openSession(session: QcBagSession) {
     setActiveSession(session); setFruit([])
     setCurrentWeight(null); setCurrentBin(null); setKeypadInput('')
-    setBagIssues({})
+    setShowWeightConfirm(false); setBagIssues({})
     setUnknownPhoto(null); stopUnknownCamera()
     setQcView('weighing'); stopScanner()
   }
@@ -380,7 +381,7 @@ export default function QcHome() {
     const buf = weightBuffer.current
     if (buf.length >= 3 && Math.max(...buf) - Math.min(...buf) <= 2) {
       setConfirmingWeight(rawG); setConfirmingBin(findSizeBin(rawG, sizeBins))
-      setQcView('weight_confirm'); weightBuffer.current = []
+      setShowWeightConfirm(true); weightBuffer.current = []
     }
   }
 
@@ -389,7 +390,7 @@ export default function QcHome() {
       setKeypadInput(prev => prev.slice(0, -1))
     } else if (key === '✓') {
       const w = parseInt(keypadInput)
-      if (w > 0) { setConfirmingWeight(w); setConfirmingBin(findSizeBin(w, bins)); setQcView('weight_confirm') }
+      if (w > 0) { setConfirmingWeight(w); setConfirmingBin(findSizeBin(w, bins)); setShowWeightConfirm(true) }
     } else {
       setKeypadInput(prev => prev.length < 4 ? prev + key : prev)
     }
@@ -405,11 +406,11 @@ export default function QcHome() {
       setFruit(prev => [...prev, newFruit])
       setKeypadInput(''); weightBuffer.current = []
     }
-    setQcView('weighing')
+    setShowWeightConfirm(false)
   }
 
   function confirmWeightReenter() {
-    setKeypadInput(''); setQcView('weighing')
+    setKeypadInput(''); setShowWeightConfirm(false)
   }
 
   function isUnknownPest(pestId: string): boolean {
@@ -830,24 +831,39 @@ export default function QcHome() {
             </div>
           )}
 
-          {/* Keypad */}
-          <div style={s.keypad}>
-            {['1','2','3','4','5','6','7','8','9','⌫','0','✓'].map(key => (
-              <button
-                key={key}
-                style={{
-                  ...s.keypadKey,
-                  ...(key === '✓' ? s.keypadKeyConfirm : {}),
-                  ...(key === '⌫' ? s.keypadKeyBack : {}),
-                  opacity: key === '✓' && !keypadInput ? 0.35 : 1,
-                }}
-                onClick={() => keypadPress(key, bins)}
-                disabled={key === '✓' && !keypadInput}
-              >
-                {key}
-              </button>
-            ))}
-          </div>
+          {/* Keypad — or inline confirm (same view, same event handling) */}
+          {showWeightConfirm ? (
+            <div style={{ padding: '16px 20px 8px', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 12 }}>
+              <div style={{ fontSize: 13, color: '#7aaa6a', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>
+                {confirmingBin?.label ?? 'No bin match'}
+              </div>
+              <div style={{ fontSize: 80, fontWeight: 900, color: '#7cbe4a', lineHeight: 1 }}>
+                {confirmingWeight} g
+              </div>
+              <div style={{ display: 'flex', gap: 12, width: '100%', marginTop: 8 }}>
+                <button style={s.weightConfirmReenter} onClick={confirmWeightReenter}>Re-enter</button>
+                <button style={{ ...s.weightConfirmOk, flex: 2 } as React.CSSProperties} onClick={confirmWeightOK}>OK ✓</button>
+              </div>
+            </div>
+          ) : (
+            <div style={s.keypad}>
+              {['1','2','3','4','5','6','7','8','9','⌫','0','✓'].map(key => (
+                <button
+                  key={key}
+                  style={{
+                    ...s.keypadKey,
+                    ...(key === '✓' ? s.keypadKeyConfirm : {}),
+                    ...(key === '⌫' ? s.keypadKeyBack : {}),
+                    opacity: key === '✓' && !keypadInput ? 0.35 : 1,
+                  }}
+                  onClick={() => keypadPress(key, bins)}
+                  disabled={key === '✓' && !keypadInput}
+                >
+                  {key}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Bag info */}
           <div style={{ padding: '4px 12px 0', textAlign: 'center' as const }}>
@@ -865,24 +881,6 @@ export default function QcHome() {
             </button>
           </div>
 
-        </div>
-      )
-    }
-
-    // Weight confirmation — full page (avoids fixed-overlay touch issues on Android)
-    if (qcView === 'weight_confirm') {
-      return (
-        <div style={{ ...s.page, justifyContent: 'center', alignItems: 'center', gap: 0 }}>
-          <div style={{ fontSize: 13, color: '#7aaa6a', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>
-            {confirmingBin?.label ?? 'No bin match'}
-          </div>
-          <div style={{ fontSize: 88, fontWeight: 900, color: '#7cbe4a', lineHeight: 1, marginBottom: 32 }}>
-            {confirmingWeight} g
-          </div>
-          <div style={{ display: 'flex', gap: 16, width: '100%', padding: '0 24px' }}>
-            <button style={{ ...s.weightConfirmReenter, flex: 1 }} onClick={confirmWeightReenter}>Re-enter</button>
-            <button style={{ ...s.weightConfirmOk, flex: 2 }} onClick={confirmWeightOK}>OK ✓</button>
-          </div>
         </div>
       )
     }
