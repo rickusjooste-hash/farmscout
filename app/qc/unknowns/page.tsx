@@ -50,11 +50,24 @@ export default function QcUnknownsPage() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
-    // Get farm IDs for this user
-    const { data: farmAccess } = await supabase
-      .from('user_farm_access')
-      .select('farm_id')
-    const farmIds = farmAccess?.map(f => f.farm_id) ?? []
+    // Resolve farm IDs respecting role (super_admin / org_admin see all farms)
+    const { data: orgUser } = await supabase
+      .from('organisation_users')
+      .select('role, organisation_id')
+      .eq('user_id', session.user.id)
+      .single()
+
+    let farmIds: string[] = []
+    if (orgUser?.role === 'super_admin') {
+      const { data: allFarms } = await supabase.from('farms').select('id').eq('is_active', true)
+      farmIds = (allFarms ?? []).map((f: any) => f.id)
+    } else if (orgUser?.role === 'org_admin') {
+      const { data: orgFarms } = await supabase.from('farms').select('id').eq('organisation_id', orgUser.organisation_id)
+      farmIds = (orgFarms ?? []).map((f: any) => f.id)
+    } else {
+      const { data: farmAccess } = await supabase.from('user_farm_access').select('farm_id').eq('user_id', session.user.id)
+      farmIds = (farmAccess ?? []).map((f: any) => f.farm_id)
+    }
 
     // Fetch unknowns via RPC
     const { data: raw } = await supabase.rpc('get_unknown_qc_issues', {

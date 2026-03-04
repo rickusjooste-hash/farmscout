@@ -460,10 +460,33 @@ export default function QcHome() {
   function handleUnknownFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = ev => setUnknownPhoto(ev.target?.result as string)
-    reader.readAsDataURL(file)
     e.target.value = ''
+    // Convert to JPEG via canvas — handles HEIC and any other format iOS might pass
+    const objectUrl = URL.createObjectURL(file)
+    const img = new window.Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      // Limit max dimension to 1600px to reduce file size
+      const maxDim = 1600
+      let w = img.naturalWidth, h = img.naturalHeight
+      if (w > maxDim || h > maxDim) {
+        if (w > h) { h = Math.round(h * maxDim / w); w = maxDim }
+        else { w = Math.round(w * maxDim / h); h = maxDim }
+      }
+      canvas.width = w; canvas.height = h
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, w, h)
+      URL.revokeObjectURL(objectUrl)
+      setUnknownPhoto(canvas.toDataURL('image/jpeg', 0.85))
+    }
+    img.onerror = () => {
+      // Fallback: read as-is
+      URL.revokeObjectURL(objectUrl)
+      const reader = new FileReader()
+      reader.onload = ev => setUnknownPhoto(ev.target?.result as string)
+      reader.readAsDataURL(file)
+    }
+    img.src = objectUrl
   }
 
   async function saveCompletedSample() {
