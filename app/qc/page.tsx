@@ -99,10 +99,7 @@ export default function QcHome() {
   const [currentBin, setCurrentBin] = useState<QcSizeBin | null>(null)
   const [savingSession, setSavingSession] = useState(false)
   const [keypadInput, setKeypadInput] = useState('')
-  // Weight confirmation popup
-  const [showWeightConfirm, setShowWeightConfirm] = useState(false)
-  const [confirmingWeight, setConfirmingWeight] = useState(0)
-  const [confirmingBin, setConfirmingBin] = useState<QcSizeBin | null>(null)
+  const [lastAdded, setLastAdded] = useState<{ weight: number; bin: string } | null>(null)
   // Bag-level issue counts: pest_id → count
   const [bagIssues, setBagIssues] = useState<Record<string, number>>({})
 
@@ -297,7 +294,7 @@ export default function QcHome() {
   function openSession(session: QcBagSession) {
     setActiveSession(session); setFruit([])
     setCurrentWeight(null); setCurrentBin(null); setKeypadInput('')
-    setShowWeightConfirm(false); setBagIssues({})
+    setBagIssues({})
     setUnknownPhoto(null); stopUnknownCamera()
     setQcView('weighing'); stopScanner()
   }
@@ -376,54 +373,38 @@ export default function QcHome() {
     } catch (err: any) { alert(`Could not connect to scale: ${err.message}`) }
   }
 
+  function addFruit(weight: number, bin: QcSizeBin | null) {
+    if (!activeSession || weight <= 0) return
+    const orgId = localStorage.getItem('qcapp_org_id') || ''
+    const newFruit: QcFruit = {
+      id: crypto.randomUUID(), session_id: activeSession.id, organisation_id: orgId,
+      seq: fruit.length + 1, weight_g: weight, size_bin_id: bin?.id ?? null,
+    }
+    setFruit(prev => [...prev, newFruit])
+    setKeypadInput(''); weightBuffer.current = []
+    setLastAdded({ weight, bin: bin?.label ?? 'No bin' })
+    setTimeout(() => setLastAdded(null), 1500)
+  }
+
   function handleWeightNotification(event: Event) {
     const rawG = ((event.target as any).value as DataView).getUint16(0, true)
     if (rawG <= 0) return
     weightBuffer.current = [...weightBuffer.current.slice(-4), rawG]
     const buf = weightBuffer.current
     if (buf.length >= 3 && Math.max(...buf) - Math.min(...buf) <= 2) {
-      const bin = findSizeBin(rawG, sizeBins)
-      setConfirmingWeight(rawG); setConfirmingBin(bin); setShowWeightConfirm(true)
-      weightBuffer.current = []
+      addFruit(rawG, findSizeBin(rawG, sizeBins))
     }
-  }
-
-  function handleKeypadConfirm(bins: QcSizeBin[]) {
-    const w = keypadInput ? parseInt(keypadInput) : null
-    if (!w || w <= 0) return
-    setConfirmingWeight(w)
-    setConfirmingBin(findSizeBin(w, bins))
-    setShowWeightConfirm(true)
   }
 
   function keypadPress(key: string, bins: QcSizeBin[]) {
     if (key === '⌫') {
       setKeypadInput(prev => prev.slice(0, -1))
     } else if (key === '✓') {
-      handleKeypadConfirm(bins)
+      const w = parseInt(keypadInput)
+      if (w > 0) addFruit(w, findSizeBin(w, bins))
     } else {
       setKeypadInput(prev => prev.length < 4 ? prev + key : prev)
     }
-  }
-
-  function confirmWeightOK() {
-    try {
-      const orgId = localStorage.getItem('qcapp_org_id') || ''
-      if (!activeSession) return
-      const newFruit: QcFruit = {
-        id: crypto.randomUUID(), session_id: activeSession.id, organisation_id: orgId,
-        seq: fruit.length + 1, weight_g: confirmingWeight, size_bin_id: confirmingBin?.id ?? null,
-      }
-      setFruit(prev => [...prev, newFruit])
-      setCurrentWeight(null); setCurrentBin(null)
-      setKeypadInput(''); weightBuffer.current = []
-    } finally {
-      setShowWeightConfirm(false)
-    }
-  }
-
-  function confirmWeightReenter() {
-    setKeypadInput(''); setShowWeightConfirm(false)
   }
 
   function isUnknownPest(pestId: string): boolean {
@@ -869,6 +850,13 @@ export default function QcHome() {
             <span style={{ fontSize: 13, color: '#4a6a4a' }}> · {activeSession?._orchard_name} · {activeSession?._employee_name}</span>
           </div>
 
+          {/* Last-added flash */}
+          {lastAdded && (
+            <div style={{ textAlign: 'center', padding: '2px 12px 2px', fontSize: 14, color: '#7cbe4a', fontWeight: 700 }}>
+              ✓ {lastAdded.weight}g — {lastAdded.bin}
+            </div>
+          )}
+
           {/* BLE connect — compact */}
           <div style={{ padding: '4px 12px 8px' }}>
             <button
@@ -878,22 +866,6 @@ export default function QcHome() {
               {bleConnected ? '🔵 Scale connected — stable reads auto-capture' : '🔌 Connect Bluetooth Scale'}
             </button>
           </div>
-
-          {/* Weight confirmation popup */}
-          {showWeightConfirm && (
-            <div style={s.weightConfirmOverlay}>
-              <div style={s.weightConfirmBin}>{confirmingBin?.label ?? 'No bin match'}</div>
-              <div style={s.weightConfirmWeight}>{confirmingWeight} g</div>
-              <div style={s.weightConfirmActions}>
-                <button style={{ ...s.weightConfirmReenter, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' } as React.CSSProperties}
-                  onTouchStart={() => confirmWeightReenter()}
-                  onMouseDown={() => confirmWeightReenter()}>Re-enter</button>
-                <button style={{ ...s.weightConfirmOk, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' } as React.CSSProperties}
-                  onTouchStart={() => confirmWeightOK()}
-                  onMouseDown={() => confirmWeightOK()}>OK ✓</button>
-              </div>
-            </div>
-          )}
         </div>
       )
     }
