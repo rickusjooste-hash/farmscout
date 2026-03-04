@@ -177,11 +177,11 @@ export default function QcHome() {
 
   async function handleSync() {
     await qcRunFullSync(localStorage.getItem('qcapp_access_token') || undefined)
-    await loadData()
+    await loadData(false)
   }
 
-  async function loadData() {
-    setLoading(true)
+  async function loadData(showLoading = true) {
+    if (showLoading) setLoading(true)
     try {
       const [emps, orchs, bins, issues] = await Promise.all([
         qcGetAll('employees'), qcGetAll('orchards'), qcGetAll('size_bins'), qcGetAll('qc_issues'),
@@ -189,7 +189,7 @@ export default function QcHome() {
       setEmployees(emps); setOrchards(orchs); setSizeBins(bins); setQcIssues(issues)
       const [bags, sampled, pending] = await Promise.all([countTodayBags(), countTodaySampled(), getPendingBagSessions()])
       setTodayBags(bags); setTodaySampled(sampled); setPendingSessions(pending)
-    } finally { setLoading(false) }
+    } finally { if (showLoading) setLoading(false) }
   }
 
   // ── Runner ────────────────────────────────────────────────────────────────
@@ -841,8 +841,12 @@ export default function QcHome() {
                 {confirmingWeight} g
               </div>
               <div style={{ display: 'flex', gap: 12, width: '100%', marginTop: 8 }}>
-                <button style={s.weightConfirmReenter} onClick={confirmWeightReenter}>Re-enter</button>
-                <button style={{ ...s.weightConfirmOk, flex: 2 } as React.CSSProperties} onClick={confirmWeightOK}>OK ✓</button>
+                <button style={s.weightConfirmReenter}
+                  onTouchEnd={(e) => { e.preventDefault(); confirmWeightReenter() }}
+                  onClick={confirmWeightReenter}>Re-enter</button>
+                <button style={{ ...s.weightConfirmOk, flex: 2 } as React.CSSProperties}
+                  onTouchEnd={(e) => { e.preventDefault(); confirmWeightOK() }}
+                  onClick={confirmWeightOK}>OK ✓</button>
               </div>
             </div>
           ) : (
@@ -1087,8 +1091,8 @@ const s: Record<string, React.CSSProperties> = {
   weightConfirmBin: { fontSize: 22, color: '#7aaa6a', fontWeight: 600 },
   weightConfirmWeight: { fontSize: 72, fontWeight: 900, color: '#7cbe4a', lineHeight: 1 },
   weightConfirmActions: { display: 'flex', gap: 12, width: '100%', marginTop: 20 },
-  weightConfirmReenter: { flex: 1, background: '#1e3a1e', border: '1px solid #3a5a3a', borderRadius: 12, color: '#e8f0e0', fontSize: 17, fontWeight: 600, padding: '18px', cursor: 'pointer' },
-  weightConfirmOk: { flex: 2, background: '#7cbe4a', border: 'none', borderRadius: 12, color: '#0a1a0a', fontSize: 20, fontWeight: 800, padding: '18px', cursor: 'pointer' },
+  weightConfirmReenter: { flex: 1, background: '#1e3a1e', border: '1px solid #3a5a3a', borderRadius: 12, color: '#e8f0e0', fontSize: 17, fontWeight: 600, padding: '18px', cursor: 'pointer', touchAction: 'manipulation' as const, WebkitTapHighlightColor: 'transparent' },
+  weightConfirmOk: { flex: 2, background: '#7cbe4a', border: 'none', borderRadius: 12, color: '#0a1a0a', fontSize: 20, fontWeight: 800, padding: '18px', cursor: 'pointer', touchAction: 'manipulation' as const, WebkitTapHighlightColor: 'transparent' },
   issueCountRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid #1a3a1a' },
   issueCountName: { fontSize: 16, color: '#e8f0e0', flex: 1 },
   issueCounter: { display: 'flex', alignItems: 'center' },
