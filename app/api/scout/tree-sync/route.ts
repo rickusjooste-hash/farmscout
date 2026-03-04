@@ -15,6 +15,13 @@ const ALLOWED_TABLES = new Set([
 // FK ordering — sessions must exist before trees, trees before observations
 const TABLE_ORDER = ['inspection_sessions', 'inspection_trees', 'inspection_observations']
 
+// Per-table conflict columns — observations have a unique (tree_id, pest_id) constraint
+const CONFLICT_COLS: Record<string, string> = {
+  inspection_sessions: 'id',
+  inspection_trees: 'id',
+  inspection_observations: 'tree_id,pest_id',
+}
+
 // POST /api/scout/tree-sync
 // Single:  { table: string, record: object }
 // Batch:   { records: [{ table: string, record: object }] }
@@ -47,7 +54,7 @@ export async function POST(req: NextRequest) {
       if (!records?.length) continue
       const { error: upsertError } = await supabase
         .from(table)
-        .upsert(records, { onConflict: 'id' })
+        .upsert(records, { onConflict: CONFLICT_COLS[table] || 'id' })
       if (upsertError) {
         return NextResponse.json({ error: `${table}: ${upsertError.message}` }, { status: 500 })
       }
@@ -64,7 +71,7 @@ export async function POST(req: NextRequest) {
 
   const { error: upsertError } = await supabase
     .from(table)
-    .upsert(record, { onConflict: 'id' })
+    .upsert(record, { onConflict: CONFLICT_COLS[table] || 'id' })
 
   if (upsertError) {
     return NextResponse.json({ error: upsertError.message }, { status: 500 })
