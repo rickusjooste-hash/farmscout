@@ -72,10 +72,10 @@ export default function QcLabelsPage() {
         }
         .label-qr { width: 82px; height: 82px; flex-shrink: 0; }
         .label-text { display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
-        .label-brand { font-size: 7px; font-weight: 700; color: #2a6e45; letter-spacing: 0.12em; text-transform: uppercase; }
+        .label-brand { font-size: 9px; font-weight: 800; color: #2a6e45; letter-spacing: 0.12em; text-transform: uppercase; }
         .label-seq { font-size: 24px; font-weight: 800; color: #111; line-height: 1; }
-        .label-date { font-size: 8px; color: #555; }
-        .label-id { font-size: 7px; color: #aaa; letter-spacing: 0.04em; }
+        .label-date { font-size: 10px; font-weight: 600; color: #333; }
+        .label-id { font-size: 8px; color: #888; letter-spacing: 0.04em; }
 
         /* ── Print: one label per physical 100x50mm label ── */
         @media print {
@@ -105,10 +105,10 @@ export default function QcLabelsPage() {
             box-sizing: border-box !important;
           }
           .label-qr { width: 42mm !important; height: 42mm !important; }
-          .label-brand { font-size: 7pt !important; }
+          .label-brand { font-size: 9pt !important; font-weight: 800 !important; }
           .label-seq { font-size: 26pt !important; }
-          .label-date { font-size: 7pt !important; }
-          .label-id { font-size: 6pt !important; }
+          .label-date { font-size: 9pt !important; font-weight: 600 !important; }
+          .label-id { font-size: 7pt !important; }
         }
       `}</style>
 
