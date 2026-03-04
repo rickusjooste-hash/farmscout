@@ -399,6 +399,7 @@ export default function QcDashboardPage() {
         <a href="/qc/unknowns" style={s.navItem}><span>📷</span> Unknown Issues</a>
         <a href="/qc/settings/issues" style={s.navItem}><span>🐛</span> Issue Setup</a>
         <a href="/qc/settings/size-bins" style={s.navItem}><span>📏</span> Size Bins</a>
+        <a href="/qc/labels" style={s.navItem}><span>🏷️</span> Print Labels</a>
       </aside>
 
       {/* Main */}

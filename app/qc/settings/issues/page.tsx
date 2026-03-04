@@ -233,6 +233,7 @@ export default function QcIssueSettingsPage() {
         <a href="/qc/unknowns" style={s.navItem}><span>📷</span> Unknown Issues</a>
         <a href="/qc/settings/issues" style={{ ...s.navItem, background: '#2a4f38', color: '#a8d5a2' }}><span>🐛</span> Issue Setup</a>
         <a href="/qc/settings/size-bins" style={s.navItem}><span>📏</span> Size Bins</a>
+        <a href="/qc/labels" style={s.navItem}><span>🏷️</span> Print Labels</a>
       </aside>
 
       {/* Main */}
