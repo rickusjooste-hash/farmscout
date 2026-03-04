@@ -31,18 +31,23 @@ type Lang = 'en' | 'af'
 const SCALE_SERVICE = '0000fff0-0000-1000-8000-00805f9b34fb'
 const WEIGHT_CHAR   = '0000fff1-0000-1000-8000-00805f9b34fb'
 
+let _audioCtx: AudioContext | null = null
 function beep() {
   try {
-    const ctx = new AudioContext()
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.frequency.value = 1800
-    gain.gain.setValueAtTime(0.3, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15)
-    osc.start(ctx.currentTime)
-    osc.stop(ctx.currentTime + 0.15)
+    if (!_audioCtx || _audioCtx.state === 'closed') _audioCtx = new AudioContext()
+    const ctx = _audioCtx
+    const play = () => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.frequency.value = 1800
+      gain.gain.setValueAtTime(0.3, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15)
+      osc.start(ctx.currentTime)
+      osc.stop(ctx.currentTime + 0.15)
+    }
+    ctx.state === 'suspended' ? ctx.resume().then(play).catch(() => {}) : play()
   } catch { }
 }
 
