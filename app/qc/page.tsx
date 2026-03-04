@@ -620,18 +620,11 @@ export default function QcHome() {
           </div>
           <div style={s.confirmActions}>
             <button
-              style={{ ...s.primaryBtn, opacity: chosenOrchard ? 1 : 0.4 }}
-              onClick={() => { if (chosenOrchard) logBagWithUuid(crypto.randomUUID()) }}
-              disabled={!chosenOrchard}
-            >
-              Log Bag
-            </button>
-            <button
-              style={{ ...s.outlineBtn, opacity: chosenOrchard ? 1 : 0.4, fontSize: 14, marginTop: 4 }}
+              style={{ ...s.primaryBtn, opacity: chosenOrchard ? 1 : 0.4, fontSize: 18, padding: '18px', background: '#4a9e2a', borderRadius: 10 }}
               onClick={() => { if (chosenOrchard) { setRunnerView('scanning_label'); startLabelScanner() } }}
               disabled={!chosenOrchard}
             >
-              📷 Scan QR label instead
+              📷 Scan QR Label
             </button>
           </div>
         </div>
