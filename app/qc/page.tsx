@@ -900,10 +900,36 @@ export default function QcHome() {
         .reduce((sum, i) => sum + (bagIssues[i.pest_id] || 0), 0)
       const needsUnknownPhoto = unknownCount > 0 && !unknownPhoto
       const avgWeight = fruit.length ? Math.round(fruit.reduce((a, f) => a + f.weight_g, 0) / fruit.length) : 0
-      const histoBins = Object.entries(fruit.reduce((acc, f) => {
-        const label = f.size_bin_id ? (bins.find(b => b.id === f.size_bin_id)?.label ?? '?') : 'No bin'
-        acc[label] = (acc[label] || 0) + 1; return acc
-      }, {} as Record<string, number>)).sort((a, b) => b[1] - a[1])
+
+      const renderIssueRow = (issue: typeof issues[0]) => {
+        const count = bagIssues[issue.pest_id] || 0
+        const isUnknown = issue.display_name.toLowerCase() === 'unknown' ||
+          (issue.display_name_af?.toLowerCase() ?? '') === 'onbekend'
+        return (
+          <div key={issue.id}>
+            <div style={s.issueCountRow}>
+              <div style={s.issueCountName}>{issueName(issue)}</div>
+              <div style={s.issueCounter}>
+                <button style={s.issueCounterBtn} onClick={() => adjustIssueCount(issue.pest_id, -1)}>−</button>
+                <div style={{ ...s.issueCounterVal, color: count > 0 ? '#7cbe4a' : '#3a5a3a' }}>{count}</div>
+                <button style={s.issueCounterBtn} onClick={() => adjustIssueCount(issue.pest_id, 1)}>+</button>
+              </div>
+            </div>
+            {isUnknown && count > 0 && (
+              unknownPhoto ? (
+                <div style={s.unknownPhotoRow}>
+                  <img src={unknownPhoto} style={s.unknownThumb} alt="Unknown issue" />
+                  <button style={s.unknownRetakeBtn} onClick={retakeUnknownPhoto}>📷 Retake</button>
+                </div>
+              ) : (
+                <button style={s.unknownPhotoRequired} onClick={openUnknownCamera}>
+                  📷 Photo required — tap to capture
+                </button>
+              )
+            )}
+          </div>
+        )
+      }
 
       return (
         <div style={s.page}>
@@ -912,59 +938,41 @@ export default function QcHome() {
             <div style={s.topTitle}>Issues</div>
           </div>
 
-          {/* Mini size summary */}
-          <div style={{ padding: '10px 16px 4px' }}>
-            <div style={{ fontSize: 11, color: '#4a7a4a', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 6 }}>
-              {fruit.length} fruit · avg {avgWeight}g
-            </div>
-            <div style={s.histoPills}>
-              {histoBins.map(([label, count]) => (
-                <div key={label} style={s.histoPill}>
-                  <span style={s.histoPillLabel}>{label}</span>
-                  <span style={s.histoPillCount}>{count}</span>
-                </div>
-              ))}
-            </div>
+          {/* Fruit summary line */}
+          <div style={{ padding: '8px 16px 4px', fontSize: 11, color: '#4a7a4a', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>
+            {fruit.length} fruit · avg {avgWeight}g
           </div>
 
-          <div style={{ height: 1, background: '#1e3a1e', margin: '8px 0' }} />
+          <div style={{ height: 1, background: '#1e3a1e', margin: '4px 0 0' }} />
 
-          {/* Issue counters */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px' }}>
+          {/* Issue counters — grouped */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 8px' }}>
             {issues.length === 0 && (
               <div style={{ color: '#4a7a4a', fontSize: 14, textAlign: 'center', padding: '28px 0' }}>
                 No QC issues configured for this commodity.
               </div>
             )}
-            {issues.map(issue => {
-              const count = bagIssues[issue.pest_id] || 0
-              const isUnknown = issue.display_name.toLowerCase() === 'unknown' ||
-                (issue.display_name_af?.toLowerCase() ?? '') === 'onbekend'
-              return (
-                <div key={issue.id}>
-                  <div style={s.issueCountRow}>
-                    <div style={s.issueCountName}>{issueName(issue)}</div>
-                    <div style={s.issueCounter}>
-                      <button style={s.issueCounterBtn} onClick={() => adjustIssueCount(issue.pest_id, -1)}>−</button>
-                      <div style={{ ...s.issueCounterVal, color: count > 0 ? '#7cbe4a' : '#3a5a3a' }}>{count}</div>
-                      <button style={s.issueCounterBtn} onClick={() => adjustIssueCount(issue.pest_id, 1)}>+</button>
-                    </div>
-                  </div>
-                  {isUnknown && count > 0 && (
-                    unknownPhoto ? (
-                      <div style={s.unknownPhotoRow}>
-                        <img src={unknownPhoto} style={s.unknownThumb} alt="Unknown issue" />
-                        <button style={s.unknownRetakeBtn} onClick={retakeUnknownPhoto}>📷 Retake</button>
-                      </div>
-                    ) : (
-                      <button style={s.unknownPhotoRequired} onClick={openUnknownCamera}>
-                        📷 Photo required — tap to capture
-                      </button>
-                    )
-                  )}
+
+            {/* Picker issues */}
+            {issues.filter(i => i.category === 'picking_issue').length > 0 && (
+              <>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#f5c842', textTransform: 'uppercase' as const, letterSpacing: '0.08em', padding: '10px 0 4px' }}>
+                  Picker Issues
                 </div>
-              )
-            })}
+                {issues.filter(i => i.category === 'picking_issue').map(issue => renderIssueRow(issue))}
+                <div style={{ height: 1, background: '#1e3a1e', margin: '8px 0' }} />
+              </>
+            )}
+
+            {/* Quality issues */}
+            {issues.filter(i => i.category !== 'picking_issue').length > 0 && (
+              <>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#e85a4a', textTransform: 'uppercase' as const, letterSpacing: '0.08em', padding: '4px 0' }}>
+                  Quality Issues
+                </div>
+                {issues.filter(i => i.category !== 'picking_issue').map(issue => renderIssueRow(issue))}
+              </>
+            )}
           </div>
 
           {/* Validation error */}
