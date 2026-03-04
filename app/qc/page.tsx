@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import jsQR from 'jsqr'
 import {
   qcGetAll,
   qcGet,
@@ -140,6 +141,7 @@ export default function QcHome() {
 
   // Shared camera scanner (runner label + QC queue)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const [scanning, setScanning] = useState(false)
   const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const pendingStreamRef = useRef<MediaStream | null>(null)
@@ -222,19 +224,21 @@ export default function QcHome() {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       pendingStreamRef.current = stream
       setScanning(true)
-      const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] })
-      scanIntervalRef.current = setInterval(async () => {
-        if (!videoRef.current) return
-        try {
-          const codes = await detector.detect(videoRef.current)
-          if (codes.length > 0) {
-            const raw = codes[0].rawValue.trim()
-            let uuid: string | null = null
-            try { const d = JSON.parse(raw); if (d.id) uuid = d.id } catch { if (/^[0-9a-f-]{36}$/i.test(raw)) uuid = raw }
-            if (uuid) { beep(); stopScanner(); await logBagWithUuid(uuid) }
-          }
-        } catch { }
-      }, 500)
+      scanIntervalRef.current = setInterval(() => {
+        const video = videoRef.current; const canvas = canvasRef.current
+        if (!video || !canvas || video.readyState < 2) return
+        const ctx = canvas.getContext('2d'); if (!ctx) return
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight
+        ctx.drawImage(video, 0, 0)
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        const code = jsQR(imageData.data, imageData.width, imageData.height)
+        if (code) {
+          const raw = code.data.trim()
+          let uuid: string | null = null
+          try { const d = JSON.parse(raw); if (d.id) uuid = d.id } catch { if (/^[0-9a-f-]{36}$/i.test(raw)) uuid = raw }
+          if (uuid) { beep(); stopScanner(); logBagWithUuid(uuid) }
+        }
+      }, 300)
     } catch { alert('Could not access camera. Check permissions.') }
   }
 
@@ -320,16 +324,20 @@ export default function QcHome() {
   }
 
   async function startScanner() {
-    if (!('BarcodeDetector' in window)) { alert('QR scanning requires Chrome on Android.'); return }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       pendingStreamRef.current = stream
       setScanning(true)
-      const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] })
-      scanIntervalRef.current = setInterval(async () => {
-        if (!videoRef.current) return
-        try { const codes = await detector.detect(videoRef.current); if (codes.length > 0) { beep(); await handleQrScan(codes[0].rawValue) } } catch { }
-      }, 500)
+      scanIntervalRef.current = setInterval(() => {
+        const video = videoRef.current; const canvas = canvasRef.current
+        if (!video || !canvas || video.readyState < 2) return
+        const ctx = canvas.getContext('2d'); if (!ctx) return
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight
+        ctx.drawImage(video, 0, 0)
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        const code = jsQR(imageData.data, imageData.width, imageData.height)
+        if (code) { beep(); handleQrScan(code.data.trim()) }
+      }, 300)
     } catch { alert('Could not access camera.') }
   }
 
@@ -642,6 +650,7 @@ export default function QcHome() {
           <div style={{ padding: '20px' }}>
             <div style={s.scannerContainer}>
               <video ref={videoRef} style={s.scannerVideo} playsInline muted />
+              <canvas ref={canvasRef} style={{ display: 'none' }} />
               <div style={s.scannerOverlay}>Align the pre-printed QR label</div>
             </div>
           </div>
@@ -705,6 +714,7 @@ export default function QcHome() {
             ) : (
               <div style={s.scannerContainer}>
                 <video ref={videoRef} style={s.scannerVideo} playsInline muted />
+                <canvas ref={canvasRef} style={{ display: 'none' }} />
                 <div style={s.scannerOverlay}>Align QR code in frame...</div>
                 <button style={s.cancelScanBtn} onClick={stopScanner}>Cancel</button>
               </div>
