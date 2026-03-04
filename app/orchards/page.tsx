@@ -62,12 +62,19 @@ export default function OrchardsPage() {
   const boundaryMapRef = useRef<Record<string, object>>({})
 
   // ── UI state ──────────────────────────────────────────────────────────────
-  const [mapReady,        setMapReady]        = useState(false)
-  const [mode,            setMode]            = useState<'view' | 'add' | 'edit'>('view')
-  const [selectedOrchard, setSelectedOrchard] = useState<Orchard | null>(null)
-  const [editTarget,      setEditTarget]      = useState<Orchard | null>(null)
-  const [drawnBoundary,   setDrawnBoundary]   = useState<object | null>(null)
-  const [boundaryDrawn,   setBoundaryDrawn]   = useState(false)
+  const [mapReady,         setMapReady]         = useState(false)
+  const [boundaryMapReady, setBoundaryMapReady] = useState(false)
+  const [mode,             setMode]             = useState<'view' | 'add' | 'edit'>('view')
+  const [selectedOrchard,  setSelectedOrchard]  = useState<Orchard | null>(null)
+  const [editTarget,       setEditTarget]       = useState<Orchard | null>(null)
+  const [drawnBoundary,    setDrawnBoundary]    = useState<object | null>(null)
+  const [boundaryDrawn,    setBoundaryDrawn]    = useState(false)
+
+  // ── Zone state ────────────────────────────────────────────────────────────
+  const [orchardZones,   setOrchardZones]   = useState<{id:string,name:string,zone_nr:number,zone_letter:string}[]>([])
+  const [zonesLoading,   setZonesLoading]   = useState(false)
+  const [editingZoneId,  setEditingZoneId]  = useState<string|null>(null)
+  const [editingZoneName,setEditingZoneName]= useState('')
 
   // ── Data state ────────────────────────────────────────────────────────────
   const [farms,          setFarms]          = useState<Farm[]>([])
@@ -173,6 +180,7 @@ export default function OrchardsPage() {
       const bmap: Record<string, object> = {}
       boundaryData.forEach((b: any) => { if (b.boundary) bmap[b.id] = b.boundary })
       boundaryMapRef.current = bmap
+      setBoundaryMapReady(true)
 
       const lookup: Record<string, Orchard> = {}
       orchards.forEach(o => { lookup[o.id] = o })
@@ -306,6 +314,18 @@ export default function OrchardsPage() {
   }, [mapReady, mode, editTarget])
 
   // ── Helpers ───────────────────────────────────────────────────────────────
+  function selectOrchardFromList(o: Orchard) {
+    setSelectedOrchard(o)
+    if (!geoLayerRef.current) return
+    const map = mapRef.current?._map
+    if (!map) return
+    geoLayerRef.current.eachLayer((lyr: any) => {
+      if (lyr.feature?.properties?.id === o.id) {
+        map.fitBounds(lyr.getBounds(), { padding: [60, 60], maxZoom: 17 })
+      }
+    })
+  }
+
   function enterAdd() {
     setForm(emptyForm())
     setDrawnBoundary(null); setBoundaryDrawn(false)
@@ -338,6 +358,70 @@ export default function OrchardsPage() {
     setEditTarget(null)
     setDrawnBoundary(null); setBoundaryDrawn(false)
     setSaveErr(''); setSaveOk(false)
+  }
+
+  // ── Load zones when orchard selected ──────────────────────────────────────
+  useEffect(() => {
+    if (!selectedOrchard) { setOrchardZones([]); return }
+    setZonesLoading(true)
+    fetch(`/api/orchards/zones?orchard_id=${selectedOrchard.id}`)
+      .then(r => r.json())
+      .then(data => { setOrchardZones(Array.isArray(data) ? data : []); setZonesLoading(false) })
+      .catch(() => setZonesLoading(false))
+    setEditingZoneId(null)
+  }, [selectedOrchard?.id])
+
+  async function handleGenerateZones() {
+    if (!selectedOrchard?.ha) return
+    if (orchardZones.length > 0) {
+      if (!confirm(`Replace ${orchardZones.length} existing zone${orchardZones.length !== 1 ? 's' : ''}?`)) return
+    }
+    setZonesLoading(true)
+    const res = await fetch('/api/orchards/zones', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'generate', orchardId: selectedOrchard.id, ha: selectedOrchard.ha }),
+    })
+    const data = await res.json()
+    if (!res.ok || data.error) { alert(`Zone generation failed: ${data.error}`); setZonesLoading(false); return }
+    setOrchardZones(Array.isArray(data) ? data : [])
+    setZonesLoading(false)
+  }
+
+  async function handleAddZone() {
+    if (!selectedOrchard) return
+    const nextNr = orchardZones.length + 1
+    const nextLetter = String.fromCharCode(64 + nextNr) // 1→A, 2→B …
+    const name = `${selectedOrchard.name}${selectedOrchard.variety ? ` (${selectedOrchard.variety})` : ''} - Zone ${nextLetter}`
+    setZonesLoading(true)
+    const res = await fetch('/api/orchards/zones', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'create', orchardId: selectedOrchard.id, zoneLetter: nextLetter, zoneNr: nextNr, name }),
+    })
+    const data = await res.json()
+    if (data.id) setOrchardZones(z => [...z, data])
+    setZonesLoading(false)
+  }
+
+  async function handleRenameZone(id: string, name: string) {
+    await fetch('/api/orchards/zones', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, name }),
+    })
+    setOrchardZones(z => z.map(zone => zone.id === id ? { ...zone, name } : zone))
+    setEditingZoneId(null)
+  }
+
+  async function handleDeleteZone(id: string) {
+    if (!confirm('Delete this zone?')) return
+    await fetch('/api/orchards/zones', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    setOrchardZones(z => z.filter(zone => zone.id !== id))
   }
 
   async function handleSave() {
@@ -382,7 +466,7 @@ export default function OrchardsPage() {
         @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'DM Sans', sans-serif; background: #f4f1eb; }
-        .app { display: flex; min-height: 100vh; }
+        .app { display: flex; height: 100vh; overflow: hidden; }
         .sidebar {
           width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto;
           background: #1c3a2a; padding: 32px 20px;
@@ -451,12 +535,13 @@ export default function OrchardsPage() {
         .save-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
         .save-err { font-size: 12px; color: #e85a4a; }
         .save-ok  { font-size: 12px; color: #2a6e45; font-weight: 600; }
-        .map-wrap { flex: 1; position: relative; min-height: 600px; }
-        #orchards-map { width: 100%; height: 100%; min-height: 600px; }
+        .map-wrap { flex: 1; position: relative; }
+        #orchards-map { width: 100%; height: 100%; }
         .info-panel {
           position: absolute; top: 16px; right: 16px; width: 260px;
           background: #fff; border-radius: 12px; border: 1px solid #e8e4dc;
           padding: 20px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); z-index: 1000;
+          max-height: calc(100vh - 80px); overflow-y: auto;
         }
         .info-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: #1c3a2a; margin-bottom: 2px; }
         .info-sub { font-size: 12px; color: #9aaa9f; margin-bottom: 14px; }
@@ -476,6 +561,31 @@ export default function OrchardsPage() {
           font-size: 12px !important; font-weight: 500 !important; padding: 4px 10px !important;
         }
         .orchard-tooltip::before { display: none !important; }
+        .orchard-list-panel {
+          width: 260px; flex-shrink: 0; background: #fff;
+          border-right: 1px solid #e8e4dc; overflow-y: auto;
+          display: flex; flex-direction: column;
+        }
+        .orchard-list-header {
+          padding: 14px 16px 10px; font-size: 11px; font-weight: 600;
+          text-transform: uppercase; letter-spacing: 0.7px; color: #9aaa9f;
+          border-bottom: 1px solid #f0ede6; flex-shrink: 0;
+        }
+        .orchard-list-item {
+          display: flex; align-items: center; gap: 8px;
+          padding: 10px 16px; border-bottom: 1px solid #f7f5f0;
+          cursor: pointer; transition: background 0.1s;
+        }
+        .orchard-list-item:hover { background: #f7f5f0; }
+        .orchard-list-item.selected { background: #f0f7f2; }
+        .orchard-list-name { flex: 1; font-size: 13px; color: #1c3a2a; font-weight: 500; line-height: 1.3; }
+        .orchard-list-no-boundary { font-size: 10px; color: #bbb; display: block; }
+        .orchard-list-edit {
+          flex-shrink: 0; padding: 3px 9px; font-size: 11px; font-weight: 600;
+          background: none; border: 1.5px solid #e0ddd6; border-radius: 6px;
+          color: #6a7a70; cursor: pointer; font-family: 'DM Sans', sans-serif;
+        }
+        .orchard-list-edit:hover { background: #f0f7f2; border-color: #c8e6c9; color: #2a6e45; }
       `}</style>
 
       <div className="app">
@@ -519,6 +629,34 @@ export default function OrchardsPage() {
 
           {/* Content */}
           <div className="content">
+            {/* Orchard list panel (view mode only) */}
+            {mode === 'view' && (
+              <div className="orchard-list-panel">
+                <div className="orchard-list-header">{orchards.length} Orchards</div>
+                {orchards.map(o => {
+                  const hasBoundary = !!boundaryMapRef.current[o.id]
+                  return (
+                    <div
+                      key={o.id}
+                      className={`orchard-list-item${selectedOrchard?.id === o.id ? ' selected' : ''}`}
+                      onClick={() => selectOrchardFromList(o)}
+                    >
+                      <div className="orchard-list-name">
+                        {o.name}{o.variety ? ` (${o.variety})` : ''}
+                        {!hasBoundary && <span className="orchard-list-no-boundary">no boundary</span>}
+                      </div>
+                      <button
+                        className="orchard-list-edit"
+                        onClick={e => { e.stopPropagation(); enterEdit(o) }}
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
             {/* Form panel (add / edit mode) */}
             {mode !== 'view' && (
               <div className="form-panel">
@@ -655,6 +793,71 @@ export default function OrchardsPage() {
                       <div className="info-row"><span className="info-label">Row width</span><span className="info-value">{o.row_width ? `${o.row_width} m` : '—'}</span></div>
                       <div className="info-row"><span className="info-label">Legacy ID</span><span className="info-value">{o.legacy_id ?? '—'}</span></div>
                       <div className="info-divider" />
+
+                      {/* Zones section */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.7px', color: '#9aaa9f' }}>Zones</span>
+                        <button
+                          onClick={handleGenerateZones}
+                          disabled={!o.ha || zonesLoading}
+                          title={o.ha ? `Auto-generate ${Math.ceil(o.ha / 2)} zones from ${o.ha} ha` : 'Set hectares first'}
+                          style={{
+                            padding: '3px 9px', fontSize: 11, fontWeight: 600, cursor: o.ha ? 'pointer' : 'not-allowed',
+                            background: o.ha ? '#1c3a2a' : '#e0e0e0', color: o.ha ? '#a8d5a2' : '#999',
+                            border: 'none', borderRadius: 6, fontFamily: 'DM Sans, sans-serif', opacity: zonesLoading ? 0.6 : 1,
+                          }}>
+                          ⚡ Auto-generate
+                        </button>
+                      </div>
+
+                      {zonesLoading && <div style={{ fontSize: 12, color: '#9aaa9f', marginBottom: 6 }}>Loading…</div>}
+
+                      {!zonesLoading && orchardZones.map(zone => (
+                        <div key={zone.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: '1px solid #f0ede6' }}>
+                          {editingZoneId === zone.id ? (
+                            <>
+                              <input
+                                autoFocus
+                                value={editingZoneName}
+                                onChange={e => setEditingZoneName(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') handleRenameZone(zone.id, editingZoneName); if (e.key === 'Escape') setEditingZoneId(null) }}
+                                style={{ flex: 1, padding: '3px 6px', fontSize: 12, border: '1.5px solid #2a6e45', borderRadius: 5, fontFamily: 'DM Sans, sans-serif', color: '#1c3a2a' }}
+                              />
+                              <button onClick={() => handleRenameZone(zone.id, editingZoneName)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2a6e45', fontSize: 14, padding: '0 2px' }} title="Save">✓</button>
+                              <button onClick={() => setEditingZoneId(null)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: 14, padding: '0 2px' }} title="Cancel">✗</button>
+                            </>
+                          ) : (
+                            <>
+                              <span style={{ flex: 1, fontSize: 13, color: '#1c3a2a' }}>{zone.name}</span>
+                              <button onClick={() => { setEditingZoneId(zone.id); setEditingZoneName(zone.name) }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9aaa9f', fontSize: 13, padding: '0 2px' }} title="Rename">✏️</button>
+                              <button onClick={() => handleDeleteZone(zone.id)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e85a4a', fontSize: 13, padding: '0 2px' }} title="Delete">×</button>
+                            </>
+                          )}
+                        </div>
+                      ))}
+
+                      {!zonesLoading && orchardZones.length === 0 && (
+                        <div style={{ fontSize: 12, color: '#9aaa9f', fontStyle: 'italic', marginBottom: 4 }}>No zones — use Auto-generate or add manually</div>
+                      )}
+
+                      <button onClick={handleAddZone} disabled={zonesLoading}
+                        style={{
+                          marginTop: 6, background: 'none', border: 'none', color: '#2a6e45',
+                          fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'DM Sans, sans-serif',
+                        }}>
+                        + Add zone
+                      </button>
+
+                      <div className="info-divider" />
+                      {!boundaryMapRef.current[o.id] && (
+                        <div style={{ fontSize: 12, color: '#9aaa9f', fontStyle: 'italic', marginBottom: 8 }}>
+                          No boundary drawn — click Edit to draw one
+                        </div>
+                      )}
                       <button className="btn-edit" onClick={() => enterEdit(o)}>Edit Orchard</button>
                     </>
                   ) : (
