@@ -107,11 +107,8 @@ export default function QcHome() {
   const [bagIssues, setBagIssues] = useState<Record<string, number>>({})
 
   // Unknown issue — requires photo before saving
-  const [showUnknownCamera, setShowUnknownCamera] = useState(false)
   const [unknownPhoto, setUnknownPhoto] = useState<string | null>(null)
-  const unknownVideoRef = useRef<HTMLVideoElement>(null)
-  const unknownCanvasRef = useRef<HTMLCanvasElement>(null)
-  const unknownStreamRef = useRef<MediaStream | null>(null)
+  const unknownFileInputRef = useRef<HTMLInputElement>(null)
 
   // Language preference
   const [lang, setLang] = useState<Lang>(() => {
@@ -444,41 +441,24 @@ export default function QcHome() {
     }
   }
 
-  async function openUnknownCamera() {
-    setShowUnknownCamera(true)
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      unknownStreamRef.current = stream
-      if (unknownVideoRef.current) {
-        unknownVideoRef.current.srcObject = stream
-        await unknownVideoRef.current.play()
-      }
-    } catch {
-      setShowUnknownCamera(false)
-      alert('Could not access camera. Please check permissions.')
-    }
+  function openUnknownCamera() {
+    unknownFileInputRef.current?.click()
   }
 
-  function stopUnknownCamera() {
-    unknownStreamRef.current?.getTracks().forEach(t => t.stop())
-    unknownStreamRef.current = null
-  }
-
-  function captureUnknownPhoto() {
-    const video = unknownVideoRef.current
-    const canvas = unknownCanvasRef.current
-    if (!video || !canvas) return
-    canvas.width = video.videoWidth || 640
-    canvas.height = video.videoHeight || 480
-    canvas.getContext('2d')?.drawImage(video, 0, 0)
-    setUnknownPhoto(canvas.toDataURL('image/jpeg', 0.8))
-    stopUnknownCamera()
-    setShowUnknownCamera(false)
-  }
+  function stopUnknownCamera() {}
 
   function retakeUnknownPhoto() {
     setUnknownPhoto(null)
-    openUnknownCamera()
+    setTimeout(() => unknownFileInputRef.current?.click(), 50)
+  }
+
+  function handleUnknownFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setUnknownPhoto(ev.target?.result as string)
+    reader.readAsDataURL(file)
+    e.target.value = ''
   }
 
   async function saveCompletedSample() {
@@ -1011,43 +991,17 @@ export default function QcHome() {
     }
   }
 
-  // Unknown issue camera modal — rendered on top of everything
-  if (showUnknownCamera) {
-    return (
-      <div style={s.unknownCameraModal}>
-        <div style={s.unknownCameraHeader}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#f0b040' }}>
-            📷 {lang === 'af' ? 'Foto van Onbekende Probleem' : 'Photo of Unknown Issue'}
-          </div>
-          <div style={{ fontSize: 13, color: '#a0c080', marginTop: 4 }}>
-            {lang === 'af' ? 'Neem \'n duidelike foto voor jy kan stoor' : 'Take a clear photo before you can save'}
-          </div>
-        </div>
-        <video ref={unknownVideoRef} style={s.unknownCameraVideo} playsInline muted />
-        <div style={s.unknownCameraActions}>
-          <button style={s.unknownCaptureBtn} onClick={captureUnknownPhoto}>📸 {lang === 'af' ? 'Neem Foto' : 'Take Photo'}</button>
-          <button
-            style={s.unknownCancelBtn}
-            onClick={() => {
-              stopUnknownCamera()
-              setShowUnknownCamera(false)
-              // Reset the unknown count — they cancelled
-              const unknownIssue = qcIssues.find(i =>
-                i.display_name.toLowerCase() === 'unknown' ||
-                (i.display_name_af?.toLowerCase() ?? '') === 'onbekend'
-              )
-              if (unknownIssue) setBagIssues(prev => ({ ...prev, [unknownIssue.pest_id]: 0 }))
-            }}
-          >
-            {lang === 'af' ? 'Kanselleer' : 'Cancel'}
-          </button>
-        </div>
-        <canvas ref={unknownCanvasRef} style={{ display: 'none' }} />
-      </div>
-    )
-  }
-
-  return null
+  // Hidden file input for unknown issue photo (works on iOS + Android natively)
+  return (
+    <input
+      ref={unknownFileInputRef}
+      type="file"
+      accept="image/*"
+      capture="environment"
+      style={{ display: 'none' }}
+      onChange={handleUnknownFileChange}
+    />
+  )
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
