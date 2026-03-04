@@ -503,7 +503,8 @@ export default function QcHome() {
       }
       await qcPushPendingRecords()
       await loadData()
-      setAppMode('home')
+      setActiveSession(null); setFruit([]); setBagIssues({}); setUnknownPhoto(null)
+      setAppMode('qc'); setQcView('queue')
     } finally { setSavingSession(false) }
   }
 
