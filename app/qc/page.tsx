@@ -93,7 +93,6 @@ export default function QcHome() {
   const [qcView, setQcView] = useState<QcView>('queue')
   const [activeSession, setActiveSession] = useState<QcBagSession | null>(null)
   const [pendingCommodityUuid, setPendingCommodityUuid] = useState<string | null>(null)
-  const [manualUuid, setManualUuid] = useState('')
   const [fruit, setFruit] = useState<QcFruit[]>([])
   const [currentWeight, setCurrentWeight] = useState<number | null>(null)
   const [currentBin, setCurrentBin] = useState<QcSizeBin | null>(null)
@@ -706,23 +705,6 @@ export default function QcHome() {
                 <button style={s.cancelScanBtn} onClick={stopScanner}>Cancel</button>
               </div>
             )}
-            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-              <input
-                style={{ ...s.manualInput, flex: 1, fontSize: 13 }}
-                type="text"
-                placeholder="Or paste bag UUID here..."
-                value={manualUuid}
-                onChange={e => setManualUuid(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && manualUuid.trim()) { handleQrScan(manualUuid.trim()); setManualUuid('') } }}
-              />
-              <button
-                style={{ background: '#7cbe4a', color: '#0a1a0a', border: 'none', borderRadius: 8, padding: '0 16px', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: manualUuid.trim() ? 1 : 0.4 }}
-                onClick={() => { if (manualUuid.trim()) { handleQrScan(manualUuid.trim()); setManualUuid('') } }}
-                disabled={!manualUuid.trim()}
-              >
-                Load
-              </button>
-            </div>
           </div>
           {pendingSessions.length > 0 && (
             <div style={s.queueSection}>
