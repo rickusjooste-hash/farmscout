@@ -34,6 +34,7 @@ async function refreshAccessToken(): Promise<boolean> {
 export default function ScoutApp() {
   const [isOnline, setIsOnline] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
   const [scoutName, setScoutName] = useState('')
   const [pendingCount, setPendingCount] = useState(0)
   const router = useRouter()
@@ -149,15 +150,27 @@ export default function ScoutApp() {
     if (isSyncingRef.current) return
     isSyncingRef.current = true
     setIsSyncing(true)
+    setSyncError(null)
     try {
       // Refresh token first so stale tokens don't block tree-sync uploads
-      await refreshAccessToken()
+      const refreshed = await refreshAccessToken()
+      if (!refreshed && navigator.onLine) {
+        setSyncError('Session expired — please sign out and sign in again')
+        isSyncingRef.current = false
+        setIsSyncing(false)
+        return
+      }
       const token = localStorage.getItem('farmscout_access_token') ?? undefined
-      await runFullSync(supabaseKey, token)
+      const result = await runFullSync(supabaseKey, token)
+      if (result.push.failed > 0) {
+        setSyncError(`${result.push.failed} record(s) failed to upload — will retry`)
+      }
       await loadPendingCount()
       const rebaitDue = parseInt(localStorage.getItem('farmscout_rebait_due') || '0', 10)
       setRebaitDueCount(isNaN(rebaitDue) ? 0 : rebaitDue)
-    } catch { }
+    } catch (err: any) {
+      setSyncError(err?.message || 'Sync failed')
+    }
     isSyncingRef.current = false
     setIsSyncing(false)
   }
@@ -224,6 +237,14 @@ export default function ScoutApp() {
           </div>
         </div>
       </div>
+
+      {/* Sync error banner */}
+      {syncError && (
+        <div style={{ background: '#3a1a1a', borderBottom: '1px solid #e05c4b', color: '#e05c4b', padding: '8px 16px', fontSize: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>⚠ {syncError}</span>
+          <span style={{ cursor: 'pointer', fontSize: 16, paddingLeft: 12 }} onClick={() => setSyncError(null)}>×</span>
+        </div>
+      )}
 
       {/* Main content */}
       <div style={styles.screen}>

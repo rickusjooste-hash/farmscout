@@ -1,4 +1,4 @@
-const CACHE_NAME = 'farmscout-1772616437924'
+const CACHE_NAME = 'farmscout-1772616962559'
 
 // App shell pages to pre-cache on install
 const PRECACHE = [

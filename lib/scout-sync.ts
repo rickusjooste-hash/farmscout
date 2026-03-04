@@ -233,6 +233,16 @@ export async function pushPendingPhotos(supabaseKey: string, accessToken?: strin
         const treeRecord = await getOne('inspection_trees', photo.id)
         if (treeRecord) {
           await upsert('inspection_trees', { ...treeRecord, image_url: publicUrl })
+          // Patch server record too — whether or not the record was already pushed
+          // (record may have been pushed without image_url; this upsert fills it in)
+          fetch('/api/scout/tree-sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              table: 'inspection_trees',
+              record: { ...treeRecord, image_url: publicUrl },
+            }),
+          }).catch(() => {})
         }
 
         // Find matching sync_queue item and patch body + clear has_photo flag
@@ -296,14 +306,14 @@ export async function pushPendingRecords(supabaseKey: string) {
 
   let pushed = 0
   let failed = 0
-  let waiting = 0  // records blocked on photo upload
 
   // ── Batch server-side records (one request per table, respecting FK order) ──
   if (freshToken) {
+    // Include has_photo items too — push the record now (without image_url),
+    // and pushPendingPhotos will patch the image_url on the server separately.
     const serverItems = queue.filter(
-      item => SERVER_SIDE_TABLES.has(item.tableName) && item.has_photo !== true
+      item => SERVER_SIDE_TABLES.has(item.tableName)
     )
-    waiting += queue.filter(item => SERVER_SIDE_TABLES.has(item.tableName) && item.has_photo === true).length
 
     if (serverItems.length > 0) {
       // Group by table
@@ -375,9 +385,8 @@ export async function pushPendingRecords(supabaseKey: string) {
 
   // ── Non-server-side records (trap inspections, etc.) — sent directly ──────
   const directItems = queue.filter(
-    item => !SERVER_SIDE_TABLES.has(item.tableName) && item.has_photo !== true
+    item => !SERVER_SIDE_TABLES.has(item.tableName)
   )
-  waiting += queue.filter(item => !SERVER_SIDE_TABLES.has(item.tableName) && item.has_photo === true).length
 
   for (const item of directItems) {
     try {
@@ -411,8 +420,8 @@ export async function pushPendingRecords(supabaseKey: string) {
     }
   }
 
-  console.log(`[Sync] Done: ${pushed} uploaded, ${failed} failed, ${waiting} waiting on photos`)
-  return { pushed, failed, waiting }
+  console.log(`[Sync] Done: ${pushed} uploaded, ${failed} failed`)
+  return { pushed, failed }
 }
 
 // ── Full sync: pull down + push up ────────────────────────────────────────
