@@ -89,8 +89,15 @@ export default function TreeInspectionView({
 
   const photoInputRef = useRef<HTMLInputElement>(null)
 
-  // GPS watch — check permission state first so we can show fix instructions immediately
+  // GPS watch — only active while inspecting a tree (saves battery on zone/tree list screens)
   useEffect(() => {
+    if (subView !== 'inspecting') {
+      // Clear stale GPS state when not inspecting
+      setGpsLocation(null)
+      setGpsUnavailable(false)
+      setGpsErrorMsg(null)
+      return
+    }
     if (!navigator.geolocation) {
       setGpsUnavailable(true)
       setGpsErrorMsg('This device does not support GPS')
@@ -126,7 +133,7 @@ export default function TreeInspectionView({
       { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 }
     )
     return () => navigator.geolocation.clearWatch(watchId)
-  }, [])
+  }, [subView])
 
   useEffect(() => {
     loadZones()
