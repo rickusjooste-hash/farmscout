@@ -246,6 +246,15 @@ export default function QcHome() {
     if (!selectedEmployee) return
     const chosenOrchard = detectedOrchard || manualOrchard
     if (!chosenOrchard) return
+    const existing = await qcGet('bag_sessions', uuid)
+    if (existing) {
+      const msg = existing.status === 'sampled'
+        ? `Bag #${existing.bag_seq} already sampled — do not reuse this label.`
+        : `Bag #${existing.bag_seq} already logged for ${existing._employee_name}. Scan a different label.`
+      alert(msg)
+      stopScanner()
+      return
+    }
     const orgId = localStorage.getItem('qcapp_org_id') || ''
     const farmId = chosenOrchard.farm_id || localStorage.getItem('qcapp_farm_id') || ''
     const workerId = localStorage.getItem('qcapp_worker_id') || ''
@@ -297,6 +306,10 @@ export default function QcHome() {
     try { const d = JSON.parse(raw); uuid = d.id || raw.trim() } catch { uuid = raw.trim() }
     const existing = await qcGet('bag_sessions', uuid)
     if (existing) {
+      if (existing.status === 'sampled') {
+        alert(`Bag #${existing.bag_seq} (${existing._employee_name}) has already been sampled.`)
+        return
+      }
       openSession(existing)
     } else {
       // Runner hasn't synced yet — ask for commodity only
