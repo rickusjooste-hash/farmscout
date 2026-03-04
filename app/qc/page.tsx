@@ -401,21 +401,29 @@ export default function QcHome() {
   }
 
   function confirmWeightOK() {
-    const orgId = localStorage.getItem('qcapp_org_id') || ''
-    if (activeSession) {
-      const newFruit: QcFruit = {
-        id: crypto.randomUUID(), session_id: activeSession.id, organisation_id: orgId,
-        seq: fruit.length + 1, weight_g: confirmingWeight, size_bin_id: confirmingBin?.id ?? null,
+    try {
+      const orgId = localStorage.getItem('qcapp_org_id') || ''
+      if (activeSession) {
+        const id = typeof crypto?.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+        const newFruit: QcFruit = {
+          id, session_id: activeSession.id, organisation_id: orgId,
+          seq: fruit.length + 1, weight_g: confirmingWeight, size_bin_id: confirmingBin?.id ?? null,
+        }
+        setFruit(prev => [...prev, newFruit])
+        setKeypadInput(''); weightBuffer.current = []
+        beep()
+        setAddedFlash('✓')
+        setTimeout(() => setAddedFlash(null), 500)
       }
-      setFruit(prev => [...prev, newFruit])
-      setKeypadInput(''); weightBuffer.current = []
-      // Visual + audio feedback
-      beep()
-      setAddedFlash('✓')
-      setTimeout(() => setAddedFlash(null), 500)
+    } catch (err: any) {
+      setAddedFlash(`ERR: ${err?.message || err}`)
+      setTimeout(() => setAddedFlash(null), 5000)
+    } finally {
+      confirmDismissedAt.current = Date.now()
+      setShowWeightConfirm(false)
     }
-    confirmDismissedAt.current = Date.now()
-    setShowWeightConfirm(false)
   }
 
   function confirmWeightReenter() {
