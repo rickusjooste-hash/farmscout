@@ -417,9 +417,8 @@ export default function QcHome() {
         setAddedFlash('✓')
         setTimeout(() => setAddedFlash(null), 500)
       }
-    } catch (err: any) {
-      setAddedFlash(`ERR: ${err?.message || err}`)
-      setTimeout(() => setAddedFlash(null), 5000)
+    } catch {
+      // Silently continue — confirm mode still exits via finally
     } finally {
       confirmDismissedAt.current = Date.now()
       setShowWeightConfirm(false)
