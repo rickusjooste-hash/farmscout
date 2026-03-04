@@ -798,7 +798,10 @@ export default function QcHome() {
         <div style={{ ...s.page, overflowY: 'hidden' }}>
           {/* Header */}
           <div style={s.topBar}>
-            <button style={s.backBtn} onClick={() => setQcView('queue')}>← Queue</button>
+            <button style={s.backBtn} onClick={() => {
+              if (fruit.length > 0 && !confirm(`Discard ${fruit.length} fruit weighed? This cannot be undone.`)) return
+              setQcView('queue'); setActiveSession(null); setFruit([])
+            }}>← Queue</button>
             <div style={s.topTitle}>Fruit Weighing</div>
             {fruit.length > 0 && (
               <button style={s.doneSmallBtn} onClick={() => setQcView('issues')}>
