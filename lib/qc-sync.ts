@@ -316,6 +316,11 @@ export async function qcPushPendingRecords(): Promise<{ pushed: number; failed: 
         }
       }
 
+      // Strip local-only fields (prefixed with _) before sending to Supabase
+      const parsed = JSON.parse(body)
+      const clean = Object.fromEntries(Object.entries(parsed).filter(([k]) => !k.startsWith('_')))
+      body = JSON.stringify(clean)
+
       // Refresh auth headers with current token
       const headers = {
         ...item.headers,
