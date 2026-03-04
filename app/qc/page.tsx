@@ -407,14 +407,19 @@ export default function QcHome() {
   }
 
   function confirmWeightOK() {
-    const orgId = localStorage.getItem('qcapp_org_id') || ''
-    const newFruit: QcFruit = {
-      id: crypto.randomUUID(), session_id: activeSession!.id, organisation_id: orgId,
-      seq: fruit.length + 1, weight_g: confirmingWeight, size_bin_id: confirmingBin?.id ?? null,
+    try {
+      const orgId = localStorage.getItem('qcapp_org_id') || ''
+      if (!activeSession) return
+      const newFruit: QcFruit = {
+        id: crypto.randomUUID(), session_id: activeSession.id, organisation_id: orgId,
+        seq: fruit.length + 1, weight_g: confirmingWeight, size_bin_id: confirmingBin?.id ?? null,
+      }
+      setFruit(prev => [...prev, newFruit])
+      setCurrentWeight(null); setCurrentBin(null)
+      setKeypadInput(''); weightBuffer.current = []
+    } finally {
+      setShowWeightConfirm(false)
     }
-    setFruit(prev => [...prev, newFruit])
-    setCurrentWeight(null); setCurrentBin(null)
-    setKeypadInput(''); setShowWeightConfirm(false); weightBuffer.current = []
   }
 
   function confirmWeightReenter() {
@@ -858,9 +863,11 @@ export default function QcHome() {
               <div style={s.weightConfirmWeight}>{confirmingWeight} g</div>
               <div style={s.weightConfirmActions}>
                 <button style={{ ...s.weightConfirmReenter, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' } as React.CSSProperties}
-                  onPointerDown={e => { e.preventDefault(); confirmWeightReenter() }}>Re-enter</button>
+                  onTouchStart={() => confirmWeightReenter()}
+                  onMouseDown={() => confirmWeightReenter()}>Re-enter</button>
                 <button style={{ ...s.weightConfirmOk, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' } as React.CSSProperties}
-                  onPointerDown={e => { e.preventDefault(); confirmWeightOK() }}>OK ✓</button>
+                  onTouchStart={() => confirmWeightOK()}
+                  onMouseDown={() => confirmWeightOK()}>OK ✓</button>
               </div>
             </div>
           )}
