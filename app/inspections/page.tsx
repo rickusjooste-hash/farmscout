@@ -10,8 +10,8 @@ interface TreeDot {
   tree_id: string
   session_id: string
   tree_nr: number
-  lat: number
-  lng: number
+  lat: number | null
+  lng: number | null
   has_location: boolean
   inspected_at: string
   comments: string | null
@@ -73,6 +73,48 @@ function nextWeek(year: number, week: number) {
   return week === 52 ? { year: year + 1, week: 1 } : { year, week: week + 1 }
 }
 
+function dayRange(date: Date): { from: Date; to: Date } {
+  const from = new Date(date)
+  from.setHours(0, 0, 0, 0)
+  const to = new Date(from)
+  to.setDate(to.getDate() + 1)
+  return { from, to }
+}
+
+function dayLabel(date: Date): string {
+  return date.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
+function prevDay(date: Date): Date {
+  const d = new Date(date)
+  d.setDate(d.getDate() - 1)
+  return d
+}
+
+function nextDay(date: Date): Date {
+  const d = new Date(date)
+  d.setDate(d.getDate() + 1)
+  return d
+}
+
+function isToday(date: Date): boolean {
+  const now = new Date()
+  return date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+}
+
+function NavArrow({ dir, onClick, disabled }: { dir: '‹' | '›'; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button onClick={onClick} disabled={disabled} style={{
+      width: 28, height: 28, borderRadius: '50%', border: '1.5px solid #d0cdc6',
+      background: '#fff', color: disabled ? '#ccc' : '#3a4a40', fontSize: 15,
+      cursor: disabled ? 'default' : 'pointer', display: 'flex', alignItems: 'center',
+      justifyContent: 'center', flexShrink: 0,
+    }}>{dir}</button>
+  )
+}
+
 // ── Dot color ──────────────────────────────────────────────────────────────
 
 function dotColor(d: TreeDot): string {
@@ -100,6 +142,16 @@ export default function InspectionsPage() {
   const [weekYear, setWeekYear] = useState(curYear)
   const [weekNum, setWeekNum] = useState(curWeek)
 
+  const [dateMode, setDateMode] = useState<'today' | 'week'>('today')
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+
+  // Initialize selectedDate client-side only to avoid SSR/client timezone mismatch
+  useEffect(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    setSelectedDate(d)
+  }, [])
+
   const [dots, setDots] = useState<TreeDot[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -126,7 +178,7 @@ export default function InspectionsPage() {
   }, [dots])
 
   const visibleDots = useMemo(
-    () => dots.filter(d => d.has_location && (!selectedScoutId || d.scout_id === selectedScoutId)),
+    () => dots.filter(d => d.has_location && d.lat != null && d.lng != null && (!selectedScoutId || d.scout_id === selectedScoutId)),
     [dots, selectedScoutId]
   )
 
@@ -157,11 +209,14 @@ export default function InspectionsPage() {
 
   useEffect(() => {
     if (effectiveFarmIds.length === 0) return
+    if (dateMode === 'today' && !selectedDate) return
     async function loadDots() {
       setLoading(true)
       setSelectedTree(null)
       setSelectedScoutId(null)
-      const { from, to } = isoWeekRange(weekYear, weekNum)
+      const { from, to } = dateMode === 'today'
+        ? dayRange(selectedDate!)
+        : isoWeekRange(weekYear, weekNum)
       const { data, error } = await supabase.rpc('get_tree_inspection_dots', {
         p_farm_ids: effectiveFarmIds,
         p_week_start: from.toISOString(),
@@ -171,7 +226,7 @@ export default function InspectionsPage() {
       setLoading(false)
     }
     loadDots()
-  }, [effectiveFarmIds, weekYear, weekNum])
+  }, [effectiveFarmIds, weekYear, weekNum, dateMode, selectedDate])
 
   // ── Load detail on tree select ────────────────────────────────────────────
 
@@ -290,7 +345,7 @@ export default function InspectionsPage() {
 
       // Outer ring for high-load trees
       if (d.total_count >= 5) {
-        L.circleMarker([d.lat, d.lng], {
+        L.circleMarker(L.latLng(d.lat!, d.lng!), {
           radius: 13,
           fillOpacity: 0,
           color: '#e85a4a',
@@ -302,7 +357,7 @@ export default function InspectionsPage() {
       }
 
       // Main dot
-      L.circleMarker([d.lat, d.lng], {
+      L.circleMarker(L.latLng(d.lat!, d.lng!), {
         radius: isSelected ? 10 : 7,
         fillColor: dotColor(d),
         fillOpacity: 0.92,
@@ -324,7 +379,7 @@ export default function InspectionsPage() {
     // Auto-fit on first load (no tree selected)
     if (!selectedTree && visibleDots.length > 0) {
       map.fitBounds(
-        L.latLngBounds(visibleDots.map(d => [d.lat, d.lng])),
+        L.latLngBounds(visibleDots.map(d => L.latLng(d.lat!, d.lng!))),
         { padding: [40, 40], maxZoom: 17 }
       )
     }
@@ -334,15 +389,8 @@ export default function InspectionsPage() {
 
   const { year: ny, week: nw } = nextWeek(weekYear, weekNum)
   const canGoForward = ny < curYear || (ny === curYear && nw <= curWeek)
+  const canGoForwardDay = selectedDate ? !isToday(selectedDate) : false
 
-  const arrowBtn = (label: string, onClick: () => void, disabled = false) => (
-    <button onClick={onClick} disabled={disabled} style={{
-      width: 28, height: 28, borderRadius: '50%', border: '1.5px solid #d0cdc6',
-      background: '#fff', color: disabled ? '#ccc' : '#3a4a40', fontSize: 15,
-      cursor: disabled ? 'default' : 'pointer', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', flexShrink: 0,
-    }}>{label}</button>
-  )
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -469,32 +517,71 @@ export default function InspectionsPage() {
           <div className="top-bar">
             <div className="page-title">Tree Inspections</div>
 
-            {/* Week navigation */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {arrowBtn('‹', () => {
-                const p = prevWeek(weekYear, weekNum)
-                setWeekYear(p.year)
-                setWeekNum(p.week)
-              })}
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a', whiteSpace: 'nowrap', minWidth: 180, textAlign: 'center' }}>
-                {weekLabel(weekYear, weekNum)}
-              </span>
-              {arrowBtn('›', () => {
-                if (canGoForward) {
-                  const n = nextWeek(weekYear, weekNum)
-                  setWeekYear(n.year)
-                  setWeekNum(n.week)
-                }
-              }, !canGoForward)}
-              {(weekYear !== curYear || weekNum !== curWeek) && (
+            {/* Mode toggle + date nav — grouped so top-bar child positions stay stable */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+
+              {/* Toggle pills */}
+              <div style={{ display: 'flex', background: '#f4f1ea', borderRadius: 20, padding: 2, gap: 2 }}>
                 <button
-                  onClick={() => { setWeekYear(curYear); setWeekNum(curWeek) }}
+                  onClick={() => setDateMode('today')}
                   style={{
-                    padding: '3px 10px', borderRadius: 20, border: '1.5px solid #e0ddd6',
-                    background: '#fff', color: '#6a7a70', fontSize: 11, fontWeight: 500, cursor: 'pointer',
+                    padding: '4px 14px', borderRadius: 18, border: 'none', fontSize: 12, fontWeight: 600,
+                    cursor: 'pointer', transition: 'all 0.15s',
+                    background: dateMode === 'today' ? '#1c3a2a' : 'transparent',
+                    color: dateMode === 'today' ? '#a8d5a2' : '#6a7a70',
                   }}
-                >This week</button>
-              )}
+                >Today</button>
+                <button
+                  onClick={() => setDateMode('week')}
+                  style={{
+                    padding: '4px 14px', borderRadius: 18, border: 'none', fontSize: 12, fontWeight: 600,
+                    cursor: 'pointer', transition: 'all 0.15s',
+                    background: dateMode === 'week' ? '#1c3a2a' : 'transparent',
+                    color: dateMode === 'week' ? '#a8d5a2' : '#6a7a70',
+                  }}
+                >This Week</button>
+              </div>
+
+              {/* Date / week navigation */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {dateMode === 'today' ? (
+                  <>
+                    <NavArrow dir="‹" onClick={() => selectedDate && setSelectedDate(prevDay(selectedDate))} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a', whiteSpace: 'nowrap', minWidth: 140, textAlign: 'center' }}>
+                      {selectedDate ? (isToday(selectedDate) ? 'Today · ' : '') + dayLabel(selectedDate) : '…'}
+                    </span>
+                    <NavArrow dir="›" onClick={() => { if (canGoForwardDay && selectedDate) setSelectedDate(nextDay(selectedDate)) }} disabled={!canGoForwardDay} />
+                  </>
+                ) : (
+                  <>
+                    <NavArrow dir="‹" onClick={() => {
+                      const p = prevWeek(weekYear, weekNum)
+                      setWeekYear(p.year)
+                      setWeekNum(p.week)
+                    }} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a', whiteSpace: 'nowrap', minWidth: 180, textAlign: 'center' }}>
+                      {weekLabel(weekYear, weekNum)}
+                    </span>
+                    <NavArrow dir="›" onClick={() => {
+                      if (canGoForward) {
+                        const n = nextWeek(weekYear, weekNum)
+                        setWeekYear(n.year)
+                        setWeekNum(n.week)
+                      }
+                    }} disabled={!canGoForward} />
+                    {(weekYear !== curYear || weekNum !== curWeek) && (
+                      <button
+                        onClick={() => { setWeekYear(curYear); setWeekNum(curWeek) }}
+                        style={{
+                          padding: '3px 10px', borderRadius: 20, border: '1.5px solid #e0ddd6',
+                          background: '#fff', color: '#6a7a70', fontSize: 11, fontWeight: 500, cursor: 'pointer',
+                        }}
+                      >This week</button>
+                    )}
+                  </>
+                )}
+              </div>
+
             </div>
 
             {/* Stats */}
@@ -568,9 +655,13 @@ export default function InspectionsPage() {
                 <div className="tim-empty-overlay">
                   <div className="tim-empty-card">
                     <div style={{ fontSize: 15, fontWeight: 600, color: '#1c3a2a', marginBottom: 6 }}>
-                      No tree inspections recorded for W{weekNum}
+                      {dateMode === 'today'
+                        ? `No tree inspections recorded for ${selectedDate ? dayLabel(selectedDate) : 'today'}`
+                        : `No tree inspections recorded for W${weekNum}`}
                     </div>
-                    <div style={{ fontSize: 13, color: '#9aaa9f' }}>← Go to a previous week</div>
+                    <div style={{ fontSize: 13, color: '#9aaa9f' }}>
+                      {dateMode === 'today' ? '← Go to a previous day' : '← Go to a previous week'}
+                    </div>
                   </div>
                 </div>
               )}

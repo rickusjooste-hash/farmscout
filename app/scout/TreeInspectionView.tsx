@@ -83,16 +83,17 @@ export default function TreeInspectionView({
   const [photo, setPhoto] = useState<string | null>(null)
   const [comments, setComments] = useState('')
   const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [gpsUnavailable, setGpsUnavailable] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const photoInputRef = useRef<HTMLInputElement>(null)
 
   // GPS watch
   useEffect(() => {
-    if (!navigator.geolocation) return
+    if (!navigator.geolocation) { setGpsUnavailable(true); return }
     const watchId = navigator.geolocation.watchPosition(
-      (pos) => setGpsLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => {},
+      (pos) => { setGpsLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setGpsUnavailable(false) },
+      () => setGpsUnavailable(true),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
     )
     return () => navigator.geolocation.clearWatch(watchId)
@@ -591,14 +592,21 @@ export default function TreeInspectionView({
           <div style={{
             ...styles.gpsRow,
             ...(!gpsLocation ? {
-              background: '#3a1a0e',
-              border: '1px solid #e05c4b',
+              background: gpsUnavailable ? '#2a1a0e' : '#3a1a0e',
+              border: `1px solid ${gpsUnavailable ? '#e05c4b' : '#e05c4b'}`,
               borderRadius: 8,
               padding: '10px 14px',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              gap: 4,
             } : {}),
           }}>
             <span style={{ color: gpsLocation ? '#6abf4b' : '#e05c4b', fontWeight: gpsLocation ? 400 : 700 }}>
-              {gpsLocation ? '📍 GPS locked' : '⏳ Waiting for GPS — cannot save yet'}
+              {gpsLocation
+                ? '📍 GPS locked'
+                : gpsUnavailable
+                  ? '⛔ GPS disabled — enable location in phone settings to continue'
+                  : '⏳ Waiting for GPS…'}
             </span>
             {gpsLocation && (
               <span style={styles.gpsCoords}>
