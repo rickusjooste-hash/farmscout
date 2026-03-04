@@ -31,6 +31,21 @@ type Lang = 'en' | 'af'
 const SCALE_SERVICE = '0000fff0-0000-1000-8000-00805f9b34fb'
 const WEIGHT_CHAR   = '0000fff1-0000-1000-8000-00805f9b34fb'
 
+function beep() {
+  try {
+    const ctx = new AudioContext()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.frequency.value = 1800
+    gain.gain.setValueAtTime(0.3, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15)
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 0.15)
+  } catch { }
+}
+
 function relTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
   const mins = Math.floor(diff / 60000)
@@ -202,7 +217,7 @@ export default function QcHome() {
             const raw = codes[0].rawValue.trim()
             let uuid: string | null = null
             try { const d = JSON.parse(raw); if (d.id) uuid = d.id } catch { if (/^[0-9a-f-]{36}$/i.test(raw)) uuid = raw }
-            if (uuid) { stopScanner(); await logBagWithUuid(uuid) }
+            if (uuid) { beep(); stopScanner(); await logBagWithUuid(uuid) }
           }
         } catch { }
       }, 500)
@@ -299,7 +314,7 @@ export default function QcHome() {
       const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] })
       scanIntervalRef.current = setInterval(async () => {
         if (!videoRef.current) return
-        try { const codes = await detector.detect(videoRef.current); if (codes.length > 0) await handleQrScan(codes[0].rawValue) } catch { }
+        try { const codes = await detector.detect(videoRef.current); if (codes.length > 0) { beep(); await handleQrScan(codes[0].rawValue) } } catch { }
       }, 500)
     } catch { alert('Could not access camera.') }
   }
