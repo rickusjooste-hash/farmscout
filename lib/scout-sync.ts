@@ -273,6 +273,9 @@ const SERVER_SIDE_TABLES = new Set([
   'inspection_observations',
 ])
 
+// FK ordering — must be respected when batching
+const SERVER_TABLE_ORDER = ['inspection_sessions', 'inspection_trees', 'inspection_observations']
+
 // ── Push all queued records up to Supabase ────────────────────────────────
 // Call this when the phone comes back online
 
@@ -293,43 +296,103 @@ export async function pushPendingRecords(supabaseKey: string) {
 
   let pushed = 0
   let failed = 0
+  let waiting = 0  // records blocked on photo upload
 
-  for (const item of queue) {
-    // Skip records waiting for their photo to be uploaded first
-    if (item.has_photo === true) { failed++; continue }
+  // ── Batch server-side records (one request per table, respecting FK order) ──
+  if (freshToken) {
+    const serverItems = queue.filter(
+      item => SERVER_SIDE_TABLES.has(item.tableName) && item.has_photo !== true
+    )
+    waiting += queue.filter(item => SERVER_SIDE_TABLES.has(item.tableName) && item.has_photo === true).length
 
-    try {
-      let response: Response
-
-      if (SERVER_SIDE_TABLES.has(item.tableName) && freshToken) {
-        // Route tree scouting tables through the server-side API (bypasses RLS)
-        response = await fetch('/api/scout/tree-sync', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${freshToken}`,
-          },
-          body: JSON.stringify({ table: item.tableName, record: JSON.parse(item.body) }),
-        })
-      } else {
-        response = await fetch(item.url, {
-          method: item.method,
-          headers: item.headers,
-          body: item.body,
-        })
+    if (serverItems.length > 0) {
+      // Group by table
+      const byTable: Record<string, typeof serverItems> = {}
+      for (const item of serverItems) {
+        if (!byTable[item.tableName]) byTable[item.tableName] = []
+        byTable[item.tableName].push(item)
       }
 
-      if (response.ok) {
-        // Remove from queue — successfully uploaded
-        await deleteFromQueue(item.id!)
+      // Send in batches of 200, respecting FK order across tables
+      const BATCH_SIZE = 200
+      let batchFailed = false
 
-        // Update local record to show it's been synced
-        const parsed = JSON.parse(item.body)
+      for (const table of SERVER_TABLE_ORDER) {
+        const items = byTable[table] || []
+        if (items.length === 0) continue
+
+        for (let i = 0; i < items.length; i += BATCH_SIZE) {
+          const batch = items.slice(i, i + BATCH_SIZE)
+          try {
+            const response = await fetch('/api/scout/tree-sync', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${freshToken}`,
+              },
+              body: JSON.stringify({
+                records: batch.map(item => ({
+                  table: item.tableName,
+                  record: JSON.parse(item.body),
+                })),
+              }),
+            })
+
+            if (response.ok) {
+              for (const item of batch) {
+                await deleteFromQueue(item.id!)
+                await upsertRecord(item.tableName as any, {
+                  ...JSON.parse(item.body),
+                  _syncStatus: 'synced',
+                })
+                pushed++
+              }
+            } else {
+              const errorText = await response.text()
+              throw new Error(`HTTP ${response.status}: ${errorText}`)
+            }
+          } catch (err: any) {
+            console.error(`[Sync] Batch failed for ${table}:`, err.message)
+            const db = await import('./scout-db').then(m => m.getScoutDB())
+            for (const item of batch) {
+              await db.put('sync_queue', {
+                ...item,
+                retries: (item.retries || 0) + 1,
+                lastError: err.message,
+                lastAttempt: new Date().toISOString(),
+              })
+              failed++
+            }
+            batchFailed = true
+          }
+        }
+
+        // Don't proceed to child tables if parent table failed (FK constraint)
+        if (batchFailed) break
+      }
+    }
+  }
+
+  // ── Non-server-side records (trap inspections, etc.) — sent directly ──────
+  const directItems = queue.filter(
+    item => !SERVER_SIDE_TABLES.has(item.tableName) && item.has_photo !== true
+  )
+  waiting += queue.filter(item => !SERVER_SIDE_TABLES.has(item.tableName) && item.has_photo === true).length
+
+  for (const item of directItems) {
+    try {
+      const response = await fetch(item.url, {
+        method: item.method,
+        headers: item.headers,
+        body: item.body,
+      })
+
+      if (response.ok) {
+        await deleteFromQueue(item.id!)
         await upsertRecord(item.tableName as any, {
-          ...parsed,
+          ...JSON.parse(item.body),
           _syncStatus: 'synced',
         })
-
         pushed++
       } else {
         const errorText = await response.text()
@@ -337,22 +400,19 @@ export async function pushPendingRecords(supabaseKey: string) {
       }
     } catch (err: any) {
       console.error(`[Sync] Failed to upload ${item.tableName}:`, err.message)
-
-      // Update retry count in queue
-      const db = await import('./scout-db').then((m) => m.getScoutDB())
+      const db = await import('./scout-db').then(m => m.getScoutDB())
       await db.put('sync_queue', {
         ...item,
         retries: (item.retries || 0) + 1,
         lastError: err.message,
         lastAttempt: new Date().toISOString(),
       })
-
       failed++
     }
   }
 
-  console.log(`[Sync] Done: ${pushed} uploaded, ${failed} failed`)
-  return { pushed, failed }
+  console.log(`[Sync] Done: ${pushed} uploaded, ${failed} failed, ${waiting} waiting on photos`)
+  return { pushed, failed, waiting }
 }
 
 // ── Full sync: pull down + push up ────────────────────────────────────────

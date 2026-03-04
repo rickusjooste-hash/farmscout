@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { runFullSync } from '../../lib/scout-sync'
+import { runFullSync, pushPendingRecords } from '../../lib/scout-sync'
 import TrapInspectionView from './TrapInspectionView'
 import TreeInspectionView from './TreeInspectionView'
 
@@ -42,6 +42,7 @@ export default function ScoutApp() {
   const [view, setView] = useState<'home' | 'trap-inspection' | 'tree-inspection'>('home')
   const [rebaitDueCount, setRebaitDueCount] = useState(0)
   const [commodityCode, setCommodityCode] = useState<string | null>(null)
+  const isSyncingRef = useRef(false)
 
   useEffect(() => {
     // Check if logged in — if not, redirect to login
@@ -144,19 +145,41 @@ export default function ScoutApp() {
     }
   }
 
- async function handleSync() {
-    if (isSyncing) return
+  async function handleSync() {
+    if (isSyncingRef.current) return
+    isSyncingRef.current = true
     setIsSyncing(true)
     try {
+      // Refresh token first so stale tokens don't block tree-sync uploads
+      await refreshAccessToken()
       const token = localStorage.getItem('farmscout_access_token') ?? undefined
       await runFullSync(supabaseKey, token)
       await loadPendingCount()
-      // Refresh rebait count after sync
       const rebaitDue = parseInt(localStorage.getItem('farmscout_rebait_due') || '0', 10)
       setRebaitDueCount(isNaN(rebaitDue) ? 0 : rebaitDue)
     } catch { }
+    isSyncingRef.current = false
     setIsSyncing(false)
   }
+
+  // Background push every 2 minutes — works regardless of view (home/trap/tree)
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (!navigator.onLine || isSyncingRef.current) return
+      const pending = await import('../../lib/scout-db').then(m => m.getPendingQueue())
+      if (pending.length === 0) return
+      isSyncingRef.current = true
+      setIsSyncing(true)
+      try {
+        await refreshAccessToken()
+        await pushPendingRecords(supabaseKey)
+        await loadPendingCount()
+      } catch { }
+      isSyncingRef.current = false
+      setIsSyncing(false)
+    }, 2 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   function handleLogout() {
     localStorage.clear()
