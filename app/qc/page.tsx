@@ -617,13 +617,14 @@ export default function QcHome() {
               </select>
             )}
           </div>
-          <div style={s.confirmActions}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '16px' }}>
             <button
-              style={{ ...s.primaryBtn, opacity: chosenOrchard ? 1 : 0.4, fontSize: 18, padding: '18px', background: '#4a9e2a', borderRadius: 10 }}
+              style={{ width: 180, height: 180, background: chosenOrchard ? '#4a9e2a' : '#2e4a2e', color: '#e8f0e0', border: 'none', borderRadius: 16, cursor: chosenOrchard ? 'pointer' : 'not-allowed', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', gap: 10, fontSize: 16, fontWeight: 700 }}
               onClick={() => { if (chosenOrchard) { setRunnerView('scanning_label'); startLabelScanner() } }}
               disabled={!chosenOrchard}
             >
-              📷 Scan QR Label
+              <span style={{ fontSize: 48 }}>📷</span>
+              Scan QR Label
             </button>
           </div>
         </div>
@@ -697,7 +698,10 @@ export default function QcHome() {
           </div>
           <div style={s.scanSection}>
             {!scanning ? (
-              <button style={s.scanBtn} onClick={startScanner}>📷 Scan Bag QR</button>
+              <button style={s.scanBtn} onClick={startScanner}>
+                <span style={{ fontSize: 48, display: 'block', marginBottom: 10 }}>📷</span>
+                Scan Bag QR
+              </button>
             ) : (
               <div style={s.scannerContainer}>
                 <video ref={videoRef} style={s.scannerVideo} playsInline muted />
@@ -1038,7 +1042,7 @@ const s: Record<string, React.CSSProperties> = {
   primaryBtn: { width: '100%', background: '#7cbe4a', color: '#0a1a0a', fontSize: 18, fontWeight: 700, padding: '16px', border: 'none', borderRadius: 8, cursor: 'pointer', marginBottom: 8 },
   outlineBtn: { width: '100%', background: 'none', border: '1px solid #3a5a3a', borderRadius: 8, color: '#7cbe4a', fontSize: 15, padding: '13px', cursor: 'pointer' },
   scanSection: { padding: '20px' },
-  scanBtn: { width: '100%', background: '#7cbe4a', color: '#0a1a0a', fontSize: 17, fontWeight: 700, padding: '18px', border: 'none', borderRadius: 8, cursor: 'pointer' },
+  scanBtn: { width: 180, height: 180, background: '#4a9e2a', color: '#e8f0e0', fontSize: 16, fontWeight: 700, border: 'none', borderRadius: 16, cursor: 'pointer', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', margin: '8px auto' },
   scannerContainer: { position: 'relative' as const, borderRadius: 8, overflow: 'hidden' },
   scannerVideo: { width: '100%', height: 260, objectFit: 'cover' as const, display: 'block' },
   scannerOverlay: { position: 'absolute' as const, bottom: 40, left: 0, right: 0, textAlign: 'center', color: '#fff', fontSize: 13, textShadow: '0 1px 3px #000' },
