@@ -816,12 +816,21 @@ export default function QcHome() {
             )}
           </div>
 
-          {/* Weight display */}
+          {/* Weight display — shows confirm weight when pending */}
           <div style={s.weightSection}>
-            <div style={{ ...s.weightDisplay, color: keypadInput ? '#e8f0e0' : '#3a5a3a' }}>
-              {displayWeight}
+            <div style={{
+              ...s.weightDisplay,
+              color: showWeightConfirm ? '#7cbe4a' : (keypadInput ? '#e8f0e0' : '#3a5a3a'),
+              fontSize: showWeightConfirm ? 80 : 64,
+            }}>
+              {showWeightConfirm ? `${confirmingWeight} g` : displayWeight}
             </div>
-            <div style={s.binLabel}>{binLabel || (bleConnected ? 'Place on scale…' : 'Enter weight')}</div>
+            <div style={s.binLabel}>
+              {showWeightConfirm
+                ? (confirmingBin?.label ?? 'No bin match')
+                : (binLabel || (bleConnected ? 'Place on scale…' : 'Enter weight'))
+              }
+            </div>
           </div>
 
           {/* Mini histogram — compact horizontal pills */}
@@ -836,41 +845,47 @@ export default function QcHome() {
             </div>
           )}
 
-          {/* Weight confirm — always in DOM, toggled via display */}
-          <div style={{ padding: '16px 20px 8px', display: showWeightConfirm ? 'flex' : 'none', flexDirection: 'column' as const, alignItems: 'center', gap: 12, touchAction: 'manipulation' as const }}>
-            <div style={{ fontSize: 13, color: '#7aaa6a', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>
-              {confirmingBin?.label ?? 'No bin match'}
-            </div>
-            <div style={{ fontSize: 80, fontWeight: 900, color: '#7cbe4a', lineHeight: 1 }}>
-              {confirmingWeight} g
-            </div>
-            <div style={{ display: 'flex', gap: 12, width: '100%', marginTop: 8 }}>
-              <button style={s.weightConfirmReenter}
-                onTouchEnd={(e) => { e.preventDefault(); confirmWeightReenter() }}
-                onClick={confirmWeightReenter}>Re-enter</button>
-              <button style={{ ...s.weightConfirmOk, flex: 2 } as React.CSSProperties}
-                onTouchEnd={(e) => { e.preventDefault(); confirmWeightOK() }}
-                onClick={confirmWeightOK}>OK ✓</button>
-            </div>
-          </div>
+          {/* Keypad — same 12 buttons always, transform in-place for confirm */}
+          <div style={s.keypad}>
+            {['1','2','3','4','5','6','7','8','9','⌫','0','✓'].map(key => {
+              const confirming = showWeightConfirm
+              const isConfirm = key === '✓'
+              const isBack = key === '⌫'
 
-          {/* Keypad — always in DOM, toggled via display */}
-          <div style={{ ...s.keypad, display: showWeightConfirm ? 'none' : 'grid' }}>
-            {['1','2','3','4','5','6','7','8','9','⌫','0','✓'].map(key => (
-              <button
-                key={key}
-                style={{
-                  ...s.keypadKey,
-                  ...(key === '✓' ? s.keypadKeyConfirm : {}),
-                  ...(key === '⌫' ? s.keypadKeyBack : {}),
-                  opacity: key === '✓' && !keypadInput ? 0.35 : 1,
-                }}
-                onClick={() => keypadPress(key, bins)}
-                disabled={key === '✓' && !keypadInput}
-              >
-                {key}
-              </button>
-            ))}
+              // Determine label, handler, style per mode
+              let label: string = key
+              let handler: () => void = () => keypadPress(key, bins)
+              let disabled = false
+              let style: React.CSSProperties = { ...s.keypadKey }
+
+              if (confirming) {
+                if (isConfirm) {
+                  label = 'OK ✓'
+                  handler = confirmWeightOK
+                  style = { ...style, ...s.keypadKeyConfirm, fontSize: 24 }
+                } else if (isBack) {
+                  label = '↩'
+                  handler = confirmWeightReenter
+                  style = { ...style, ...s.keypadKeyBack }
+                } else {
+                  disabled = true
+                  style = { ...style, opacity: 0.15 }
+                }
+              } else {
+                if (isConfirm) {
+                  style = { ...style, ...s.keypadKeyConfirm, opacity: keypadInput ? 1 : 0.35 }
+                  disabled = !keypadInput
+                } else if (isBack) {
+                  style = { ...style, ...s.keypadKeyBack }
+                }
+              }
+
+              return (
+                <button key={key} style={style} disabled={disabled} onClick={handler}>
+                  {label}
+                </button>
+              )
+            })}
           </div>
 
           {/* Bag info */}
