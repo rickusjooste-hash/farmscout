@@ -35,6 +35,7 @@ interface IssueRow {
   category: string
   total_count: number
   bags_affected: number
+  pct_of_fruit: number
 }
 
 interface BagRow {
@@ -616,6 +617,7 @@ export default function QcDashboardPage() {
                     <BarChart
                       data={issueData.map(r => ({
                         name: lang === 'af' ? r.pest_name_af : r.pest_name,
+                        pct: Number(r.pct_of_fruit),
                         count: r.total_count,
                         category: r.category,
                       }))}
@@ -623,10 +625,16 @@ export default function QcDashboardPage() {
                       margin={{ top: 0, right: 24, bottom: 0, left: 120 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" horizontal={false} />
-                      <XAxis type="number" tick={{ fontSize: 11, fill: '#7a8a80' }} />
+                      <XAxis type="number" tick={{ fontSize: 11, fill: '#7a8a80' }} tickFormatter={v => `${v}%`} />
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: '#3a4a40' }} width={115} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar dataKey="count" name="Count" radius={[0, 4, 4, 0]}>
+                      <Tooltip
+                        formatter={(value: number, _name: string, props: any) => [
+                          `${value}% (${props.payload.count} of ${kpis?.fruit_weighed ?? '?'} fruit)`,
+                          'Issue rate'
+                        ]}
+                        contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e8e4dc' }}
+                      />
+                      <Bar dataKey="pct" name="% of fruit" radius={[0, 4, 4, 0]}>
                         {issueData.map((entry, index) => (
                           <Cell
                             key={index}
