@@ -48,11 +48,62 @@ function getAnonKey(): string {
   return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 }
 
+// ── Token refresh (both QC and Runner apps store refresh tokens) ─────────
+
+async function refreshTokenIfNeeded(): Promise<string> {
+  const token = getToken()
+  if (!token) return ''
+
+  // Check if token is expired or about to expire (within 5 min)
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    const expiresAt = payload.exp * 1000
+    if (Date.now() < expiresAt - 5 * 60 * 1000) return token // still valid
+  } catch {
+    return token // can't parse, try using it as-is
+  }
+
+  // Try to refresh using whichever refresh token is available
+  const refreshToken =
+    localStorage.getItem('qcapp_refresh_token') ||
+    localStorage.getItem('runnerapp_refresh_token') || ''
+  if (!refreshToken) return token
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: getAnonKey() },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    })
+    if (!res.ok) return token
+
+    const data = await res.json()
+    const newToken = data.access_token
+    const newRefresh = data.refresh_token
+
+    // Update both prefixes so runner and QC sync both work
+    if (localStorage.getItem('qcapp_access_token')) {
+      localStorage.setItem('qcapp_access_token', newToken)
+      localStorage.setItem('qcapp_refresh_token', newRefresh)
+    }
+    if (localStorage.getItem('runnerapp_access_token')) {
+      localStorage.setItem('runnerapp_access_token', newToken)
+      localStorage.setItem('runnerapp_refresh_token', newRefresh)
+    }
+
+    console.log('[QcSync] Token refreshed successfully')
+    return newToken
+  } catch (err) {
+    console.warn('[QcSync] Token refresh failed:', err)
+    return token
+  }
+}
+
 // ── Pull reference data ───────────────────────────────────────────────────
 
 export async function pullQcReferenceData(accessToken?: string): Promise<{ success: boolean; error?: any }> {
   try {
-    const token = accessToken || getToken()
+    const token = accessToken || await refreshTokenIfNeeded() || getToken()
     const farmIds = getFarmIds()
     if (!token || !farmIds.length) return { success: false, error: 'No token or farm IDs' }
 
@@ -286,7 +337,7 @@ export async function qcPushPendingRecords(): Promise<{ pushed: number; failed: 
   if (queue.length === 0) return { pushed: 0, failed: 0 }
 
   console.log(`[QcSync] Uploading ${queue.length} records...`)
-  const freshToken = getToken()
+  const freshToken = await refreshTokenIfNeeded() || getToken()
   const anonKey = getAnonKey()
 
   const storeMap: Record<string, string> = {
