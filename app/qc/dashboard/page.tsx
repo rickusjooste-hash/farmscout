@@ -307,7 +307,7 @@ export default function QcDashboardPage() {
 
     setKpis((kpisRes.data as KpiData) || null)
     setSizeData((sizeRes.data as SizeBin[]) || [])
-    setIssueData((issueRes.data as IssueRow[]) || [])
+    setIssueData(((issueRes.data as IssueRow[]) || []).filter(r => r.category !== 'picking_issue'))
 
     // Filter bag list by commodity if selected
     let bags = (bagRes.data as BagRow[]) || []
@@ -625,7 +625,7 @@ export default function QcDashboardPage() {
                       margin={{ top: 0, right: 24, bottom: 0, left: 120 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" horizontal={false} />
-                      <XAxis type="number" tick={{ fontSize: 11, fill: '#7a8a80' }} tickFormatter={v => `${v}%`} />
+                      <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: '#7a8a80' }} tickFormatter={v => `${v}%`} />
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: '#3a4a40' }} width={115} />
                       <Tooltip content={<CustomTooltip />} />
                       <Bar dataKey="pct" name="% of fruit" radius={[0, 4, 4, 0]}>
