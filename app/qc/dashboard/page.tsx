@@ -238,6 +238,7 @@ export default function QcDashboardPage() {
   const [newOrchardId, setNewOrchardId] = useState('')
   const [savingOrchard, setSavingOrchard] = useState(false)
 
+  const [issueView, setIssueView] = useState<'bars' | 'bubbles' | 'waffle'>('bars')
   const [pickerSort, setPickerSort] = useState<PickerSort>('issueRate')
   const [pickerSortDir, setPickerSortDir] = useState<'asc' | 'desc'>('desc')
 
@@ -476,6 +477,12 @@ export default function QcDashboardPage() {
   const BAR_PICKING = '#f5c842'
   const BAR_QC      = '#e85a4a'
   const BAR_SIZE    = '#4caf72'
+  const ISSUE_PALETTE = [
+    '#c0392b', '#e74c3c', '#e8604c', '#f0876a',
+    '#f5a58a', '#f9c3ab', '#fddecf',
+    '#d35400', '#e67e22', '#f39c12', '#f1c40f', '#a8d8a8',
+    '#6b7fa8', '#9aaa9f', '#c8c4bb',
+  ]
 
   return (
     <div style={s.page}>
@@ -660,48 +667,243 @@ export default function QcDashboardPage() {
             {/* ── Issue Breakdown ───────────────────────────────────────── */}
             <div style={s.card}>
               <div style={s.cardHeader}>
-                <div style={s.cardTitle}>Issue Breakdown</div>
-                <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#9aaa9f', alignItems: 'center' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ width: 10, height: 10, borderRadius: 2, background: BAR_PICKING, display: 'inline-block' }} />
-                    Picking issue
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={s.cardTitle}>Issue Breakdown</div>
+                  <span style={{ fontSize: 11, background: BAR_QC, color: 'white', padding: '2px 8px', borderRadius: 20, fontFamily: 'monospace', fontWeight: 700, letterSpacing: 0.5 }}>
+                    QC REPORT
                   </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ width: 10, height: 10, borderRadius: 2, background: BAR_QC, display: 'inline-block' }} />
-                    QC issue
-                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {([['bars', 'Ranked Bars'], ['bubbles', 'Bubble Map'], ['waffle', 'Waffle']] as const).map(([key, label]) => (
+                    <button key={key} onClick={() => setIssueView(key)} style={{
+                      padding: '5px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                      fontSize: 12, fontWeight: 600,
+                      background: issueView === key ? '#1c3a2a' : '#f0ede6',
+                      color: issueView === key ? 'white' : '#6a7a70',
+                      transition: 'all 0.15s',
+                    }}>{label}</button>
+                  ))}
                 </div>
               </div>
               <div style={s.cardBody}>
                 {issueData.length === 0 ? (
                   <div style={{ textAlign: 'center', color: '#9aaa9f', padding: '24px 0' }}>No issues recorded in this period</div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={Math.max(200, issueData.length * 38)}>
-                    <BarChart
-                      data={issueData.map(r => ({
-                        name: lang === 'af' ? r.pest_name_af : r.pest_name,
-                        pct: Number(r.pct_of_fruit),
-                        count: r.total_count,
-                        category: r.category,
-                      }))}
-                      layout="vertical"
-                      margin={{ top: 0, right: 24, bottom: 0, left: 120 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" horizontal={false} />
-                      <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: '#7a8a80' }} tickFormatter={v => `${v}%`} />
-                      <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: '#3a4a40' }} width={115} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar dataKey="pct" name="% of fruit" radius={[0, 4, 4, 0]}>
-                        {issueData.map((entry, index) => (
-                          <Cell
-                            key={index}
-                            fill={entry.category === 'picking_issue' ? BAR_PICKING : BAR_QC}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
+                ) : (() => {
+                  const sorted = [...issueData].sort((a, b) => Number(b.pct_of_fruit) - Number(a.pct_of_fruit))
+                  const totalPct = sorted.reduce((sum, r) => sum + Number(r.pct_of_fruit), 0)
+
+                  /* ── Top 3 KPI cards ── */
+                  const top3 = sorted.slice(0, 3)
+                  const kpiCards = (
+                    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(top3.length, 3)}, 1fr)`, gap: 14, marginBottom: 20 }}>
+                      {top3.map((issue, i) => (
+                        <div key={issue.pest_id} style={{
+                          background: '#fdf8f3', borderRadius: 10, padding: '14px 18px',
+                          borderLeft: `4px solid ${ISSUE_PALETTE[i]}`,
+                        }}>
+                          <div style={{ fontSize: 10, color: '#9aaa9f', fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase' }}>
+                            #{i + 1} Top Issue
+                          </div>
+                          <div style={{ fontSize: 22, fontWeight: 700, color: ISSUE_PALETTE[i], fontFamily: 'monospace', margin: '4px 0 2px' }}>
+                            {Number(issue.pct_of_fruit).toFixed(1)}%
+                          </div>
+                          <div style={{ fontSize: 14, color: '#1c3a2a', fontWeight: 600 }}>
+                            {lang === 'af' ? issue.pest_name_af : issue.pest_name}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+
+                  /* ── Ranked Bars view ── */
+                  if (issueView === 'bars') {
+                    const maxPct = Number(sorted[0]?.pct_of_fruit) || 1
+                    return (
+                      <>
+                        {kpiCards}
+                        <div style={{ padding: '4px 0' }}>
+                          {sorted.map((issue, i) => {
+                            const pct = Number(issue.pct_of_fruit)
+                            const barW = (pct / maxPct) * 100
+                            const name = lang === 'af' ? issue.pest_name_af : issue.pest_name
+                            return (
+                              <div key={issue.pest_id} style={{
+                                display: 'grid', gridTemplateColumns: '130px 1fr 52px',
+                                alignItems: 'center', gap: 12, marginBottom: 10,
+                              }}>
+                                <span style={{
+                                  textAlign: 'right', fontSize: 12.5,
+                                  fontWeight: i < 3 ? 700 : 400, color: i < 3 ? '#1c3a2a' : '#5a6a60',
+                                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                }}>
+                                  {name}
+                                </span>
+                                <div style={{ position: 'relative', height: 28, background: '#f0ede6', borderRadius: 4 }}>
+                                  <div style={{
+                                    position: 'absolute', left: 0, top: 0, height: '100%',
+                                    width: `${barW}%`,
+                                    background: `linear-gradient(90deg, ${ISSUE_PALETTE[i % ISSUE_PALETTE.length]}dd, ${ISSUE_PALETTE[i % ISSUE_PALETTE.length]})`,
+                                    borderRadius: 4,
+                                    transition: 'width 0.6s cubic-bezier(.4,0,.2,1)',
+                                  }} />
+                                  {i === 0 && barW < 85 && (
+                                    <span style={{
+                                      position: 'absolute', left: `${barW + 1.5}%`, top: '50%',
+                                      transform: 'translateY(-50%)', fontSize: 9, color: ISSUE_PALETTE[0],
+                                      fontWeight: 700, whiteSpace: 'nowrap', fontFamily: 'monospace',
+                                    }}>{'\u2190'} TOP ISSUE</span>
+                                  )}
+                                </div>
+                                <span style={{
+                                  fontSize: 13, fontWeight: 700, color: ISSUE_PALETTE[i % ISSUE_PALETTE.length],
+                                  fontFamily: 'monospace', textAlign: 'right',
+                                }}>{pct.toFixed(1)}%</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </>
+                    )
+                  }
+
+                  /* ── Bubble Map view ── */
+                  if (issueView === 'bubbles') {
+                    const maxPct = Number(sorted[0]?.pct_of_fruit) || 1
+                    const bubbles = sorted.map((issue, i) => ({
+                      ...issue,
+                      r: Math.sqrt(Number(issue.pct_of_fruit) / maxPct) * 80 + 14,
+                      color: ISSUE_PALETTE[i % ISSUE_PALETTE.length],
+                      pct: Number(issue.pct_of_fruit),
+                      label: lang === 'af' ? issue.pest_name_af : issue.pest_name,
+                    }))
+                    // Circle-pack layout
+                    const placed: { cx: number; cy: number; r: number }[] = []
+                    const W = 600, H = 400
+                    const positions = bubbles.map((b) => {
+                      let bestX = W / 2, bestY = H / 2, bestDist = Infinity
+                      for (let attempt = 0; attempt < 200; attempt++) {
+                        const angle = Math.random() * Math.PI * 2
+                        const dist = Math.random() * (Math.min(W, H) * 0.4)
+                        const cx = W / 2 + Math.cos(angle) * dist
+                        const cy = H / 2 + Math.sin(angle) * dist
+                        if (cx - b.r < 5 || cx + b.r > W - 5 || cy - b.r < 5 || cy + b.r > H - 5) continue
+                        let overlap = false
+                        for (const p of placed) {
+                          const dx = cx - p.cx, dy = cy - p.cy
+                          if (Math.sqrt(dx * dx + dy * dy) < b.r + p.r + 4) { overlap = true; break }
+                        }
+                        if (!overlap) {
+                          const d = Math.sqrt((cx - W / 2) ** 2 + (cy - H / 2) ** 2)
+                          if (d < bestDist) { bestX = cx; bestY = cy; bestDist = d }
+                        }
+                      }
+                      placed.push({ cx: bestX, cy: bestY, r: b.r })
+                      return { cx: bestX, cy: bestY }
+                    })
+                    return (
+                      <>
+                        {kpiCards}
+                        <div style={{ position: 'relative', width: '100%', maxWidth: W, margin: '0 auto' }}>
+                          <svg width="100%" viewBox={`0 0 ${W} ${H}`}>
+                            {bubbles.map((b, i) => {
+                              const { cx, cy } = positions[i]
+                              return (
+                                <g key={b.pest_id}>
+                                  <circle cx={cx} cy={cy} r={b.r} fill={b.color} opacity={0.88}
+                                    style={{ transition: 'all 0.3s' }} />
+                                  {b.r > 26 && (
+                                    <>
+                                      <text x={cx} y={cy - 5} textAnchor="middle" fill="white"
+                                        fontSize={b.r > 50 ? 12 : 9.5} fontWeight="700" style={{ pointerEvents: 'none' }}>
+                                        {b.label}
+                                      </text>
+                                      <text x={cx} y={cy + 11} textAnchor="middle" fill="white"
+                                        fontSize={b.r > 50 ? 13 : 9} fontFamily="monospace" opacity={0.9}
+                                        style={{ pointerEvents: 'none' }}>
+                                        {b.pct.toFixed(1)}%
+                                      </text>
+                                    </>
+                                  )}
+                                </g>
+                              )
+                            })}
+                          </svg>
+                          <div style={{ fontSize: 11, color: '#9aaa9f', fontFamily: 'monospace' }}>
+                            Bubble size {'\u221d'} issue frequency
+                          </div>
+                        </div>
+                      </>
+                    )
+                  }
+
+                  /* ── Waffle view ── */
+                  const cells = 100
+                  const grid: (null | { idx: number; name: string; pct: number })[] = []
+                  let ci = 0
+                  sorted.forEach((issue, i) => {
+                    const count = Math.max(1, Math.round(Number(issue.pct_of_fruit)))
+                    const name = lang === 'af' ? issue.pest_name_af : issue.pest_name
+                    for (let j = 0; j < count && ci < cells; j++) {
+                      grid[ci++] = { idx: i, name, pct: Number(issue.pct_of_fruit) }
+                    }
+                  })
+                  while (grid.length < cells) grid.push(null)
+                  return (
+                    <>
+                      {kpiCards}
+                      <div style={{ display: 'flex', gap: 32, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                        <div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 3, marginBottom: 10 }}>
+                            {grid.map((cell, i) => (
+                              <div key={i} style={{
+                                width: 32, height: 32, borderRadius: 4,
+                                background: cell ? (ISSUE_PALETTE[cell.idx % ISSUE_PALETTE.length] + 'cc') : '#f0ede6',
+                                transition: 'all 0.15s',
+                              }} />
+                            ))}
+                          </div>
+                          <p style={{ fontSize: 10, color: '#9aaa9f', fontFamily: 'monospace', margin: 0 }}>
+                            Each square {'\u2248'} 1% of total issues
+                          </p>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {sorted.map((issue, i) => {
+                            const name = lang === 'af' ? issue.pest_name_af : issue.pest_name
+                            return (
+                              <div key={issue.pest_id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{ width: 12, height: 12, borderRadius: 2, background: ISSUE_PALETTE[i % ISSUE_PALETTE.length], flexShrink: 0 }} />
+                                <span style={{ fontSize: 12, color: '#3a4a40' }}>{name}</span>
+                                <span style={{ fontSize: 11, color: '#9aaa9f', fontFamily: 'monospace', marginLeft: 'auto' }}>
+                                  {Number(issue.pct_of_fruit).toFixed(1)}%
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )
+                })()}
+
+                {/* Footer insight */}
+                {issueData.length >= 2 && (() => {
+                  const sorted = [...issueData].sort((a, b) => Number(b.pct_of_fruit) - Number(a.pct_of_fruit))
+                  const totalPct = sorted.reduce((sum, r) => sum + Number(r.pct_of_fruit), 0)
+                  const top2Pct = (Number(sorted[0].pct_of_fruit) + Number(sorted[1].pct_of_fruit))
+                  const top2Share = totalPct > 0 ? Math.round(top2Pct / totalPct * 100) : 0
+                  const n1 = lang === 'af' ? sorted[0].pest_name_af : sorted[0].pest_name
+                  const n2 = lang === 'af' ? sorted[1].pest_name_af : sorted[1].pest_name
+                  return (
+                    <div style={{
+                      marginTop: 16, padding: '12px 18px', background: '#fdf8f3', borderRadius: 8,
+                      border: '1px solid #f0e0cc', fontSize: 12, color: '#5a6a60', fontFamily: 'monospace',
+                    }}>
+                      <strong>{n1} + {n2}</strong> account for{' '}
+                      <strong style={{ color: ISSUE_PALETTE[0] }}>{top2Share}%</strong>{' '}
+                      of all recorded issues.
+                    </div>
+                  )
+                })()}
               </div>
             </div>
 
