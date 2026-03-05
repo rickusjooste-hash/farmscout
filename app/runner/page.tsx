@@ -164,8 +164,6 @@ export default function RunnerPage() {
     }
   }
 
-  const [matchDebug, setMatchDebug] = useState('')
-
   async function matchOrchard(lat: number, lng: number) {
     const token = localStorage.getItem('runnerapp_access_token') || ''
     // Try all farm IDs the user has access to (not just the first one)
@@ -178,12 +176,10 @@ export default function RunnerPage() {
       const single = localStorage.getItem('runnerapp_farm_id') || ''
       if (single) farmIds = [single]
     }
-    if (!farmIds.length) { setMatchDebug('No farm IDs'); setDetectedOrchard(null); return }
+    if (!farmIds.length) { setDetectedOrchard(null); return }
 
     try {
       const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/match_orchard_from_gps`
-      setMatchDebug(`lat=${lat}, lng=${lng}, farms=${farmIds.length}`)
-
       // Try each farm ID until we get a match
       for (const farmId of farmIds) {
         const res = await fetch(url, {
@@ -198,17 +194,14 @@ export default function RunnerPage() {
         if (res.ok) {
           const data = await res.json()
           if (data?.id) {
-            setMatchDebug(`lat=${lat}, lng=${lng} → matched: ${data.name} (farm ${farmId.slice(0, 8)})`)
             const local = orchards.find(o => o.id === data.id)
             setDetectedOrchard(local || { id: data.id, name: data.name, farm_id: farmId, commodity_id: '' } as any)
             return
           }
         }
       }
-      // No match on any farm
-      setMatchDebug(`lat=${lat}, lng=${lng} → no match (tried ${farmIds.length} farms)`)
     } catch (err: any) {
-      setMatchDebug(`RPC error: ${err.message}`)
+      console.warn('[Runner] GPS match error:', err.message)
       // Fall back to offline matching if server call fails
       const match = await matchOrchardFromGPS(lat, lng)
       if (match) { setDetectedOrchard(match); return }
@@ -483,9 +476,6 @@ export default function RunnerPage() {
               {detectedOrchard ? `✅ ${detectedOrchard.name}` : gpsLoading ? 'Detecting...' : '⚠️ Select manually'}
             </span>
           </div>
-          {matchDebug && (
-            <div style={{ fontSize: 11, color: '#4a7a4a', fontFamily: 'monospace', wordBreak: 'break-all' as const, padding: '4px 0' }}>{matchDebug}</div>
-          )}
           {!detectedOrchard && !gpsLoading && (
             <select style={st.select} value={manualOrchard?.id || ''} onChange={e => setManualOrchard(orchards.find(x => x.id === e.target.value) || null)}>
               <option value="">— Select orchard ({orchards.length} available) —</option>
