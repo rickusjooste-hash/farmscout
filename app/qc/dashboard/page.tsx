@@ -221,6 +221,12 @@ export default function QcDashboardPage() {
   const [selectedBagId, setSelectedBagId] = useState<string | null>(null)
   const [bagDetail, setBagDetail] = useState<BagDetail | null>(null)
 
+  // Orchard edit state
+  const [allOrchards, setAllOrchards] = useState<{ id: string; name: string }[]>([])
+  const [editingOrchard, setEditingOrchard] = useState(false)
+  const [newOrchardId, setNewOrchardId] = useState('')
+  const [savingOrchard, setSavingOrchard] = useState(false)
+
   const [pickerSort, setPickerSort] = useState<PickerSort>('issueRate')
   const [pickerSortDir, setPickerSortDir] = useState<'asc' | 'desc'>('desc')
 
@@ -251,6 +257,11 @@ export default function QcDashboardPage() {
       }
       comms.sort((a, b) => a.name.localeCompare(b.name))
       setCommodities(comms)
+
+      // Load orchards for edit dropdown
+      const oq = supabase.from('orchards').select('id, name').eq('is_active', true).order('name')
+      const { data: orchData } = ids.length > 0 ? await oq.in('farm_id', ids) : await oq
+      setAllOrchards((orchData || []) as { id: string; name: string }[])
     }
     init()
   }, [contextLoaded])
@@ -308,10 +319,32 @@ export default function QcDashboardPage() {
   async function openBag(sessionId: string) {
     setSelectedBagId(sessionId)
     setBagDetail(null)
+    setEditingOrchard(false)
+    setNewOrchardId('')
     setDetailLoading(true)
     const { data } = await supabase.rpc('get_qc_bag_detail', { p_session_id: sessionId })
     setBagDetail(data as BagDetail)
     setDetailLoading(false)
+  }
+
+  async function saveOrchardChange() {
+    if (!selectedBagId || !newOrchardId) return
+    setSavingOrchard(true)
+    try {
+      const res = await fetch('/api/qc/bag', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: selectedBagId, orchard_id: newOrchardId }),
+      })
+      if (res.ok) {
+        // Refresh detail + bag list
+        openBag(selectedBagId)
+        fetchAll()
+      }
+    } finally {
+      setSavingOrchard(false)
+      setEditingOrchard(false)
+    }
   }
 
   // Picker performance (computed)
@@ -729,9 +762,36 @@ export default function QcDashboardPage() {
               <div>
                 {bagDetail?.session && (
                   <>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: '#1c3a2a' }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#1c3a2a', display: 'flex', alignItems: 'center', gap: 8 }}>
                       Bag #{bagDetail.session.bag_seq ?? '?'} — {bagDetail.session.orchard_name}
+                      <button
+                        style={{ background: 'none', border: '1px solid #d4cfca', borderRadius: 4, fontSize: 11, color: '#5a6a60', padding: '2px 8px', cursor: 'pointer', fontFamily: 'inherit' }}
+                        onClick={() => { setEditingOrchard(!editingOrchard); setNewOrchardId('') }}
+                      >
+                        {editingOrchard ? 'Cancel' : 'Edit'}
+                      </button>
                     </div>
+                    {editingOrchard && (
+                      <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+                        <select
+                          style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid #d4cfca', fontSize: 13, fontFamily: 'inherit' }}
+                          value={newOrchardId}
+                          onChange={e => setNewOrchardId(e.target.value)}
+                        >
+                          <option value="">— Select new orchard —</option>
+                          {allOrchards.map(o => (
+                            <option key={o.id} value={o.id}>{o.name}</option>
+                          ))}
+                        </select>
+                        <button
+                          style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: newOrchardId ? '#2a6e45' : '#c4cfc8', color: '#fff', fontSize: 13, fontWeight: 600, cursor: newOrchardId ? 'pointer' : 'not-allowed', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                          disabled={!newOrchardId || savingOrchard}
+                          onClick={saveOrchardChange}
+                        >
+                          {savingOrchard ? 'Saving…' : 'Save'}
+                        </button>
+                      </div>
+                    )}
                     <div style={{ fontSize: 13, color: '#9aaa9f', marginTop: 4 }}>
                       {bagDetail.session.employee_name} · {fmtDate(bagDetail.session.collected_at)}
                     </div>
