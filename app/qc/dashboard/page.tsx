@@ -627,13 +627,7 @@ export default function QcDashboardPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" horizontal={false} />
                       <XAxis type="number" tick={{ fontSize: 11, fill: '#7a8a80' }} tickFormatter={v => `${v}%`} />
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: '#3a4a40' }} width={115} />
-                      <Tooltip
-                        formatter={((value: any, _name: any, props: any) => [
-                          `${value}% (${props.payload.count} of ${kpis?.fruit_weighed ?? '?'} fruit)`,
-                          'Issue rate'
-                        ]) as any}
-                        contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e8e4dc' }}
-                      />
+                      <Tooltip content={<CustomTooltip />} />
                       <Bar dataKey="pct" name="% of fruit" radius={[0, 4, 4, 0]}>
                         {issueData.map((entry, index) => (
                           <Cell
