@@ -232,6 +232,8 @@ export default function QcDashboardPage() {
   const [pickerSortDir, setPickerSortDir] = useState<'asc' | 'desc'>('desc')
 
   const [bagPage, setBagPage] = useState(0)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [bagListOpen, setBagListOpen] = useState(false)
   const PAGE_SIZE = 50
 
   // Load farms on mount
@@ -644,11 +646,14 @@ export default function QcDashboardPage() {
 
             {/* ── Picker Performance ────────────────────────────────────── */}
             <div style={s.card}>
-              <div style={s.cardHeader}>
-                <div style={s.cardTitle}>Picker Performance</div>
+              <div style={{ ...s.cardHeader, cursor: 'pointer' }} onClick={() => setPickerOpen(v => !v)}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12, color: '#9aaa9f', transition: 'transform 0.2s', display: 'inline-block', transform: pickerOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+                  <span style={s.cardTitle}>Picker Performance</span>
+                </div>
                 <div style={{ fontSize: 13, color: '#9aaa9f' }}>{pickerRows.length} pickers</div>
               </div>
-              {pickerRows.length === 0 ? (
+              {!pickerOpen ? null : pickerRows.length === 0 ? (
                 <div style={{ ...s.cardBody, color: '#9aaa9f' }}>No data</div>
               ) : (
                 <>
@@ -679,11 +684,14 @@ export default function QcDashboardPage() {
 
             {/* ── Bag List ──────────────────────────────────────────────── */}
             <div style={s.card}>
-              <div style={s.cardHeader}>
-                <div style={s.cardTitle}>Bag List</div>
+              <div style={{ ...s.cardHeader, cursor: 'pointer' }} onClick={() => setBagListOpen(v => !v)}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12, color: '#9aaa9f', transition: 'transform 0.2s', display: 'inline-block', transform: bagListOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+                  <span style={s.cardTitle}>Bag List</span>
+                </div>
                 <div style={{ fontSize: 13, color: '#9aaa9f' }}>{bagList.length} bags</div>
               </div>
-              {bagList.length === 0 ? (
+              {!bagListOpen ? null : bagList.length === 0 ? (
                 <div style={{ ...s.cardBody, color: '#9aaa9f' }}>No bags in this period</div>
               ) : (
                 <>
