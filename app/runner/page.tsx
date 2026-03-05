@@ -164,31 +164,37 @@ export default function RunnerPage() {
     }
   }
 
+  const [matchDebug, setMatchDebug] = useState('')
+
   async function matchOrchard(lat: number, lng: number) {
+    const token = localStorage.getItem('runnerapp_access_token') || ''
+    const farmId = localStorage.getItem('runnerapp_farm_id') || ''
     try {
-      const token = localStorage.getItem('runnerapp_access_token') || ''
-      const farmId = localStorage.getItem('runnerapp_farm_id') || ''
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/match_orchard_from_gps`,
-        {
-          method: 'POST',
-          headers: {
-            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ p_lat: lat, p_lng: lng, p_farm_id: farmId }),
-        }
-      )
+      const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/match_orchard_from_gps`
+      setMatchDebug(`Calling RPC... farm=${farmId.slice(0, 8)}`)
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ p_lat: lat, p_lng: lng, p_farm_id: farmId }),
+      })
       if (res.ok) {
         const data = await res.json()
+        setMatchDebug(`RPC ${res.status}: ${JSON.stringify(data)}`)
         if (data?.id) {
           const local = orchards.find(o => o.id === data.id)
           setDetectedOrchard(local || { id: data.id, name: data.name, farm_id: farmId, commodity_id: '' } as any)
           return
         }
+      } else {
+        const errText = await res.text()
+        setMatchDebug(`RPC ${res.status}: ${errText.slice(0, 100)}`)
       }
-    } catch {
+    } catch (err: any) {
+      setMatchDebug(`RPC error: ${err.message}`)
       // Fall back to offline matching if server call fails
       const match = await matchOrchardFromGPS(lat, lng)
       if (match) { setDetectedOrchard(match); return }
@@ -463,6 +469,9 @@ export default function RunnerPage() {
               {detectedOrchard ? `✅ ${detectedOrchard.name}` : gpsLoading ? 'Detecting...' : '⚠️ Select manually'}
             </span>
           </div>
+          {matchDebug && (
+            <div style={{ fontSize: 11, color: '#4a7a4a', fontFamily: 'monospace', wordBreak: 'break-all' as const, padding: '4px 0' }}>{matchDebug}</div>
+          )}
           {!detectedOrchard && !gpsLoading && (
             <select style={st.select} value={manualOrchard?.id || ''} onChange={e => setManualOrchard(orchards.find(x => x.id === e.target.value) || null)}>
               <option value="">— Select orchard ({orchards.length} available) —</option>
