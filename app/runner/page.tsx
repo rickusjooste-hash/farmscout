@@ -452,10 +452,10 @@ export default function RunnerPage() {
               <span style={st.confirmValue}>
                 {gpsLoading
                   ? gpsCoords
-                    ? `📍 Refining... ±${gpsAccuracy ?? '?'}m`
+                    ? `📍 Refining... ±${gpsAccuracy != null ? gpsAccuracy : '?'}m`
                     : '📍 Getting location...'
                   : gpsCoords
-                    ? `${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lng.toFixed(5)} (±${gpsAccuracy ?? '?'}m)`
+                    ? `${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lng.toFixed(5)} (±${gpsAccuracy != null ? gpsAccuracy : '?'}m)`
                     : gpsError ? `⚠️ ${gpsError}` : '⚠️ GPS unavailable'}
               </span>
               {!gpsLoading && !gpsCoords && (
