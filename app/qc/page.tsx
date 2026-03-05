@@ -356,10 +356,12 @@ export default function QcHome() {
             ...(isUnknownPest(pestId) && unknownPhoto ? { _photo: unknownPhoto } : {}),
           })
       }
-      await qcPushPendingRecords()
-      await loadData()
+      // Return to queue immediately — push happens in background
       setActiveSession(null); setFruit([]); setBagIssues({}); setUnknownPhoto(null)
       setView('queue')
+      await loadData()
+      // Push to server in background (don't block the UI)
+      qcPushPendingRecords().catch(err => console.warn('[QC] Background push failed:', err))
     } finally { setSavingSession(false) }
   }
 
