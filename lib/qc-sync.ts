@@ -179,9 +179,10 @@ async function pullTodaySessions(headers: Record<string, string>, farmIds: strin
     const orchMap = Object.fromEntries(orchards.map(o => [o.id, o.name]))
 
     for (const s of sessions) {
-      // Only write if local copy is not more up-to-date (preserve runner's offline record)
+      // Don't overwrite local records that are ahead of Supabase
       const existing = await qcGetAll('bag_sessions').then(all => all.find(b => b.id === s.id))
-      if (existing && existing._syncStatus === 'pending') continue  // runner hasn't synced yet locally
+      if (existing && existing._syncStatus === 'pending') continue  // local changes not yet pushed
+      if (existing && existing.status === 'sampled') continue  // already sampled locally — don't revert
 
       await qcPut('bag_sessions', {
         ...s,
