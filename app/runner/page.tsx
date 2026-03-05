@@ -168,31 +168,45 @@ export default function RunnerPage() {
 
   async function matchOrchard(lat: number, lng: number) {
     const token = localStorage.getItem('runnerapp_access_token') || ''
-    const farmId = localStorage.getItem('runnerapp_farm_id') || ''
+    // Try all farm IDs the user has access to (not just the first one)
+    let farmIds: string[] = []
+    try {
+      const stored = localStorage.getItem('runnerapp_farm_ids')
+      if (stored) farmIds = JSON.parse(stored)
+    } catch {}
+    if (!farmIds.length) {
+      const single = localStorage.getItem('runnerapp_farm_id') || ''
+      if (single) farmIds = [single]
+    }
+    if (!farmIds.length) { setMatchDebug('No farm IDs'); setDetectedOrchard(null); return }
+
     try {
       const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/match_orchard_from_gps`
-      setMatchDebug(`lat=${lat}, lng=${lng}, farm=${farmId.slice(0, 8)}`)
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ p_lat: lat, p_lng: lng, p_farm_id: farmId }),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setMatchDebug(`lat=${lat}, lng=${lng} → RPC ${res.status}: ${JSON.stringify(data)}`)
-        if (data?.id) {
-          const local = orchards.find(o => o.id === data.id)
-          setDetectedOrchard(local || { id: data.id, name: data.name, farm_id: farmId, commodity_id: '' } as any)
-          return
+      setMatchDebug(`lat=${lat}, lng=${lng}, farms=${farmIds.length}`)
+
+      // Try each farm ID until we get a match
+      for (const farmId of farmIds) {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ p_lat: lat, p_lng: lng, p_farm_id: farmId }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data?.id) {
+            setMatchDebug(`lat=${lat}, lng=${lng} → matched: ${data.name} (farm ${farmId.slice(0, 8)})`)
+            const local = orchards.find(o => o.id === data.id)
+            setDetectedOrchard(local || { id: data.id, name: data.name, farm_id: farmId, commodity_id: '' } as any)
+            return
+          }
         }
-      } else {
-        const errText = await res.text()
-        setMatchDebug(`RPC ${res.status}: ${errText.slice(0, 100)}`)
       }
+      // No match on any farm
+      setMatchDebug(`lat=${lat}, lng=${lng} → no match (tried ${farmIds.length} farms)`)
     } catch (err: any) {
       setMatchDebug(`RPC error: ${err.message}`)
       // Fall back to offline matching if server call fails
