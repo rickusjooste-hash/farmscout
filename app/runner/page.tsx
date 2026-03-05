@@ -34,8 +34,10 @@ export default function RunnerPage() {
   const [pickerSearch, setPickerSearch] = useState('')
   const [selectedEmployee, setSelectedEmployee] = useState<QcEmployee | null>(null)
   const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null)
   const [gpsLoading, setGpsLoading] = useState(false)
   const [detectedOrchard, setDetectedOrchard] = useState<QcOrchard | null>(null)
+  const gpsWatchRef = useRef<number | null>(null)
   const [manualOrchard, setManualOrchard] = useState<QcOrchard | null>(null)
   const [bagSeq, setBagSeq] = useState<number>(1)
   const [loggedBagSeq, setLoggedBagSeq] = useState<number>(1)
@@ -136,9 +138,13 @@ export default function RunnerPage() {
 
   // ── Runner flow ────────────────────────────────────────────────────────────
 
+  // Clean up GPS watch on unmount
+  useEffect(() => () => stopGpsWatch(), [])
+
   function startRunnerFlow() {
+    stopGpsWatch()
     setView('picker'); setPickerSearch(''); setSelectedEmployee(null)
-    setGpsCoords(null); setDetectedOrchard(null); setManualOrchard(null)
+    setGpsCoords(null); setGpsAccuracy(null); setDetectedOrchard(null); setManualOrchard(null)
     setRfidStatus('ready')
   }
 
@@ -151,58 +157,105 @@ export default function RunnerPage() {
 
   const [gpsError, setGpsError] = useState('')
 
-  async function captureGps() {
+  function stopGpsWatch() {
+    if (gpsWatchRef.current !== null) {
+      navigator.geolocation.clearWatch(gpsWatchRef.current)
+      gpsWatchRef.current = null
+    }
+  }
+
+  async function matchOrchard(lat: number, lng: number) {
+    try {
+      const token = localStorage.getItem('runnerapp_access_token') || ''
+      const farmId = localStorage.getItem('runnerapp_farm_id') || ''
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/match_orchard_from_gps`,
+        {
+          method: 'POST',
+          headers: {
+            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ p_lat: lat, p_lng: lng, p_farm_id: farmId }),
+        }
+      )
+      if (res.ok) {
+        const data = await res.json()
+        if (data?.id) {
+          const local = orchards.find(o => o.id === data.id)
+          setDetectedOrchard(local || { id: data.id, name: data.name, farm_id: farmId, commodity_id: '' } as any)
+          return
+        }
+      }
+    } catch {
+      // Fall back to offline matching if server call fails
+      const match = await matchOrchardFromGPS(lat, lng)
+      if (match) { setDetectedOrchard(match); return }
+    }
+    setDetectedOrchard(null)
+  }
+
+  function captureGps() {
+    stopGpsWatch()
     setGpsLoading(true)
     setGpsError('')
-    try {
-      // Try high accuracy first (GPS hardware), fall back to network location
-      let pos: GeolocationPosition
-      try {
-        pos = await new Promise<GeolocationPosition>((resolve, reject) =>
-          navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 })
-        )
-      } catch {
-        pos = await new Promise<GeolocationPosition>((resolve, reject) =>
-          navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: false, timeout: 10000, maximumAge: 120000 })
-        )
-      }
-      const lat = pos.coords.latitude; const lng = pos.coords.longitude
-      setGpsCoords({ lat, lng })
-      // Match orchard server-side via PostGIS (avoids downloading huge boundaries)
-      try {
-        const token = localStorage.getItem('runnerapp_access_token') || ''
-        const farmId = localStorage.getItem('runnerapp_farm_id') || ''
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/match_orchard_from_gps`,
-          {
-            method: 'POST',
-            headers: {
-              apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ p_lat: lat, p_lng: lng, p_farm_id: farmId }),
-          }
-        )
-        if (res.ok) {
-          const data = await res.json()
-          if (data?.id) {
-            // Find from local list or build a minimal orchard object
-            const local = orchards.find(o => o.id === data.id)
-            setDetectedOrchard(local || { id: data.id, name: data.name, farm_id: farmId, commodity_id: '' } as any)
-          }
+    setGpsCoords(null)
+    setGpsAccuracy(null)
+    setDetectedOrchard(null)
+
+    const GOOD_ACCURACY = 30 // meters — accept fix once this good
+    const MAX_WAIT = 25000   // ms — stop watching after this long
+    let bestAccuracy = Infinity
+    let settled = false
+    const startTime = Date.now()
+
+    // Timeout: after MAX_WAIT, use whatever we have or report error
+    const timeoutId = setTimeout(() => {
+      if (settled) return
+      settled = true
+      stopGpsWatch()
+      setGpsLoading(false)
+      // If we got some position (even inaccurate), keep it and try to match
+      // If we got nothing at all, show error
+    }, MAX_WAIT)
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude: lat, longitude: lng, accuracy } = pos.coords
+        setGpsAccuracy(Math.round(accuracy))
+
+        // Always update coords if this is the best fix so far
+        if (accuracy < bestAccuracy) {
+          bestAccuracy = accuracy
+          setGpsCoords({ lat, lng })
+          matchOrchard(lat, lng)
         }
-      } catch {
-        // Fall back to offline matching if server call fails
-        setDetectedOrchard(await matchOrchardFromGPS(lat, lng))
-      }
-    } catch (err: any) {
-      const code = err?.code
-      if (code === 1) setGpsError('Location permission denied — check browser settings')
-      else if (code === 2) setGpsError('GPS unavailable on this device')
-      else if (code === 3) setGpsError('GPS timed out — select orchard manually')
-      else setGpsError('GPS failed — select orchard manually')
-    } finally { setGpsLoading(false) }
+
+        // If good enough, stop watching
+        if (accuracy <= GOOD_ACCURACY) {
+          if (settled) return
+          settled = true
+          clearTimeout(timeoutId)
+          stopGpsWatch()
+          setGpsLoading(false)
+        }
+      },
+      (err) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeoutId)
+        stopGpsWatch()
+        setGpsLoading(false)
+        const code = err?.code
+        if (code === 1) setGpsError('Location permission denied — check browser settings')
+        else if (code === 2) setGpsError('GPS unavailable on this device')
+        else if (code === 3) setGpsError('GPS timed out — select orchard manually')
+        else setGpsError('GPS failed — select orchard manually')
+      },
+      { enableHighAccuracy: true, timeout: MAX_WAIT, maximumAge: 0 }
+    )
+    gpsWatchRef.current = watchId
   }
 
   async function startLabelScanner() {
@@ -391,7 +444,13 @@ export default function RunnerPage() {
             <span style={st.confirmLabel}>GPS</span>
             <div style={{ textAlign: 'right' as const }}>
               <span style={st.confirmValue}>
-                {gpsLoading ? '📍 Getting location...' : gpsCoords ? `${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lng.toFixed(5)}` : gpsError ? `⚠️ ${gpsError}` : '⚠️ GPS unavailable'}
+                {gpsLoading
+                  ? gpsCoords
+                    ? `📍 Refining... ±${gpsAccuracy ?? '?'}m`
+                    : '📍 Getting location...'
+                  : gpsCoords
+                    ? `${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lng.toFixed(5)} (±${gpsAccuracy ?? '?'}m)`
+                    : gpsError ? `⚠️ ${gpsError}` : '⚠️ GPS unavailable'}
               </span>
               {!gpsLoading && !gpsCoords && (
                 <button style={{ background: 'none', border: '1px solid #3a6a3a', borderRadius: 4, color: '#7cbe4a', fontSize: 12, padding: '4px 10px', marginTop: 4, cursor: 'pointer' }} onClick={captureGps}>Retry GPS</button>
@@ -469,8 +528,9 @@ export default function RunnerPage() {
         <button
           style={{ ...st.primaryBtn, marginTop: 28 }}
           onClick={() => {
+            stopGpsWatch()
             setView('picker'); setPickerSearch(''); setSelectedEmployee(null)
-            setGpsCoords(null); setDetectedOrchard(null); setManualOrchard(null)
+            setGpsCoords(null); setGpsAccuracy(null); setDetectedOrchard(null); setManualOrchard(null)
             setRfidStatus('ready')
           }}
         >
