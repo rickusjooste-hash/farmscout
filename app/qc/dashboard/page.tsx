@@ -7,6 +7,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, LabelList,
 } from 'recharts'
+import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
+import { useOrgModules } from '@/lib/useOrgModules'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -138,10 +140,6 @@ function issueRateColor(rate: number): string {
 
 const s: Record<string, React.CSSProperties> = {
   page:        { display: 'flex', minHeight: '100vh', background: '#f4f1eb', fontFamily: 'Inter, system-ui, sans-serif', color: '#1c3a2a' },
-  sidebar:     { width: 220, flexShrink: 0, background: '#1c3a2a', padding: '32px 20px', display: 'flex', flexDirection: 'column', gap: 8, position: 'sticky', top: 0, height: '100vh', overflowY: 'auto' },
-  logo:        { fontSize: 22, color: '#a8d5a2', marginBottom: 32, letterSpacing: '-0.5px' },
-  navItem:     { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, color: '#8aab96', fontSize: 13.5, fontWeight: 500, cursor: 'pointer', textDecoration: 'none' },
-  navLabel:    { fontSize: 10, color: '#5a7a6a', padding: '16px 16px 4px', textTransform: 'uppercase' as const, letterSpacing: '0.08em' },
   main:        { flex: 1, padding: 40, overflowY: 'auto', minWidth: 0 },
   pageHeader:  { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24 },
   pageTitle:   { fontSize: 32, fontWeight: 700, color: '#1c3a2a', letterSpacing: '-0.5px', lineHeight: 1 },
@@ -204,6 +202,7 @@ type PickerSort = 'name' | 'bags' | 'fruit' | 'avgWeight' | 'issueRate'
 export default function QcDashboardPage() {
   const supabase = createClient()
   const { farmIds, isSuperAdmin, contextLoaded, orgId } = useUserContext()
+  const modules = useOrgModules()
 
   const [effectiveFarmIds, setEffectiveFarmIds] = useState<string[]>([])
   const [commodities, setCommodities] = useState<Commodity[]>([])
@@ -383,24 +382,8 @@ export default function QcDashboardPage() {
 
   return (
     <div style={s.page}>
-      {/* Sidebar */}
-      <aside style={s.sidebar}>
-        <div style={s.logo}><span style={{ color: '#fff' }}>Farm</span>Scout</div>
-        <a href="/" style={s.navItem}><span>📊</span> Dashboard</a>
-        <a href="/orchards" style={s.navItem}><span>🏡</span> Orchards</a>
-        <a href="/pests" style={s.navItem}><span>🐛</span> Pests</a>
-        <a href="/trap-inspections" style={s.navItem}><span>🪤</span> Trap Inspections</a>
-        <a href="/heatmap" style={s.navItem}><span>🌡️</span> Heat Map</a>
-        <a href="/scouts" style={s.navItem}><span>👷</span> Scouts</a>
-        <a href="/settings" style={s.navItem}><span>🔔</span> Settings</a>
-        {isSuperAdmin && <a href="/admin" style={s.navItem}><span>⚙️</span> Admin</a>}
-        <div style={s.navLabel}>QC</div>
-        <a href="/qc/dashboard" style={{ ...s.navItem, background: '#2a4f38', color: '#a8d5a2' }}><span>⚖️</span> QC Dashboard</a>
-        <a href="/qc/unknowns" style={s.navItem}><span>📷</span> Unknown Issues</a>
-        <a href="/qc/settings/issues" style={s.navItem}><span>🐛</span> Issue Setup</a>
-        <a href="/qc/settings/size-bins" style={s.navItem}><span>📏</span> Size Bins</a>
-        <a href="/qc/labels" style={s.navItem}><span>🏷️</span> Print Labels</a>
-      </aside>
+      <ManagerSidebarStyles />
+      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} />
 
       {/* Main */}
       <main style={s.main}>

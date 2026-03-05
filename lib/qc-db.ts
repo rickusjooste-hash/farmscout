@@ -9,6 +9,7 @@ export interface QcEmployee {
   employee_nr: string
   full_name: string
   team?: string | null
+  rfid_tag?: string | null
   is_active: boolean
   [key: string]: any
 }

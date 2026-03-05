@@ -6,7 +6,6 @@ import {
   qcGetAll,
   qcGet,
   qcPut,
-  matchOrchardFromGPS,
   type QcEmployee,
   type QcOrchard,
   type QcSizeBin,
@@ -17,81 +16,31 @@ import {
 import {
   qcSaveAndQueue,
   qcPushPendingRecords,
-  getNextBagSeq,
-  countTodayBags,
   countTodaySampled,
   getPendingBagSessions,
   qcRunFullSync,
 } from '@/lib/qc-sync'
+import { beep, relTime, findSizeBin, generateUUID } from '@/lib/qc-utils'
 
-type AppMode = 'home' | 'runner' | 'qc'
-type RunnerView = 'picker' | 'confirm' | 'scanning_label' | 'logged'
-type QcView = 'queue' | 'commodity_select' | 'weighing' | 'issues'
+type QcView = 'home' | 'queue' | 'commodity_select' | 'weighing' | 'issues'
 type Lang = 'en' | 'af'
 
 const SCALE_SERVICE = '0000fff0-0000-1000-8000-00805f9b34fb'
 const WEIGHT_CHAR   = '0000fff1-0000-1000-8000-00805f9b34fb'
 
-let _audioCtx: AudioContext | null = null
-function beep() {
-  try {
-    if (!_audioCtx || _audioCtx.state === 'closed') _audioCtx = new AudioContext()
-    const ctx = _audioCtx
-    const play = () => {
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.frequency.value = 1800
-      gain.gain.setValueAtTime(0.3, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15)
-      osc.start(ctx.currentTime)
-      osc.stop(ctx.currentTime + 0.15)
-    }
-    ctx.state === 'suspended' ? ctx.resume().then(play).catch(() => {}) : play()
-  } catch { }
-}
-
-function relTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  return `${Math.floor(mins / 60)}h ago`
-}
-
-function findSizeBin(weightG: number, bins: QcSizeBin[]): QcSizeBin | null {
-  return bins.find(b => weightG >= b.weight_min_g && weightG <= b.weight_max_g) ?? null
-}
-
 export default function QcHome() {
-  const [appMode, setAppMode] = useState<AppMode>('home')
+  const [view, setView] = useState<QcView>('home')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  const [employees, setEmployees] = useState<QcEmployee[]>([])
   const [orchards, setOrchards] = useState<QcOrchard[]>([])
   const [sizeBins, setSizeBins] = useState<QcSizeBin[]>([])
   const [qcIssues, setQcIssues] = useState<QcIssue[]>([])
 
-  const [todayBags, setTodayBags] = useState(0)
   const [todaySampled, setTodaySampled] = useState(0)
   const [pendingSessions, setPendingSessions] = useState<QcBagSession[]>([])
 
-  // Runner state
-  const [runnerView, setRunnerView] = useState<RunnerView>('picker')
-  const [pickerSearch, setPickerSearch] = useState('')
-  const [selectedEmployee, setSelectedEmployee] = useState<QcEmployee | null>(null)
-  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null)
-  const [gpsLoading, setGpsLoading] = useState(false)
-  const [detectedOrchard, setDetectedOrchard] = useState<QcOrchard | null>(null)
-  const [manualOrchard, setManualOrchard] = useState<QcOrchard | null>(null)
-  const [bagSeq, setBagSeq] = useState<number>(1)
-  const [loggedBagSeq, setLoggedBagSeq] = useState<number>(1)
-  const [lastLoggedUuid, setLastLoggedUuid] = useState('')
-
   // QC state
-  const [qcView, setQcView] = useState<QcView>('queue')
   const [activeSession, setActiveSession] = useState<QcBagSession | null>(null)
   const [pendingCommodityUuid, setPendingCommodityUuid] = useState<string | null>(null)
   const [fruit, setFruit] = useState<QcFruit[]>([])
@@ -102,8 +51,7 @@ export default function QcHome() {
   const [showWeightConfirm, setShowWeightConfirm] = useState(false)
   const [confirmingWeight, setConfirmingWeight] = useState(0)
   const [confirmingBin, setConfirmingBin] = useState<QcSizeBin | null>(null)
-  const [addedFlash, setAddedFlash] = useState<string | null>(null) // brief "Added!" flash
-  // Bag-level issue counts: pest_id → count
+  const [addedFlash, setAddedFlash] = useState<string | null>(null)
   const [bagIssues, setBagIssues] = useState<Record<string, number>>({})
 
   // Unknown issue — requires photo before saving
@@ -137,14 +85,14 @@ export default function QcHome() {
   const weightBuffer = useRef<number[]>([])
   const confirmDismissedAt = useRef(0)
 
-  // Shared camera scanner (runner label + QC queue)
+  // Camera scanner
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [scanning, setScanning] = useState(false)
   const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const pendingStreamRef = useRef<MediaStream | null>(null)
 
-  // Attach stream to video element once it mounts (scanning state flip renders the <video>)
+  // Attach stream to video element once it mounts
   useEffect(() => {
     if (pendingStreamRef.current && videoRef.current && !videoRef.current.srcObject) {
       videoRef.current.srcObject = pendingStreamRef.current
@@ -161,7 +109,7 @@ export default function QcHome() {
       .map(o => ({ id: o.commodity_id, name: o.commodity_name || o.commodity_id.slice(0, 8) }))
   }, [orchards])
 
-  // ── Auth + load ───────────────────────────────────────────────────────────
+  // ── Auth + load ────────────────────────────────────────────────────────────
 
   useEffect(() => {
     const token = localStorage.getItem('qcapp_access_token')
@@ -169,7 +117,6 @@ export default function QcHome() {
     setIsLoggedIn(true)
     loadData()
     window.addEventListener('online', handleSync)
-    // Poll for new bags every 30 seconds
     const pollInterval = setInterval(() => handleSync(), 30000)
     return () => {
       window.removeEventListener('online', handleSync)
@@ -185,121 +132,29 @@ export default function QcHome() {
   async function loadData(showLoading = true) {
     if (showLoading) setLoading(true)
     try {
-      const [emps, orchs, bins, issues] = await Promise.all([
-        qcGetAll('employees'), qcGetAll('orchards'), qcGetAll('size_bins'), qcGetAll('qc_issues'),
+      const [orchs, bins, issues] = await Promise.all([
+        qcGetAll('orchards'), qcGetAll('size_bins'), qcGetAll('qc_issues'),
       ])
-      setEmployees(emps); setOrchards(orchs); setSizeBins(bins); setQcIssues(issues)
-      const [bags, sampled, pending] = await Promise.all([countTodayBags(), countTodaySampled(), getPendingBagSessions()])
-      setTodayBags(bags); setTodaySampled(sampled); setPendingSessions(pending)
+      setOrchards(orchs); setSizeBins(bins); setQcIssues(issues)
+      const [sampled, pending] = await Promise.all([countTodaySampled(), getPendingBagSessions()])
+      setTodaySampled(sampled); setPendingSessions(pending)
     } finally { if (showLoading) setLoading(false) }
-  }
-
-  // ── Runner ────────────────────────────────────────────────────────────────
-
-  function startRunnerFlow() {
-    setRunnerView('picker'); setPickerSearch(''); setSelectedEmployee(null)
-    setGpsCoords(null); setDetectedOrchard(null); setManualOrchard(null)
-    setAppMode('runner')
-  }
-
-  function selectEmployee(emp: QcEmployee) {
-    setSelectedEmployee(emp)
-    setRunnerView('confirm')
-    captureGps()
-    getNextBagSeq().then(seq => setBagSeq(seq))
-  }
-
-  async function captureGps() {
-    setGpsLoading(true)
-    try {
-      const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
-        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 })
-      )
-      const lat = pos.coords.latitude; const lng = pos.coords.longitude
-      setGpsCoords({ lat, lng })
-      setDetectedOrchard(await matchOrchardFromGPS(lat, lng))
-    } catch { } finally { setGpsLoading(false) }
-  }
-
-  async function startLabelScanner() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      pendingStreamRef.current = stream
-      setScanning(true)
-      scanIntervalRef.current = setInterval(() => {
-        const video = videoRef.current; const canvas = canvasRef.current
-        if (!video || !canvas || video.readyState < 2) return
-        const ctx = canvas.getContext('2d'); if (!ctx) return
-        canvas.width = video.videoWidth; canvas.height = video.videoHeight
-        ctx.drawImage(video, 0, 0)
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-        const code = jsQR(imageData.data, imageData.width, imageData.height)
-        if (code) {
-          const raw = code.data.trim()
-          let uuid: string | null = null
-          try { const d = JSON.parse(raw); if (d.id) uuid = d.id } catch { if (/^[0-9a-f-]{36}$/i.test(raw)) uuid = raw }
-          if (uuid) { beep(); stopScanner(); logBagWithUuid(uuid) }
-        }
-      }, 300)
-    } catch { alert('Could not access camera. Check permissions.') }
-  }
-
-  async function logBagWithUuid(uuid: string) {
-    if (!selectedEmployee) return
-    const chosenOrchard = detectedOrchard || manualOrchard
-    if (!chosenOrchard) return
-    const existing = await qcGet('bag_sessions', uuid)
-    if (existing) {
-      const msg = existing.status === 'sampled'
-        ? `Bag #${existing.bag_seq} already sampled — do not reuse this label.`
-        : `Bag #${existing.bag_seq} already logged for ${existing._employee_name}. Scan a different label.`
-      alert(msg)
-      stopScanner()
-      return
-    }
-    const orgId = localStorage.getItem('qcapp_org_id') || ''
-    const farmId = chosenOrchard.farm_id || localStorage.getItem('qcapp_farm_id') || ''
-    const workerId = localStorage.getItem('qcapp_worker_id') || ''
-    const now = new Date().toISOString()
-    const seq = bagSeq
-    await qcSaveAndQueue('bag_sessions', {
-      id: uuid,
-      organisation_id: orgId,
-      farm_id: farmId,
-      orchard_id: chosenOrchard.id,
-      employee_id: selectedEmployee.id,
-      runner_id: workerId,
-      collection_lat: gpsCoords?.lat ?? null,
-      collection_lng: gpsCoords?.lng ?? null,
-      collected_at: now,
-      bag_seq: seq,
-      status: 'collected',
-      created_at: now,
-      _employee_name: selectedEmployee.full_name,
-      _orchard_name: chosenOrchard.name,
-    })
-    qcPushPendingRecords().catch(() => {})
-    setTodayBags(prev => prev + 1)
-    setLoggedBagSeq(seq)
-    setLastLoggedUuid(uuid)
-    setRunnerView('logged')
   }
 
   // ── QC worker ─────────────────────────────────────────────────────────────
 
   function startQcFlow() {
-    setQcView('queue'); setActiveSession(null); setFruit([])
+    setView('queue'); setActiveSession(null); setFruit([])
     setCurrentWeight(null); setCurrentBin(null); setBagIssues({})
-    setUnknownPhoto(null); stopUnknownCamera()
-    setAppMode('qc')
+    setUnknownPhoto(null)
   }
 
   function openSession(session: QcBagSession) {
     setActiveSession(session); setFruit([])
     setCurrentWeight(null); setCurrentBin(null); setKeypadInput('')
     setShowWeightConfirm(false); setBagIssues({})
-    setUnknownPhoto(null); stopUnknownCamera()
-    setQcView('weighing'); stopScanner()
+    setUnknownPhoto(null)
+    setView('weighing'); stopScanner()
   }
 
   async function handleQrScan(raw: string) {
@@ -314,9 +169,8 @@ export default function QcHome() {
       }
       openSession(existing)
     } else {
-      // Runner hasn't synced yet — ask for commodity only
       setPendingCommodityUuid(uuid)
-      setQcView('commodity_select')
+      setView('commodity_select')
     }
   }
 
@@ -379,7 +233,6 @@ export default function QcHome() {
   function handleWeightNotification(event: Event) {
     const rawG = ((event.target as any).value as DataView).getUint16(0, true)
     if (rawG <= 0) return
-    // Guard: don't re-trigger confirm within 1s of dismissal (prevents BLE re-show)
     if (Date.now() - confirmDismissedAt.current < 1000) return
     weightBuffer.current = [...weightBuffer.current.slice(-4), rawG]
     const buf = weightBuffer.current
@@ -404,9 +257,7 @@ export default function QcHome() {
     try {
       const orgId = localStorage.getItem('qcapp_org_id') || ''
       if (activeSession) {
-        const id = typeof crypto?.randomUUID === 'function'
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+        const id = generateUUID()
         const newFruit: QcFruit = {
           id, session_id: activeSession.id, organisation_id: orgId,
           seq: fruit.length + 1, weight_g: confirmingWeight, size_bin_id: confirmingBin?.id ?? null,
@@ -418,7 +269,6 @@ export default function QcHome() {
         setTimeout(() => setAddedFlash(null), 500)
       }
     } catch {
-      // Silently continue — confirm mode still exits via finally
     } finally {
       confirmDismissedAt.current = Date.now()
       setShowWeightConfirm(false)
@@ -440,11 +290,9 @@ export default function QcHome() {
   function adjustIssueCount(pestId: string, delta: number) {
     const next = Math.max(0, (bagIssues[pestId] || 0) + delta)
     setBagIssues(prev => ({ ...prev, [pestId]: next }))
-    // If unknown goes from 0 → 1, immediately open the camera
     if (isUnknownPest(pestId) && next > 0 && !unknownPhoto) {
       openUnknownCamera()
     }
-    // If unknown goes back to 0, clear the photo requirement
     if (isUnknownPest(pestId) && next === 0) {
       setUnknownPhoto(null)
     }
@@ -453,8 +301,6 @@ export default function QcHome() {
   function openUnknownCamera() {
     unknownFileInputRef.current?.click()
   }
-
-  function stopUnknownCamera() {}
 
   function retakeUnknownPhoto() {
     setUnknownPhoto(null)
@@ -465,12 +311,10 @@ export default function QcHome() {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''
-    // Convert to JPEG via canvas — handles HEIC and any other format iOS might pass
     const objectUrl = URL.createObjectURL(file)
     const img = new window.Image()
     img.onload = () => {
       const canvas = document.createElement('canvas')
-      // Limit max dimension to 1600px to reduce file size
       const maxDim = 1600
       let w = img.naturalWidth, h = img.naturalHeight
       if (w > maxDim || h > maxDim) {
@@ -484,7 +328,6 @@ export default function QcHome() {
       setUnknownPhoto(canvas.toDataURL('image/jpeg', 0.85))
     }
     img.onerror = () => {
-      // Fallback: read as-is
       URL.revokeObjectURL(objectUrl)
       const reader = new FileReader()
       reader.onload = ev => setUnknownPhoto(ev.target?.result as string)
@@ -505,7 +348,7 @@ export default function QcHome() {
       for (const [pestId, count] of Object.entries(bagIssues)) {
         if (count > 0)
           await qcSaveAndQueue('bag_issues', {
-            id: crypto.randomUUID(),
+            id: generateUUID(),
             session_id: activeSession.id,
             pest_id: pestId,
             organisation_id: orgId,
@@ -516,7 +359,7 @@ export default function QcHome() {
       await qcPushPendingRecords()
       await loadData()
       setActiveSession(null); setFruit([]); setBagIssues({}); setUnknownPhoto(null)
-      setAppMode('qc'); setQcView('queue')
+      setView('queue')
     } finally { setSavingSession(false) }
   }
 
@@ -534,14 +377,6 @@ export default function QcHome() {
     return qcIssues.filter(i => i.commodity_id === orchard.commodity_id).sort((a, b) => a.display_order - b.display_order)
   }, [activeSession, orchards, qcIssues])
 
-  // Only show employees once user starts typing
-  const filteredEmployees = pickerSearch.length >= 1
-    ? employees.filter(e => {
-        const q = pickerSearch.toLowerCase()
-        return e.full_name.toLowerCase().includes(q) || e.employee_nr.toLowerCase().includes(q)
-      })
-    : []
-
   // ── RENDER ────────────────────────────────────────────────────────────────
 
   if (!isLoggedIn || loading) {
@@ -549,7 +384,7 @@ export default function QcHome() {
   }
 
   // HOME
-  if (appMode === 'home') {
+  if (view === 'home') {
     return (
       <div style={s.page}>
         <div style={s.header}>
@@ -562,11 +397,6 @@ export default function QcHome() {
           </div>
         </div>
         <div style={s.homeCards}>
-          <button style={s.homeCard} onClick={startRunnerFlow}>
-            <div style={s.cardIcon}>🏃</div>
-            <div style={s.cardLabel}>Log Bag Pickup</div>
-            <div style={s.cardSub}>{todayBags > 0 ? `Bag #${todayBags} logged today` : 'No bags logged yet today'}</div>
-          </button>
           <button style={{ ...s.homeCard, ...s.homeCardQc }} onClick={startQcFlow}>
             <div style={s.cardIcon}>⚖️</div>
             <div style={s.cardLabel}>Start Bag Sample</div>
@@ -584,482 +414,323 @@ export default function QcHome() {
     )
   }
 
-  // RUNNER
-  if (appMode === 'runner') {
-
-    // Picker search — blank until typing
-    if (runnerView === 'picker') {
-      return (
-        <div style={s.page}>
-          <div style={s.topBar}>
-            <button style={s.backBtn} onClick={() => setAppMode('home')}>← Back</button>
-            <div style={s.topTitle}>Select Picker</div>
-          </div>
-          <div style={s.searchBox}>
-            <input
-              style={s.searchInput}
-              type="text"
-              placeholder="Type name or employee #..."
-              value={pickerSearch}
-              onChange={e => setPickerSearch(e.target.value)}
-              autoFocus
-            />
-          </div>
-          <div style={s.employeeList}>
-            {pickerSearch.length === 0 && <div style={s.emptyState}>Start typing to search</div>}
-            {pickerSearch.length > 0 && filteredEmployees.length === 0 && <div style={s.emptyState}>No matching employees</div>}
-            {filteredEmployees.map(emp => (
-              <button key={emp.id} style={s.employeeRow} onClick={() => selectEmployee(emp)}>
-                <div style={s.empName}>{emp.full_name}</div>
-                <div style={s.empSub}>#{emp.employee_nr}{emp.team ? ` · ${emp.team}` : ''}</div>
-              </button>
-            ))}
-          </div>
+  // QUEUE
+  if (view === 'queue') {
+    return (
+      <div style={s.page}>
+        <div style={s.topBar}>
+          <button style={s.backBtn} onClick={() => { stopScanner(); setView('home') }}>← Back</button>
+          <div style={s.topTitle}>Bag Queue</div>
         </div>
-      )
-    }
-
-    // Confirm — GPS + orchard + scan label button
-    if (runnerView === 'confirm') {
-      const chosenOrchard = detectedOrchard || manualOrchard
-      return (
-        <div style={s.page}>
-          <div style={s.topBar}>
-            <button style={s.backBtn} onClick={() => setRunnerView('picker')}>← Back</button>
-            <div style={s.topTitle}>Confirm</div>
-          </div>
-          <div style={s.confirmCard}>
-            <div style={s.confirmRow}>
-              <span style={s.confirmLabel}>Picker</span>
-              <span style={s.confirmValue}>{selectedEmployee?.full_name}</span>
-            </div>
-            <div style={s.confirmRow}>
-              <span style={s.confirmLabel}>Bag #</span>
-              <span style={{ ...s.confirmValue, fontSize: 28, fontWeight: 800, color: '#7cbe4a' }}>{bagSeq}</span>
-            </div>
-            <div style={s.confirmRow}>
-              <span style={s.confirmLabel}>GPS</span>
-              <span style={s.confirmValue}>
-                {gpsLoading ? '📍 Getting location...' : gpsCoords ? `${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lng.toFixed(5)}` : '⚠️ GPS unavailable'}
-              </span>
-            </div>
-            <div style={s.confirmRow}>
-              <span style={s.confirmLabel}>Orchard</span>
-              <span style={s.confirmValue}>
-                {detectedOrchard ? `✅ ${detectedOrchard.name}` : gpsLoading ? 'Detecting...' : '⚠️ Select manually'}
-              </span>
-            </div>
-            {!detectedOrchard && !gpsLoading && (
-              <select style={s.select} value={manualOrchard?.id || ''} onChange={e => setManualOrchard(orchards.find(x => x.id === e.target.value) || null)}>
-                <option value="">— Select orchard —</option>
-                {orchards.map(o => <option key={o.id} value={o.id}>{o.name}{o.variety ? ` (${o.variety})` : ''}</option>)}
-              </select>
-            )}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '16px' }}>
-            <button
-              style={{ width: 180, height: 180, background: chosenOrchard ? '#4a9e2a' : '#2e4a2e', color: '#e8f0e0', border: 'none', borderRadius: 16, cursor: chosenOrchard ? 'pointer' : 'not-allowed', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', gap: 10, fontSize: 16, fontWeight: 700 }}
-              onClick={() => { if (chosenOrchard) { setRunnerView('scanning_label'); startLabelScanner() } }}
-              disabled={!chosenOrchard}
-            >
-              <span style={{ fontSize: 48 }}>📷</span>
-              Scan QR Label
+        <div style={s.scanSection}>
+          {!scanning ? (
+            <button style={s.scanBtn} onClick={startScanner}>
+              <span style={{ fontSize: 48, display: 'block', marginBottom: 10 }}>📷</span>
+              Scan Bag QR
             </button>
-          </div>
-        </div>
-      )
-    }
-
-    // Scanning QR label from pre-printed stack
-    if (runnerView === 'scanning_label') {
-      return (
-        <div style={s.page}>
-          <div style={s.topBar}>
-            <button style={s.backBtn} onClick={() => { stopScanner(); setRunnerView('confirm') }}>← Back</button>
-            <div style={s.topTitle}>Scan QR Label</div>
-          </div>
-          <div style={{ padding: '20px' }}>
+          ) : (
             <div style={s.scannerContainer}>
               <video ref={videoRef} style={s.scannerVideo} playsInline muted />
               <canvas ref={canvasRef} style={{ display: 'none' }} />
-              <div style={s.scannerOverlay}>Align the pre-printed QR label</div>
-            </div>
-          </div>
-          <div style={{ padding: '0 20px', color: '#7aaa6a', fontSize: 14, textAlign: 'center' as const }}>
-            Scan label from your stack → place it in {selectedEmployee?.full_name}'s crate
-          </div>
-        </div>
-      )
-    }
-
-    // Logged — show confirmation + UUID for QC worker to enter manually
-    if (runnerView === 'logged') {
-      return (
-        <div style={{ ...s.page, alignItems: 'center', justifyContent: 'center', padding: '32px 24px', gap: 0 }}>
-          <div style={{ fontSize: 72 }}>✅</div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#7cbe4a', marginTop: 12 }}>Bag #{loggedBagSeq} Logged</div>
-          <div style={{ fontSize: 16, color: '#e8f0e0', marginTop: 6 }}>{selectedEmployee?.full_name}</div>
-          <div style={{ fontSize: 12, color: '#7aaa6a', marginTop: 4 }}>{detectedOrchard?.name || manualOrchard?.name}</div>
-          <div style={{ marginTop: 28, width: '100%' }}>
-            <div style={{ fontSize: 11, color: '#4a7a4a', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 6 }}>Bag ID — give this to QC worker</div>
-            <div
-              style={{ fontFamily: 'monospace', fontSize: 13, color: '#7cbe4a', background: '#0e1e0e', border: '1px solid #2e5a2e', borderRadius: 6, padding: '12px', wordBreak: 'break-all' as const, cursor: 'pointer' }}
-              onClick={() => navigator.clipboard?.writeText(lastLoggedUuid).catch(() => {})}
-              title="Tap to copy"
-            >
-              {lastLoggedUuid}
-            </div>
-            <div style={{ fontSize: 11, color: '#3a5a3a', marginTop: 4, textAlign: 'center' as const }}>Tap to copy</div>
-          </div>
-          <button
-            style={{ ...s.primaryBtn, marginTop: 28 }}
-            onClick={() => {
-              setRunnerView('picker'); setPickerSearch(''); setSelectedEmployee(null)
-              setGpsCoords(null); setDetectedOrchard(null); setManualOrchard(null)
-            }}
-          >
-            Next Picker →
-          </button>
-        </div>
-      )
-    }
-  }
-
-  // QC WORKER
-  if (appMode === 'qc') {
-
-    // Queue
-    if (qcView === 'queue') {
-      return (
-        <div style={s.page}>
-          <div style={s.topBar}>
-            <button style={s.backBtn} onClick={() => { stopScanner(); setAppMode('home') }}>← Back</button>
-            <div style={s.topTitle}>Bag Queue</div>
-          </div>
-          <div style={s.scanSection}>
-            {!scanning ? (
-              <button style={s.scanBtn} onClick={startScanner}>
-                <span style={{ fontSize: 48, display: 'block', marginBottom: 10 }}>📷</span>
-                Scan Bag QR
-              </button>
-            ) : (
-              <div style={s.scannerContainer}>
-                <video ref={videoRef} style={s.scannerVideo} playsInline muted />
-                <canvas ref={canvasRef} style={{ display: 'none' }} />
-                <div style={s.scannerOverlay}>Align QR code in frame...</div>
-                <button style={s.cancelScanBtn} onClick={stopScanner}>Cancel</button>
-              </div>
-            )}
-          </div>
-          {pendingSessions.length > 0 && (
-            <div style={s.queueSection}>
-              <div style={s.queueSectionLabel}>Bags waiting ({pendingSessions.length})</div>
-              {pendingSessions.map(session => (
-                <button key={session.id} style={s.sessionRow} onClick={() => openSession(session)}>
-                  <div style={s.sessionLeft}>
-                    <div style={s.sessionBagNum}>Bag #{session.bag_seq ?? '?'}</div>
-                    <div style={s.sessionPicker}>{session._employee_name || 'Unknown picker'}</div>
-                    <div style={s.sessionOrchard}>{session._orchard_name || 'Unknown orchard'}</div>
-                  </div>
-                  <div style={s.sessionRight}>
-                    <div style={s.sessionTime}>{session.collected_at ? relTime(session.collected_at) : ''}</div>
-                    <div style={s.sessionArrow}>›</div>
-                  </div>
-                </button>
-              ))}
+              <div style={s.scannerOverlay}>Align QR code in frame...</div>
+              <button style={s.cancelScanBtn} onClick={stopScanner}>Cancel</button>
             </div>
           )}
-          {pendingSessions.length === 0 && !scanning && (
-            <div style={s.emptyState}>No bags waiting. Scan a QR label to start.</div>
-          )}
         </div>
-      )
-    }
-
-    // Commodity select — runner not synced yet, just need commodity for size bins
-    if (qcView === 'commodity_select') {
-      return (
-        <div style={s.page}>
-          <div style={s.topBar}>
-            <button style={s.backBtn} onClick={() => setQcView('queue')}>← Back</button>
-            <div style={s.topTitle}>Select Commodity</div>
-          </div>
-          <div style={{ padding: '16px 20px 8px', color: '#7aaa6a', fontSize: 14 }}>
-            Runner data not yet synced. Select the commodity to load the correct size bins and issues.
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '8px 20px' }}>
-            {availableCommodities().map(c => (
-              <button key={c.id} style={s.primaryBtn} onClick={() => selectCommodity(c.id, c.name)}>
-                {c.name}
+        {pendingSessions.length > 0 && (
+          <div style={s.queueSection}>
+            <div style={s.queueSectionLabel}>Bags waiting ({pendingSessions.length})</div>
+            {pendingSessions.map(session => (
+              <button key={session.id} style={s.sessionRow} onClick={() => openSession(session)}>
+                <div style={s.sessionLeft}>
+                  <div style={s.sessionBagNum}>Bag #{session.bag_seq ?? '?'}</div>
+                  <div style={s.sessionPicker}>{session._employee_name || 'Unknown picker'}</div>
+                  <div style={s.sessionOrchard}>{session._orchard_name || 'Unknown orchard'}</div>
+                </div>
+                <div style={s.sessionRight}>
+                  <div style={s.sessionTime}>{session.collected_at ? relTime(session.collected_at) : ''}</div>
+                  <div style={s.sessionArrow}>›</div>
+                </div>
               </button>
             ))}
           </div>
+        )}
+        {pendingSessions.length === 0 && !scanning && (
+          <div style={s.emptyState}>No bags waiting. Scan a QR label to start.</div>
+        )}
+      </div>
+    )
+  }
+
+  // COMMODITY SELECT — runner not synced yet
+  if (view === 'commodity_select') {
+    return (
+      <div style={s.page}>
+        <div style={s.topBar}>
+          <button style={s.backBtn} onClick={() => setView('queue')}>← Back</button>
+          <div style={s.topTitle}>Select Commodity</div>
         </div>
-      )
-    }
+        <div style={{ padding: '16px 20px 8px', color: '#7aaa6a', fontSize: 14 }}>
+          Runner data not yet synced. Select the commodity to load the correct size bins and issues.
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '8px 20px' }}>
+          {availableCommodities().map(c => (
+            <button key={c.id} style={s.primaryBtn} onClick={() => selectCommodity(c.id, c.name)}>
+              {c.name}
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
-    // Weighing
-    if (qcView === 'weighing') {
-      const bins = sessionBins()
-      const liveWeight = keypadInput ? parseInt(keypadInput) : null
-      const liveBin = liveWeight ? findSizeBin(liveWeight, bins) : null
-      const displayWeight = keypadInput ? keypadInput + ' g' : '—'
-      const binLabel = keypadInput
-        ? (liveBin ? liveBin.label : liveWeight && liveWeight > 0 ? 'No bin match' : '')
-        : ''
-      const histoBins = fruit.reduce((acc, f) => {
-        const label = f.size_bin_id ? (bins.find(b => b.id === f.size_bin_id)?.label ?? '?') : 'No bin'
-        acc[label] = (acc[label] || 0) + 1; return acc
-      }, {} as Record<string, number>)
+  // WEIGHING
+  if (view === 'weighing') {
+    const bins = sessionBins()
+    const liveWeight = keypadInput ? parseInt(keypadInput) : null
+    const liveBin = liveWeight ? findSizeBin(liveWeight, bins) : null
+    const displayWeight = keypadInput ? keypadInput + ' g' : '—'
+    const binLabel = keypadInput
+      ? (liveBin ? liveBin.label : liveWeight && liveWeight > 0 ? 'No bin match' : '')
+      : ''
+    const histoBins = fruit.reduce((acc, f) => {
+      const label = f.size_bin_id ? (bins.find(b => b.id === f.size_bin_id)?.label ?? '?') : 'No bin'
+      acc[label] = (acc[label] || 0) + 1; return acc
+    }, {} as Record<string, number>)
 
-      return (
-        <div style={{ ...s.page, overflowY: 'hidden' }}>
-          {/* Header */}
-          <div style={s.topBar}>
-            <button style={s.backBtn} onClick={() => {
-              if (fruit.length > 0 && !confirm(`Discard ${fruit.length} fruit weighed? This cannot be undone.`)) return
-              setQcView('queue'); setActiveSession(null); setFruit([])
-            }}>← Queue</button>
-            <div style={s.topTitle}>Fruit Weighing</div>
-            {fruit.length > 0 && (
-              <button style={s.doneSmallBtn} onClick={() => setQcView('issues')}>
-                {fruit.length} fruit — Done →
-              </button>
-            )}
-          </div>
-
-          {/* Weight display — shows confirm weight when pending */}
-          <div style={{
-            ...s.weightSection,
-            ...(addedFlash ? { background: '#224a22', borderRadius: 16, margin: '0 12px' } : {}),
-          }}>
-            <div style={{
-              ...s.weightDisplay,
-              color: addedFlash ? '#7cbe4a' : (showWeightConfirm ? '#7cbe4a' : (keypadInput ? '#e8f0e0' : '#3a5a3a')),
-              fontSize: showWeightConfirm ? 80 : 64,
-            }}>
-              {showWeightConfirm ? `${confirmingWeight} g` : displayWeight}
-            </div>
-            <div style={{ ...s.binLabel, color: addedFlash ? '#7cbe4a' : undefined }}>
-              {addedFlash
-                ? `Fruit #${fruit.length} added`
-                : showWeightConfirm
-                  ? (confirmingBin?.label ?? 'No bin match')
-                  : (binLabel || (bleConnected ? 'Place on scale…' : 'Enter weight'))
-              }
-            </div>
-          </div>
-
-          {/* Mini histogram — compact horizontal pills */}
+    return (
+      <div style={{ ...s.page, overflowY: 'hidden' }}>
+        <div style={s.topBar}>
+          <button style={s.backBtn} onClick={() => {
+            if (fruit.length > 0 && !confirm(`Discard ${fruit.length} fruit weighed? This cannot be undone.`)) return
+            setView('queue'); setActiveSession(null); setFruit([])
+          }}>← Queue</button>
+          <div style={s.topTitle}>Fruit Weighing</div>
           {fruit.length > 0 && (
-            <div style={s.histoPills}>
-              {Object.entries(histoBins).sort((a, b) => b[1] - a[1]).map(([label, count]) => (
-                <div key={label} style={s.histoPill}>
-                  <span style={s.histoPillLabel}>{label}</span>
-                  <span style={s.histoPillCount}>{count}</span>
-                </div>
-              ))}
-            </div>
+            <button style={s.doneSmallBtn} onClick={() => setView('issues')}>
+              {fruit.length} fruit — Done →
+            </button>
           )}
+        </div>
 
-          {/* Keypad — same 12 buttons always, transform in-place for confirm */}
-          <div style={s.keypad}>
-            {['1','2','3','4','5','6','7','8','9','⌫','0','✓'].map(key => {
-              const confirming = showWeightConfirm
-              const isConfirm = key === '✓'
-              const isBack = key === '⌫'
+        <div style={{
+          ...s.weightSection,
+          ...(addedFlash ? { background: '#224a22', borderRadius: 16, margin: '0 12px' } : {}),
+        }}>
+          <div style={{
+            ...s.weightDisplay,
+            color: addedFlash ? '#7cbe4a' : (showWeightConfirm ? '#7cbe4a' : (keypadInput ? '#e8f0e0' : '#3a5a3a')),
+            fontSize: showWeightConfirm ? 80 : 64,
+          }}>
+            {showWeightConfirm ? `${confirmingWeight} g` : displayWeight}
+          </div>
+          <div style={{ ...s.binLabel, color: addedFlash ? '#7cbe4a' : undefined }}>
+            {addedFlash
+              ? `Fruit #${fruit.length} added`
+              : showWeightConfirm
+                ? (confirmingBin?.label ?? 'No bin match')
+                : (binLabel || (bleConnected ? 'Place on scale…' : 'Enter weight'))
+            }
+          </div>
+        </div>
 
-              // Determine label, handler, style per mode
-              let label: string = key
-              let handler: () => void = () => keypadPress(key, bins)
-              let disabled = false
-              let style: React.CSSProperties = { ...s.keypadKey }
+        {fruit.length > 0 && (
+          <div style={s.histoPills}>
+            {Object.entries(histoBins).sort((a, b) => b[1] - a[1]).map(([label, count]) => (
+              <div key={label} style={s.histoPill}>
+                <span style={s.histoPillLabel}>{label}</span>
+                <span style={s.histoPillCount}>{count}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
-              if (confirming) {
-                if (isConfirm) {
-                  label = 'OK ✓'
-                  handler = confirmWeightOK
-                  style = { ...style, ...s.keypadKeyConfirm, fontSize: 24 }
-                } else if (isBack) {
-                  label = '↩'
-                  handler = confirmWeightReenter
-                  style = { ...style, ...s.keypadKeyBack }
-                } else {
-                  disabled = true
-                  style = { ...style, opacity: 0.15 }
-                }
+        <div style={s.keypad}>
+          {['1','2','3','4','5','6','7','8','9','⌫','0','✓'].map(key => {
+            const confirming = showWeightConfirm
+            const isConfirm = key === '✓'
+            const isBack = key === '⌫'
+
+            let label: string = key
+            let handler: () => void = () => keypadPress(key, bins)
+            let disabled = false
+            let style: React.CSSProperties = { ...s.keypadKey }
+
+            if (confirming) {
+              if (isConfirm) {
+                label = 'OK ✓'
+                handler = confirmWeightOK
+                style = { ...style, ...s.keypadKeyConfirm, fontSize: 24 }
+              } else if (isBack) {
+                label = '↩'
+                handler = confirmWeightReenter
+                style = { ...style, ...s.keypadKeyBack }
               } else {
-                if (isConfirm) {
-                  style = { ...style, ...s.keypadKeyConfirm, opacity: keypadInput ? 1 : 0.35 }
-                  disabled = !keypadInput
-                } else if (isBack) {
-                  style = { ...style, ...s.keypadKeyBack }
-                }
+                disabled = true
+                style = { ...style, opacity: 0.15 }
               }
+            } else {
+              if (isConfirm) {
+                style = { ...style, ...s.keypadKeyConfirm, opacity: keypadInput ? 1 : 0.35 }
+                disabled = !keypadInput
+              } else if (isBack) {
+                style = { ...style, ...s.keypadKeyBack }
+              }
+            }
 
-              return (
-                <button key={key} style={style} disabled={disabled} onClick={handler}>
-                  {label}
-                </button>
-              )
-            })}
+            return (
+              <button key={key} style={style} disabled={disabled} onClick={handler}>
+                {label}
+              </button>
+            )
+          })}
+        </div>
+
+        <div style={{ padding: '4px 12px 0', textAlign: 'center' as const }}>
+          <span style={{ fontSize: 13, color: '#7aaa6a', fontWeight: 600 }}>Bag #{activeSession?.bag_seq ?? '?'}</span>
+          <span style={{ fontSize: 13, color: '#4a6a4a' }}> · {activeSession?._orchard_name} · {activeSession?._employee_name}</span>
+        </div>
+
+        <div style={{ padding: '4px 12px 8px' }}>
+          <button
+            style={{ ...s.outlineBtn, fontSize: 13, padding: '9px', borderColor: bleConnected ? '#7cbe4a' : '#2e4a2e' }}
+            onClick={bleConnected ? undefined : connectScale}
+          >
+            {bleConnected ? '🔵 Scale connected — stable reads auto-capture' : '🔌 Connect Bluetooth Scale'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ISSUES
+  if (view === 'issues') {
+    const issues = sessionQcIssues()
+    const bins = sessionBins()
+    const totalIssues = Object.values(bagIssues).reduce((a, b) => a + b, 0)
+    const nonPickerTotal = issues
+      .filter(i => i.category !== 'picking_issue')
+      .reduce((sum, i) => sum + (bagIssues[i.pest_id] || 0), 0)
+    const issueError = nonPickerTotal > fruit.length
+    const unknownCount = issues
+      .filter(i => i.display_name.toLowerCase() === 'unknown' || (i.display_name_af?.toLowerCase() ?? '') === 'onbekend')
+      .reduce((sum, i) => sum + (bagIssues[i.pest_id] || 0), 0)
+    const needsUnknownPhoto = unknownCount > 0 && !unknownPhoto
+    const avgWeight = fruit.length ? Math.round(fruit.reduce((a, f) => a + f.weight_g, 0) / fruit.length) : 0
+
+    const renderIssueRow = (issue: typeof issues[0]) => {
+      const count = bagIssues[issue.pest_id] || 0
+      const isUnknown = issue.display_name.toLowerCase() === 'unknown' ||
+        (issue.display_name_af?.toLowerCase() ?? '') === 'onbekend'
+      return (
+        <div key={issue.id}>
+          <div style={s.issueCountRow}>
+            <div style={s.issueCountName}>{issueName(issue)}</div>
+            <div style={s.issueCounter}>
+              <button style={s.issueCounterBtn} onClick={() => adjustIssueCount(issue.pest_id, -1)}>−</button>
+              <div style={{ ...s.issueCounterVal, color: count > 0 ? '#7cbe4a' : '#3a5a3a' }}>{count}</div>
+              <button style={s.issueCounterBtn} onClick={() => adjustIssueCount(issue.pest_id, 1)}>+</button>
+            </div>
           </div>
-
-          {/* Bag info */}
-          <div style={{ padding: '4px 12px 0', textAlign: 'center' as const }}>
-            <span style={{ fontSize: 13, color: '#7aaa6a', fontWeight: 600 }}>Bag #{activeSession?.bag_seq ?? '?'}</span>
-            <span style={{ fontSize: 13, color: '#4a6a4a' }}> · {activeSession?._orchard_name} · {activeSession?._employee_name}</span>
-          </div>
-
-          {/* BLE connect — compact */}
-          <div style={{ padding: '4px 12px 8px' }}>
-            <button
-              style={{ ...s.outlineBtn, fontSize: 13, padding: '9px', borderColor: bleConnected ? '#7cbe4a' : '#2e4a2e' }}
-              onClick={bleConnected ? undefined : connectScale}
-            >
-              {bleConnected ? '🔵 Scale connected — stable reads auto-capture' : '🔌 Connect Bluetooth Scale'}
-            </button>
-          </div>
-
+          {isUnknown && count > 0 && (
+            unknownPhoto ? (
+              <div style={s.unknownPhotoRow}>
+                <img src={unknownPhoto} style={s.unknownThumb} alt="Unknown issue" />
+                <button style={s.unknownRetakeBtn} onClick={retakeUnknownPhoto}>📷 Retake</button>
+              </div>
+            ) : (
+              <button style={s.unknownPhotoRequired} onClick={openUnknownCamera}>
+                📷 Photo required — tap to capture
+              </button>
+            )
+          )}
         </div>
       )
     }
 
-    // Issues — bag-level issue counts
-    if (qcView === 'issues') {
-      const issues = sessionQcIssues()
-      const bins = sessionBins()
-      const totalIssues = Object.values(bagIssues).reduce((a, b) => a + b, 0)
-      const nonPickerTotal = issues
-        .filter(i => i.category !== 'picking_issue')
-        .reduce((sum, i) => sum + (bagIssues[i.pest_id] || 0), 0)
-      const issueError = nonPickerTotal > fruit.length
-      const unknownCount = issues
-        .filter(i => i.display_name.toLowerCase() === 'unknown' || (i.display_name_af?.toLowerCase() ?? '') === 'onbekend')
-        .reduce((sum, i) => sum + (bagIssues[i.pest_id] || 0), 0)
-      const needsUnknownPhoto = unknownCount > 0 && !unknownPhoto
-      const avgWeight = fruit.length ? Math.round(fruit.reduce((a, f) => a + f.weight_g, 0) / fruit.length) : 0
+    return (
+      <>
+      <input
+        ref={unknownFileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: 'none' }}
+        onChange={handleUnknownFileChange}
+      />
+      <div style={s.page}>
+        <div style={s.topBar}>
+          <button style={s.backBtn} onClick={() => setView('weighing')}>← Weighing</button>
+          <div style={s.topTitle}>Issues</div>
+        </div>
 
-      const renderIssueRow = (issue: typeof issues[0]) => {
-        const count = bagIssues[issue.pest_id] || 0
-        const isUnknown = issue.display_name.toLowerCase() === 'unknown' ||
-          (issue.display_name_af?.toLowerCase() ?? '') === 'onbekend'
-        return (
-          <div key={issue.id}>
-            <div style={s.issueCountRow}>
-              <div style={s.issueCountName}>{issueName(issue)}</div>
-              <div style={s.issueCounter}>
-                <button style={s.issueCounterBtn} onClick={() => adjustIssueCount(issue.pest_id, -1)}>−</button>
-                <div style={{ ...s.issueCounterVal, color: count > 0 ? '#7cbe4a' : '#3a5a3a' }}>{count}</div>
-                <button style={s.issueCounterBtn} onClick={() => adjustIssueCount(issue.pest_id, 1)}>+</button>
-              </div>
-            </div>
-            {isUnknown && count > 0 && (
-              unknownPhoto ? (
-                <div style={s.unknownPhotoRow}>
-                  <img src={unknownPhoto} style={s.unknownThumb} alt="Unknown issue" />
-                  <button style={s.unknownRetakeBtn} onClick={retakeUnknownPhoto}>📷 Retake</button>
-                </div>
-              ) : (
-                <button style={s.unknownPhotoRequired} onClick={openUnknownCamera}>
-                  📷 Photo required — tap to capture
-                </button>
-              )
-            )}
-          </div>
-        )
-      }
+        <div style={{ padding: '8px 16px 4px', fontSize: 11, color: '#4a7a4a', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>
+          {fruit.length} fruit · avg {avgWeight}g
+        </div>
 
-      return (
-        <>
-        <input
-          ref={unknownFileInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          style={{ display: 'none' }}
-          onChange={handleUnknownFileChange}
-        />
-        <div style={s.page}>
-          <div style={s.topBar}>
-            <button style={s.backBtn} onClick={() => setQcView('weighing')}>← Weighing</button>
-            <div style={s.topTitle}>Issues</div>
-          </div>
+        <div style={{ height: 1, background: '#1e3a1e', margin: '4px 0 0' }} />
 
-          {/* Fruit summary line */}
-          <div style={{ padding: '8px 16px 4px', fontSize: 11, color: '#4a7a4a', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>
-            {fruit.length} fruit · avg {avgWeight}g
-          </div>
-
-          <div style={{ height: 1, background: '#1e3a1e', margin: '4px 0 0' }} />
-
-          {/* Issue counters — grouped */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 8px' }}>
-            {issues.length === 0 && (
-              <div style={{ color: '#4a7a4a', fontSize: 14, textAlign: 'center', padding: '28px 0' }}>
-                No QC issues configured for this commodity.
-              </div>
-            )}
-
-            {/* Picker issues */}
-            {issues.filter(i => i.category === 'picking_issue').length > 0 && (
-              <>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#f5c842', textTransform: 'uppercase' as const, letterSpacing: '0.08em', padding: '10px 0 4px' }}>
-                  Picker Issues
-                </div>
-                {issues.filter(i => i.category === 'picking_issue').map(issue => renderIssueRow(issue))}
-                <div style={{ height: 1, background: '#1e3a1e', margin: '8px 0' }} />
-              </>
-            )}
-
-            {/* Quality issues */}
-            {issues.filter(i => i.category !== 'picking_issue').length > 0 && (
-              <>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#e85a4a', textTransform: 'uppercase' as const, letterSpacing: '0.08em', padding: '4px 0' }}>
-                  Quality Issues
-                </div>
-                {issues.filter(i => i.category !== 'picking_issue').map(issue => renderIssueRow(issue))}
-              </>
-            )}
-          </div>
-
-          {/* Validation error */}
-          {issueError && (
-            <div style={{ margin: '8px 16px', padding: '10px 14px', background: '#2a0e0e', border: '1px solid #7a2a2a', borderRadius: 8, color: '#f08080', fontSize: 13 }}>
-              ⚠️ Non-picker issues ({nonPickerTotal}) cannot exceed fruit weighed ({fruit.length})
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 8px' }}>
+          {issues.length === 0 && (
+            <div style={{ color: '#4a7a4a', fontSize: 14, textAlign: 'center', padding: '28px 0' }}>
+              No QC issues configured for this commodity.
             </div>
           )}
 
-          {/* Footer */}
-          <div style={{ padding: '8px 16px 28px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ fontSize: 13, color: '#7aaa6a', textAlign: 'center' as const }}>
-              {totalIssues > 0
-                ? `${totalIssues} issue${totalIssues !== 1 ? 's' : ''} on ${fruit.length} fruit`
-                : `No issues on ${fruit.length} fruit`}
-            </div>
-            {needsUnknownPhoto && (
-              <div style={{ padding: '6px 0 2px', fontSize: 13, color: '#f0b040', textAlign: 'center' as const }}>
-                ⚠️ {lang === 'af' ? 'Neem foto van onbekende probleem' : 'Take a photo of the unknown issue first'}
+          {issues.filter(i => i.category === 'picking_issue').length > 0 && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#f5c842', textTransform: 'uppercase' as const, letterSpacing: '0.08em', padding: '10px 0 4px' }}>
+                Picker Issues
               </div>
-            )}
-            <button
-              style={{ ...s.primaryBtn, opacity: issueError || savingSession || needsUnknownPhoto ? 0.4 : 1, marginBottom: 0 }}
-              onClick={saveCompletedSample}
-              disabled={issueError || savingSession || needsUnknownPhoto}
-            >
-              {savingSession ? 'Saving...' : 'Save & Done'}
-            </button>
-          </div>
+              {issues.filter(i => i.category === 'picking_issue').map(issue => renderIssueRow(issue))}
+              <div style={{ height: 1, background: '#1e3a1e', margin: '8px 0' }} />
+            </>
+          )}
+
+          {issues.filter(i => i.category !== 'picking_issue').length > 0 && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#e85a4a', textTransform: 'uppercase' as const, letterSpacing: '0.08em', padding: '4px 0' }}>
+                Quality Issues
+              </div>
+              {issues.filter(i => i.category !== 'picking_issue').map(issue => renderIssueRow(issue))}
+            </>
+          )}
         </div>
-        </>
-      )
-    }
+
+        {issueError && (
+          <div style={{ margin: '8px 16px', padding: '10px 14px', background: '#2a0e0e', border: '1px solid #7a2a2a', borderRadius: 8, color: '#f08080', fontSize: 13 }}>
+            ⚠️ Non-picker issues ({nonPickerTotal}) cannot exceed fruit weighed ({fruit.length})
+          </div>
+        )}
+
+        <div style={{ padding: '8px 16px 28px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ fontSize: 13, color: '#7aaa6a', textAlign: 'center' as const }}>
+            {totalIssues > 0
+              ? `${totalIssues} issue${totalIssues !== 1 ? 's' : ''} on ${fruit.length} fruit`
+              : `No issues on ${fruit.length} fruit`}
+          </div>
+          {needsUnknownPhoto && (
+            <div style={{ padding: '6px 0 2px', fontSize: 13, color: '#f0b040', textAlign: 'center' as const }}>
+              ⚠️ {lang === 'af' ? 'Neem foto van onbekende probleem' : 'Take a photo of the unknown issue first'}
+            </div>
+          )}
+          <button
+            style={{ ...s.primaryBtn, opacity: issueError || savingSession || needsUnknownPhoto ? 0.4 : 1, marginBottom: 0 }}
+            onClick={saveCompletedSample}
+            disabled={issueError || savingSession || needsUnknownPhoto}
+          >
+            {savingSession ? 'Saving...' : 'Save & Done'}
+          </button>
+        </div>
+      </div>
+      </>
+    )
   }
 
   return null
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+// ── Styles ──────────────────────────────────────────────────────────────────────
 
 const s: Record<string, React.CSSProperties> = {
   page: { display: 'flex', flexDirection: 'column', minHeight: '100dvh', background: '#1a2e1a', color: '#e8f0e0', fontFamily: 'system-ui, sans-serif', overflowY: 'auto' },
@@ -1079,21 +750,6 @@ const s: Record<string, React.CSSProperties> = {
   cardSub: { fontSize: 13, color: '#7aaa6a' },
   logoutRow: { padding: '0 20px 24px', marginTop: 'auto' },
   logoutBtn: { background: 'none', border: '1px solid #2e4a2e', borderRadius: 6, color: '#4a7a4a', padding: '10px 20px', fontSize: 13, cursor: 'pointer', width: '100%' },
-  searchBox: { padding: '16px 20px 8px' },
-  searchInput: { width: '100%', background: '#1e3a1e', border: '1px solid #2e5a2e', borderRadius: 8, color: '#e8f0e0', fontSize: 18, padding: '14px', outline: 'none', boxSizing: 'border-box' },
-  employeeList: { flex: 1, overflowY: 'auto', padding: '0 20px 20px' },
-  employeeRow: { display: 'flex', flexDirection: 'column', gap: 2, background: '#1e3a1e', border: '1px solid #2e5a2e', borderRadius: 8, padding: '14px 16px', marginBottom: 8, cursor: 'pointer', textAlign: 'left', width: '100%' },
-  empName: { fontSize: 17, fontWeight: 600, color: '#e8f0e0' },
-  empSub: { fontSize: 12, color: '#7aaa6a' },
-  emptyState: { color: '#4a7a4a', fontSize: 14, textAlign: 'center', padding: '32px 0' },
-  confirmCard: { background: '#1e3a1e', border: '1px solid #2e5a2e', borderRadius: 12, margin: '20px', padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 },
-  confirmRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 },
-  confirmLabel: { fontSize: 12, color: '#7aaa6a', textTransform: 'uppercase' as const, letterSpacing: '0.08em', flexShrink: 0, paddingTop: 2 },
-  confirmValue: { fontSize: 16, color: '#e8f0e0', textAlign: 'right' as const },
-  select: { width: '100%', background: '#1a2e1a', border: '1px solid #3a6a3a', borderRadius: 6, color: '#e8f0e0', fontSize: 15, padding: '10px', outline: 'none' },
-  confirmActions: { padding: '16px 20px 32px' },
-  primaryBtn: { width: '100%', background: '#7cbe4a', color: '#0a1a0a', fontSize: 18, fontWeight: 700, padding: '16px', border: 'none', borderRadius: 8, cursor: 'pointer', marginBottom: 8 },
-  outlineBtn: { width: '100%', background: 'none', border: '1px solid #3a5a3a', borderRadius: 8, color: '#7cbe4a', fontSize: 15, padding: '13px', cursor: 'pointer' },
   scanSection: { padding: '20px' },
   scanBtn: { width: 180, height: 180, background: '#4a9e2a', color: '#e8f0e0', fontSize: 16, fontWeight: 700, border: 'none', borderRadius: 16, cursor: 'pointer', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', margin: '8px auto' },
   scannerContainer: { position: 'relative' as const, borderRadius: 8, overflow: 'hidden' },
@@ -1113,7 +769,6 @@ const s: Record<string, React.CSSProperties> = {
   weightSection: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 20px 8px', gap: 4 },
   weightDisplay: { fontSize: 64, fontWeight: 900, lineHeight: 1 },
   binLabel: { fontSize: 20, color: '#7aaa6a', fontWeight: 600, minHeight: 28 },
-  manualInput: { flex: 1, background: '#1e3a1e', border: '1px solid #3a5a3a', borderRadius: 8, color: '#e8f0e0', fontSize: 16, padding: '12px', outline: 'none' },
   histoPills: { display: 'flex', flexWrap: 'wrap' as const, gap: 6, padding: '4px 12px 8px' },
   histoPill: { display: 'flex', alignItems: 'center', gap: 5, background: '#1e3a1e', border: '1px solid #2e5a2e', borderRadius: 20, padding: '4px 10px' },
   histoPillLabel: { fontSize: 12, color: '#7aaa6a' },
@@ -1123,12 +778,9 @@ const s: Record<string, React.CSSProperties> = {
   keypadKeyConfirm: { background: '#7cbe4a', color: '#0a1a0a', border: '1px solid #7cbe4a' },
   keypadKeyBack: { background: '#2a3e2a', color: '#e8f0e0', fontSize: 22 },
   doneSmallBtn: { background: 'none', border: '1px solid #4a7a4a', borderRadius: 6, color: '#7cbe4a', fontSize: 13, fontWeight: 700, padding: '6px 12px', cursor: 'pointer', flexShrink: 0 },
-  weightConfirmOverlay: { position: 'fixed' as const, bottom: 0, left: 0, right: 0, background: '#0d1f0d', border: '1px solid #4a7a4a', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: '32px 24px 44px', zIndex: 200, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 },
-  weightConfirmBin: { fontSize: 22, color: '#7aaa6a', fontWeight: 600 },
-  weightConfirmWeight: { fontSize: 72, fontWeight: 900, color: '#7cbe4a', lineHeight: 1 },
-  weightConfirmActions: { display: 'flex', gap: 12, width: '100%', marginTop: 20 },
-  weightConfirmReenter: { flex: 1, background: '#1e3a1e', border: '1px solid #3a5a3a', borderRadius: 12, color: '#e8f0e0', fontSize: 17, fontWeight: 600, padding: '18px', cursor: 'pointer', touchAction: 'manipulation' as const, WebkitTapHighlightColor: 'transparent' },
-  weightConfirmOk: { flex: 2, background: '#7cbe4a', border: 'none', borderRadius: 12, color: '#0a1a0a', fontSize: 20, fontWeight: 800, padding: '18px', cursor: 'pointer', touchAction: 'manipulation' as const, WebkitTapHighlightColor: 'transparent' },
+  primaryBtn: { width: '100%', background: '#7cbe4a', color: '#0a1a0a', fontSize: 18, fontWeight: 700, padding: '16px', border: 'none', borderRadius: 8, cursor: 'pointer', marginBottom: 8 },
+  outlineBtn: { width: '100%', background: 'none', border: '1px solid #3a5a3a', borderRadius: 8, color: '#7cbe4a', fontSize: 15, padding: '13px', cursor: 'pointer' },
+  emptyState: { color: '#4a7a4a', fontSize: 14, textAlign: 'center', padding: '32px 0' },
   issueCountRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid #1a3a1a' },
   issueCountName: { fontSize: 16, color: '#e8f0e0', flex: 1 },
   issueCounter: { display: 'flex', alignItems: 'center' },
@@ -1138,10 +790,4 @@ const s: Record<string, React.CSSProperties> = {
   unknownPhotoRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '6px 0 10px' },
   unknownThumb: { width: 80, height: 60, objectFit: 'cover' as const, borderRadius: 6, border: '1px solid #4a7a4a' },
   unknownRetakeBtn: { background: 'none', border: '1px solid #3a5a3a', borderRadius: 6, color: '#7aaa6a', fontSize: 13, padding: '6px 14px', cursor: 'pointer' },
-  unknownCameraModal: { position: 'fixed' as const, inset: 0, background: '#0a1a0a', display: 'flex', flexDirection: 'column' as const, zIndex: 500 },
-  unknownCameraHeader: { padding: '20px 20px 12px', borderBottom: '1px solid #2e3a1e' },
-  unknownCameraVideo: { flex: 1, width: '100%', objectFit: 'cover' as const, display: 'block' },
-  unknownCameraActions: { display: 'flex', gap: 12, padding: '16px 20px 36px' },
-  unknownCaptureBtn: { flex: 2, background: '#f0b040', border: 'none', borderRadius: 12, color: '#1a1000', fontSize: 20, fontWeight: 800, padding: '18px', cursor: 'pointer' },
-  unknownCancelBtn: { flex: 1, background: '#1e3a1e', border: '1px solid #3a5a3a', borderRadius: 12, color: '#e8f0e0', fontSize: 16, padding: '18px', cursor: 'pointer' },
 }

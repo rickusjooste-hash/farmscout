@@ -1,17 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 
 const SUPABASE_URL = 'https://agktzdeskpyevurhabpg.supabase.co'
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
-export default function QcLogin() {
+export default function RunnerLogin() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const router = useRouter()
 
   async function handleLogin() {
     if (!email || !password) {
@@ -34,7 +32,7 @@ export default function QcLogin() {
       const accessToken = authData.access_token
       const userId = authData.user.id
 
-      // 2. Look up user_profile + organisation_users to get farm
+      // 2. Look up user_profile + organisation_users
       const headers = {
         apikey: SUPABASE_ANON_KEY,
         Authorization: `Bearer ${accessToken}`,
@@ -50,13 +48,13 @@ export default function QcLogin() {
 
       if (!profiles.length) throw new Error('No user profile found. Contact your manager.')
 
-      // Role check: must be qc_worker, org_admin, manager, or super_admin
+      // Role check: must be runner, org_admin, or super_admin
       const role = orgUsers[0]?.role
-      if (role && !['qc_worker', 'org_admin', 'super_admin', 'manager'].includes(role)) {
-        throw new Error('This account does not have QC access. Contact your manager.')
+      if (role && !['runner', 'org_admin', 'super_admin', 'manager'].includes(role)) {
+        throw new Error('This account does not have runner access. Contact your manager.')
       }
 
-      // Get farm access for this user
+      // Get farm access
       const farmAccessRes = await fetch(
         `${SUPABASE_URL}/rest/v1/user_farm_access?user_id=eq.${userId}&select=*`,
         { headers }
@@ -68,25 +66,30 @@ export default function QcLogin() {
       const farmId = farmIds[0]
       const orgId = orgUsers[0]?.organisation_id || farmAccess[0].organisation_id
 
-      // 3. Store to localStorage
+      // 3. Store to localStorage (runnerapp_ prefix)
+      localStorage.setItem('runnerapp_access_token', accessToken)
+      localStorage.setItem('runnerapp_refresh_token', authData.refresh_token)
+      localStorage.setItem('runnerapp_worker_id', userId)
+      localStorage.setItem('runnerapp_worker_name', profiles[0].full_name)
+      localStorage.setItem('runnerapp_farm_id', farmId)
+      localStorage.setItem('runnerapp_farm_ids', JSON.stringify(farmIds))
+      localStorage.setItem('runnerapp_org_id', orgId)
+
+      // 4. Pull QC reference data into IndexedDB
+      // Also set qcapp_ keys so qc-sync.ts can read them for pullQcReferenceData
       localStorage.setItem('qcapp_access_token', accessToken)
-      localStorage.setItem('qcapp_refresh_token', authData.refresh_token)
-      localStorage.setItem('qcapp_worker_id', userId)
-      localStorage.setItem('qcapp_worker_name', profiles[0].full_name)
       localStorage.setItem('qcapp_farm_id', farmId)
       localStorage.setItem('qcapp_farm_ids', JSON.stringify(farmIds))
       localStorage.setItem('qcapp_org_id', orgId)
 
-      // 4. Pull all QC reference data into IndexedDB
       const { pullQcReferenceData } = await import('@/lib/qc-sync')
       const syncResult = await pullQcReferenceData(accessToken)
       if (!syncResult.success) {
-        console.warn('[QcLogin] Sync warning:', syncResult.error)
-        // Non-fatal — allow login even if sync fails (offline mode)
+        console.warn('[RunnerLogin] Sync warning:', syncResult.error)
       }
 
-      // 5. Go to QC home
-      window.location.href = '/qc'
+      // 5. Go to Runner home
+      window.location.href = '/runner'
     } catch (err: any) {
       setError(err.message || 'Login failed. Please try again.')
     }
@@ -97,9 +100,9 @@ export default function QcLogin() {
   return (
     <div style={s.app}>
       <div style={s.logoSection}>
-        <div style={s.logoIcon}>🍎</div>
-        <div style={s.logoText}>Orchard QC</div>
-        <div style={s.logoSub}>Quality Control App</div>
+        <div style={s.logoIcon}>🏃</div>
+        <div style={s.logoText}>Orchard Runner</div>
+        <div style={s.logoSub}>Bag Collection App</div>
       </div>
 
       <div style={s.form}>
@@ -128,7 +131,7 @@ export default function QcLogin() {
           />
         </div>
 
-        {error && <div style={s.errorBox}>⚠️ {error}</div>}
+        {error && <div style={s.errorBox}>{error}</div>}
 
         <button
           style={{ ...s.loginBtn, opacity: loading ? 0.7 : 1 }}
@@ -141,7 +144,7 @@ export default function QcLogin() {
         <div style={s.helpText}>Forgot your password? Contact your manager.</div>
       </div>
 
-      <div style={s.version}>Orchard QC v1.0</div>
+      <div style={s.version}>Orchard Runner v1.0</div>
     </div>
   )
 }

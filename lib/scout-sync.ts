@@ -1,4 +1,4 @@
-import { addToQueue, getPendingQueue, deleteFromQueue, upsertMany, upsertRecord, getPendingPhotos, markPhotoSynced } from './scout-db'
+import { addToQueue, getPendingQueue, deleteFromQueue, upsertMany, upsertRecord, getPendingPhotos, markPhotoSynced, clearStore } from './scout-db'
 
 const SUPABASE_URL = 'https://agktzdeskpyevurhabpg.supabase.co'
 const SUPABASE_REST = `${SUPABASE_URL}/rest/v1`
@@ -64,6 +64,7 @@ export async function pullReferenceData(supabaseKey: string, accessToken?: strin
       }
       if (zonesRes.ok) {
         const zones = await zonesRes.json()
+        await clearStore('zones')
         await upsertMany('zones', zones)
         console.log(`[Sync] Pulled ${zones.length} zones`)
       }

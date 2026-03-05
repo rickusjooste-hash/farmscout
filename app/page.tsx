@@ -10,6 +10,8 @@ import TreeScoutingAlertSummary from '@/app/components/TreeScoutingAlertSummary'
 import RebaitSummaryPanel from '@/app/components/RebaitSummaryPanel'
 import { useRouter } from 'next/navigation'
 import { Inter } from 'next/font/google'
+import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
+import { useOrgModules } from '@/lib/useOrgModules'
 
 const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500', '600', '700'] })
 
@@ -38,6 +40,7 @@ export default function DashboardPage() {
     perScout: Array<{ name: string; count: number; routeLength: number }>
   }>({ totalTraps: 0, inspectedTraps: 0, perScout: [] })
   const { farmIds, isSuperAdmin, contextLoaded, orgId } = useUserContext()
+  const modules = useOrgModules()
   const [loading, setLoading] = useState(true)
   const [selectedPestId, setSelectedPestId] = useState<string | undefined>()
   const [effectiveFarmIds, setEffectiveFarmIds] = useState<string[]>([])
@@ -212,52 +215,6 @@ export default function DashboardPage() {
         }
 
         .app { display: flex; min-height: 100vh; }
-
-        /* Sidebar */
-        .sidebar {
-          width: 220px;
-          height: 100vh;
-          position: sticky;
-          top: 0;
-          overflow-y: auto;
-          background: #1c3a2a;
-          padding: 32px 20px;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          flex-shrink: 0;
-        }
-        .logo {
-          font-family: 'Inter', sans-serif;
-          font-size: 22px;
-          color: #a8d5a2;
-          margin-bottom: 32px;
-          letter-spacing: -0.5px;
-        }
-        .logo span { color: #fff; }
-        .nav-item {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 10px 12px;
-          border-radius: 8px;
-          color: #8aab96;
-          font-size: 13.5px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.15s;
-          text-decoration: none;
-        }
-        .nav-item:hover { background: #2a4f38; color: #fff; }
-        .nav-item.active { background: #2a4f38; color: #a8d5a2; }
-        .nav-icon { font-size: 16px; }
-        .sidebar-footer {
-          margin-top: auto;
-          padding-top: 24px;
-          border-top: 1px solid #2a4f38;
-          font-size: 12px;
-          color: #4a7a5a;
-        }
 
         /* Main content */
         .main { flex: 1; padding: 40px; overflow-y: auto; }
@@ -609,38 +566,8 @@ export default function DashboardPage() {
         <div className="loading">Loading FarmScout…</div>
       ) : (
         <div className="app">
-          {/* Sidebar */}
-          <aside className="sidebar">
-            <div className="logo"><span>Farm</span>Scout</div>
-<a href="/" className="nav-item active"><span className="nav-icon">📊</span> Dashboard</a>
-<a href="/orchards" className="nav-item"><span className="nav-icon">🏡</span> Orchards</a>
-<a href="/pests" className="nav-item"><span className="nav-icon">🐛</span> Pests</a>
-<a href="/trap-inspections" className="nav-item"><span className="nav-icon">🪤</span> Trap Inspections</a>
-<a href="/inspections" className="nav-item"><span className="nav-icon">🔍</span> Inspections</a>
-<a href="/heatmap" className="nav-item"><span className="nav-icon">🌡️</span> Heat Map</a>
-<a href="/scouts" className="nav-item"><span>👷</span> Scouts</a>
-<a href="/scouts/new" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>➕</span> New Scout</a>
-<a href="/scouts/sections" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>🗂️</span> Sections</a>
-<a href="/settings" className="nav-item"><span className="nav-icon">🔔</span> Settings</a>
-{isSuperAdmin && <a href="/admin" className="nav-item"><span>⚙️</span> Admin</a>}
-<div style={{ fontSize: 10, color: '#5a7a6a', padding: '16px 16px 4px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>QC</div>
-<a href="/qc/dashboard" className="nav-item"><span>⚖️</span> QC Dashboard</a>
-<a href="/qc/unknowns" className="nav-item"><span>📷</span> Unknown Issues</a>
-<a href="/qc/settings/issues" className="nav-item"><span>🐛</span> Issue Setup</a>
-<a href="/qc/settings/size-bins" className="nav-item"><span>📏</span> Size Bins</a>
-            <div className="sidebar-footer">
-  Mouton's Valley Group<br />
-  <span style={{ color: '#2a6e45' }}>●</span> Connected
-  <br />
-  <button onClick={handleLogout} style={{
-    marginTop: 10, background: 'none', border: '1px solid #2a4f38',
-    color: '#6aaa80', borderRadius: 6, padding: '4px 10px',
-    fontSize: 11, cursor: 'pointer', fontFamily: 'Inter, sans-serif'
-  }}>
-    Sign out
-  </button>
-</div>
-          </aside>
+          <ManagerSidebarStyles />
+          <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} onLogout={handleLogout} />
 
           {/* Main */}
           <main className="main">
