@@ -657,25 +657,18 @@ export default function QcDashboardPage() {
                 <div style={{ ...s.cardBody, color: '#9aaa9f' }}>No data</div>
               ) : (
                 <>
-                  <div style={{ ...s.tableHead, gridTemplateColumns: '1.5fr 60px 60px 80px 90px 1fr' }}>
+                  <div style={{ ...s.tableHead, gridTemplateColumns: '1.5fr 60px 60px 80px' }}>
                     <button style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 'inherit', color: 'inherit', fontWeight: 'inherit', letterSpacing: 'inherit', textTransform: 'inherit' as any, padding: 0 }} onClick={() => toggleSort('name')}>Picker{sortIcon('name')}</button>
                     <button style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 'inherit', color: 'inherit', fontWeight: 'inherit', letterSpacing: 'inherit', textTransform: 'inherit' as any, padding: 0 }} onClick={() => toggleSort('bags')}>Bags{sortIcon('bags')}</button>
                     <button style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 'inherit', color: 'inherit', fontWeight: 'inherit', letterSpacing: 'inherit', textTransform: 'inherit' as any, padding: 0 }} onClick={() => toggleSort('fruit')}>Fruit{sortIcon('fruit')}</button>
                     <button style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 'inherit', color: 'inherit', fontWeight: 'inherit', letterSpacing: 'inherit', textTransform: 'inherit' as any, padding: 0 }} onClick={() => toggleSort('avgWeight')}>Avg g{sortIcon('avgWeight')}</button>
-                    <button style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 'inherit', color: 'inherit', fontWeight: 'inherit', letterSpacing: 'inherit', textTransform: 'inherit' as any, padding: 0 }} onClick={() => toggleSort('issueRate')}>Issue rate{sortIcon('issueRate')}</button>
-                    <div>Top issue</div>
                   </div>
                   {pickerRows.map(r => (
-                    <div key={r.name} style={{ ...s.tableRow, gridTemplateColumns: '1.5fr 60px 60px 80px 90px 1fr', cursor: 'default' }}>
+                    <div key={r.name} style={{ ...s.tableRow, gridTemplateColumns: '1.5fr 60px 60px 80px', cursor: 'default' }}>
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#1c3a2a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
                       <div style={{ fontSize: 14, color: '#3a4a40' }}>{r.bags}</div>
                       <div style={{ fontSize: 14, color: '#3a4a40' }}>{r.fruit.toLocaleString()}</div>
                       <div style={{ fontSize: 14, color: '#3a4a40' }}>{r.avgWeight ? `${r.avgWeight}g` : '—'}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: issueRateColor(r.issueRate), flexShrink: 0 }} />
-                        <span style={{ fontSize: 14, color: '#3a4a40' }}>{r.issueRate}%</span>
-                      </div>
-                      <div style={{ fontSize: 13, color: '#9aaa9f' }}>{r.topIssue}</div>
                     </div>
                   ))}
                 </>
