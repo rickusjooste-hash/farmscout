@@ -140,6 +140,14 @@ export default function QcAppUsersPage() {
     setCreating(true)
     setFlashMsg(null)
     try {
+      // Give runner/qc_worker access to ALL org farms (they move between farms)
+      const { data: orgFarms } = await supabase
+        .from('farms')
+        .select('id')
+        .eq('organisation_id', orgId)
+        .eq('is_active', true)
+      const allFarmIds = (orgFarms || []).map((f: any) => f.id)
+
       const res = await fetch('/api/create-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -150,7 +158,7 @@ export default function QcAppUsersPage() {
           email,
           password,
           organisation_id: orgId,
-          farm_ids: [selectedEmployee.farm_id],
+          farm_ids: allFarmIds.length > 0 ? allFarmIds : [selectedEmployee.farm_id],
         }),
       })
       const json = await res.json()
