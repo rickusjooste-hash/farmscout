@@ -31,6 +31,8 @@ export async function PATCH(req: NextRequest) {
 
   const updates: Record<string, any> = {}
   if (body.orchard_id) updates.orchard_id = body.orchard_id
+  if (body.collection_lat !== undefined) updates.collection_lat = body.collection_lat
+  if (body.collection_lng !== undefined) updates.collection_lng = body.collection_lng
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })

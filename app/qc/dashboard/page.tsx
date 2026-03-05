@@ -70,6 +70,16 @@ interface BagDetail {
 
 interface Commodity { id: string; name: string }
 
+interface PickerIssueRow {
+  employee_name: string
+  pest_id: string
+  pest_name: string
+  category: string
+  total_count: number
+  bags_affected: number
+  fruit_sampled: number
+}
+
 type DateFilter = 'today' | 'this_week' | 'last_7' | 'this_month'
 type Lang = 'en' | 'af'
 
@@ -231,6 +241,10 @@ export default function QcDashboardPage() {
   const [pickerSort, setPickerSort] = useState<PickerSort>('issueRate')
   const [pickerSortDir, setPickerSortDir] = useState<'asc' | 'desc'>('desc')
 
+  const [pickerBreakdown, setPickerBreakdown] = useState<PickerIssueRow[]>([])
+  const [pickerMetricsOpen, setPickerMetricsOpen] = useState(true)
+  const [top5Open, setTop5Open] = useState(true)
+
   const [bagPage, setBagPage] = useState(0)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [bagListOpen, setBagListOpen] = useState(false)
@@ -282,7 +296,7 @@ export default function QcDashboardPage() {
     const fromIso = from.toISOString()
     const toIso   = to.toISOString()
 
-    const [kpisRes, sizeRes, issueRes, bagRes] = await Promise.all([
+    const [kpisRes, sizeRes, issueRes, bagRes, pickerIssueRes] = await Promise.all([
       supabase.rpc('get_qc_dashboard_kpis', {
         p_farm_ids: effectiveFarmIds,
         p_from:     fromIso,
@@ -305,11 +319,17 @@ export default function QcDashboardPage() {
         p_from:     fromIso,
         p_to:       toIso,
       }),
+      supabase.rpc('get_qc_picker_issue_breakdown', {
+        p_farm_ids: effectiveFarmIds,
+        p_from:     fromIso,
+        p_to:       toIso,
+      }),
     ])
 
     setKpis((kpisRes.data as KpiData) || null)
     setSizeData((sizeRes.data as SizeBin[]) || [])
     setIssueData(((issueRes.data as IssueRow[]) || []).filter(r => r.category !== 'picking_issue'))
+    setPickerBreakdown((pickerIssueRes.data as PickerIssueRow[]) || [])
 
     // Filter bag list by commodity if selected
     let bags = (bagRes.data as BagRow[]) || []
@@ -397,6 +417,47 @@ export default function QcDashboardPage() {
     })
     return rows
   }, [bagList, pickerSort, pickerSortDir])
+
+  // Picker issue metrics: per-picker aggregate from breakdown data
+  const pickerIssueMetrics = useMemo(() => {
+    const map = new Map<string, { name: string; totalIssues: number; pickingIssues: number; qcIssues: number; bagsAffected: Set<string> }>()
+    for (const r of pickerBreakdown) {
+      if (!map.has(r.employee_name)) {
+        map.set(r.employee_name, { name: r.employee_name, totalIssues: 0, pickingIssues: 0, qcIssues: 0, bagsAffected: new Set() })
+      }
+      const m = map.get(r.employee_name)!
+      m.totalIssues += r.total_count
+      if (r.category === 'picking_issue') m.pickingIssues += r.total_count
+      else m.qcIssues += r.total_count
+      // bags_affected is per-issue — use max as a rough indicator
+    }
+    const rows = [...map.values()]
+      .map(m => ({ name: m.name, totalIssues: m.totalIssues, pickingIssues: m.pickingIssues, qcIssues: m.qcIssues }))
+    rows.sort((a, b) => b.totalIssues - a.totalIssues)
+    return rows
+  }, [pickerBreakdown])
+
+  // Top 5 worst pickers per picking issue type
+  const top5ByIssue = useMemo(() => {
+    const picking = pickerBreakdown.filter(r => r.category === 'picking_issue')
+    const byPest = new Map<string, { pest_name: string; pickers: { name: string; count: number; pct: number }[] }>()
+    for (const r of picking) {
+      if (!byPest.has(r.pest_id)) byPest.set(r.pest_id, { pest_name: r.pest_name, pickers: [] })
+      const pct = r.fruit_sampled > 0 ? (r.total_count / r.fruit_sampled) * 100 : 0
+      byPest.get(r.pest_id)!.pickers.push({ name: r.employee_name, count: r.total_count, pct })
+    }
+    const result: { pest_id: string; pest_name: string; pickers: { name: string; count: number; pct: number }[] }[] = []
+    byPest.forEach((v, k) => {
+      v.pickers.sort((a, b) => b.pct - a.pct)
+      result.push({ pest_id: k, pest_name: v.pest_name, pickers: v.pickers.slice(0, 5) })
+    })
+    result.sort((a, b) => {
+      const ta = a.pickers.reduce((sum, p) => sum + p.pct, 0)
+      const tb = b.pickers.reduce((sum, p) => sum + p.pct, 0)
+      return tb - ta
+    })
+    return result
+  }, [pickerBreakdown])
 
   function toggleSort(col: PickerSort) {
     if (pickerSort === col) setPickerSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -643,6 +704,90 @@ export default function QcDashboardPage() {
                 )}
               </div>
             </div>
+
+            {/* ── Picker Issue Metrics ─────────────────────────────────── */}
+            <div style={s.card}>
+              <div style={{ ...s.cardHeader, cursor: 'pointer' }} onClick={() => setPickerMetricsOpen(v => !v)}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12, color: '#9aaa9f', transition: 'transform 0.2s', display: 'inline-block', transform: pickerMetricsOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>&#9654;</span>
+                  <span style={s.cardTitle}>Picker Issue Metrics</span>
+                </div>
+                <div style={{ fontSize: 13, color: '#9aaa9f' }}>{pickerIssueMetrics.length} pickers</div>
+              </div>
+              {!pickerMetricsOpen ? null : pickerIssueMetrics.length === 0 ? (
+                <div style={{ ...s.cardBody, color: '#9aaa9f' }}>No issue data in this period</div>
+              ) : (
+                <>
+                  <div style={{ ...s.tableHead, gridTemplateColumns: '1.5fr 70px 90px 70px' }}>
+                    <span>Picker</span>
+                    <span>Total</span>
+                    <span>Picking</span>
+                    <span>QC</span>
+                  </div>
+                  {pickerIssueMetrics.map(r => (
+                    <div key={r.name} style={{ ...s.tableRow, gridTemplateColumns: '1.5fr 70px 90px 70px', cursor: 'default' }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#1c3a2a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: r.totalIssues > 0 ? '#e85a4a' : '#3a4a40' }}>{r.totalIssues}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ flex: 1, height: 6, background: '#f0ede6', borderRadius: 3, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', borderRadius: 3, background: '#f5c842', width: `${pickerIssueMetrics[0].totalIssues > 0 ? Math.round(r.pickingIssues / pickerIssueMetrics[0].totalIssues * 100) : 0}%` }} />
+                        </div>
+                        <span style={{ fontSize: 13, color: '#7a5c00', minWidth: 24 }}>{r.pickingIssues}</span>
+                      </div>
+                      <div style={{ fontSize: 14, color: r.qcIssues > 0 ? '#e85a4a' : '#3a4a40' }}>{r.qcIssues}</div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+
+            {/* ── Top 5 Worst — Picking Issues ────────────────────────────── */}
+            {top5ByIssue.length > 0 && (
+              <div style={s.card}>
+                <div style={{ ...s.cardHeader, cursor: 'pointer' }} onClick={() => setTop5Open(v => !v)}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: '#9aaa9f', transition: 'transform 0.2s', display: 'inline-block', transform: top5Open ? 'rotate(90deg)' : 'rotate(0deg)' }}>&#9654;</span>
+                    <span style={s.cardTitle}>Top 5 Worst — Picking Issues</span>
+                  </div>
+                  <div style={{ fontSize: 13, color: '#9aaa9f' }}>{top5ByIssue.length} issue types</div>
+                </div>
+                {top5Open && (
+                  <div style={s.cardBody}>
+                    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(top5ByIssue.length, 3)}, 1fr)`, gap: 24 }}>
+                      {top5ByIssue.map(issue => {
+                        const maxPct = issue.pickers[0]?.pct || 1
+                        return (
+                          <div key={issue.pest_id}>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: '#1c3a2a', marginBottom: 10, paddingBottom: 8, borderBottom: '2px solid #f5c842' }}>
+                              {issue.pest_name}
+                            </div>
+                            {issue.pickers.map((pk, i) => (
+                              <div key={pk.name} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                <span style={{ width: 18, fontSize: 11, fontWeight: 700, color: i === 0 ? '#e85a4a' : '#9aaa9f', textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
+                                <div style={{ flex: 1, minWidth: 0, position: 'relative', height: 28 }}>
+                                  <div style={{
+                                    position: 'absolute', top: 0, left: 0, bottom: 0,
+                                    width: `${Math.round(pk.pct / maxPct * 100)}%`,
+                                    background: i === 0 ? 'rgba(245,200,66,0.25)' : 'rgba(245,200,66,0.12)',
+                                    borderRadius: 4,
+                                  }} />
+                                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '100%', padding: '0 8px' }}>
+                                    <span style={{ fontSize: 13, color: '#1c3a2a', fontWeight: i === 0 ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {pk.name}
+                                    </span>
+                                    <span style={{ fontSize: 13, fontWeight: 700, color: '#e85a4a', flexShrink: 0 }}>{pk.pct.toFixed(1)}%</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ── Picker Performance ────────────────────────────────────── */}
             <div style={s.card}>

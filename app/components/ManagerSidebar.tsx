@@ -44,6 +44,8 @@ export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], 
         <>
           <div className="ms-section-label">QC</div>
           <a href="/qc/dashboard" className={cls('/qc/dashboard')}><span>⚖️</span> QC Dashboard</a>
+          <a href="/qc/map" className={cls('/qc/map')}><span>📍</span> Bag Map</a>
+          <a href="/qc/heatmap" className={cls('/qc/heatmap')}><span>🌡️</span> QC Heat Map</a>
           <a href="/qc/unknowns" className={cls('/qc/unknowns')}><span>📷</span> Unknown Issues</a>
           <a href="/qc/settings/issues" className={cls('/qc/settings')}><span>🐛</span> Issue Setup</a>
           <a href="/qc/settings/size-bins" className={cls('/qc/settings/size-bins')}><span>📏</span> Size Bins</a>
