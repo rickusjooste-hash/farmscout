@@ -200,15 +200,7 @@ async function pullTodaySessions(headers: Record<string, string>, farmIds: strin
     const empMap = Object.fromEntries(employees.map(e => [e.id, e.full_name]))
     const orchMap = Object.fromEntries(orchards.map(o => [o.id, o.name]))
 
-    // Clean up locally-stored "collected" bags that are no longer pending on server
-    const pendingIds = new Set(pendingSessions.map(s => s.id))
     const localBags = await qcGetAll('bag_sessions')
-    const db = await import('./qc-db').then(m => m.getQcDB())
-    for (const local of localBags) {
-      if (local.status === 'collected' && local._syncStatus !== 'pending' && !pendingIds.has(local.id)) {
-        await db.delete('bag_sessions', local.id)
-      }
-    }
 
     for (const s of pendingSessions) {
       // Don't overwrite local records that are ahead of Supabase
