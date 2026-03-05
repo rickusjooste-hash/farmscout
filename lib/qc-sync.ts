@@ -162,13 +162,14 @@ export async function pullQcReferenceData(accessToken?: string): Promise<{ succe
 
 async function pullTodaySessions(headers: Record<string, string>, farmIds: string[]) {
   try {
-    const today = new Date().toISOString().slice(0, 10)
-    const farmFilter = farmIds.length === 1
-      ? `farm_id=eq.${farmIds[0]}`
-      : `farm_id=in.(${farmIds.join(',')})`
+    // Use RPC that excludes bags already having fruit records (prevents stale bags reappearing)
     const res = await fetch(
-      `${SUPABASE_REST}/qc_bag_sessions?${farmFilter}&status=eq.collected&collected_at=gte.${today}&select=*`,
-      { headers }
+      `${SUPABASE_REST}/rpc/get_pending_bags_for_qc`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ p_farm_ids: farmIds }),
+      }
     )
     if (!res.ok) return
     const sessions: QcBagSession[] = await res.json()
@@ -178,9 +179,22 @@ async function pullTodaySessions(headers: Record<string, string>, farmIds: strin
     const empMap = Object.fromEntries(employees.map(e => [e.id, e.full_name]))
     const orchMap = Object.fromEntries(orchards.map(o => [o.id, o.name]))
 
+    // Build set of server-side pending IDs
+    const pendingIds = new Set(sessions.map(s => s.id))
+
+    // Remove locally-stored "collected" bags that are no longer pending on server
+    // (they were sampled on another device or status was fixed server-side)
+    const localBags = await qcGetAll('bag_sessions')
+    const db = await import('./qc-db').then(m => m.getQcDB())
+    for (const local of localBags) {
+      if (local.status === 'collected' && local._syncStatus !== 'pending' && !pendingIds.has(local.id)) {
+        await db.delete('bag_sessions', local.id)
+      }
+    }
+
     for (const s of sessions) {
       // Don't overwrite local records that are ahead of Supabase
-      const existing = await qcGetAll('bag_sessions').then(all => all.find(b => b.id === s.id))
+      const existing = localBags.find(b => b.id === s.id)
       if (existing && existing._syncStatus === 'pending') continue  // local changes not yet pushed
       if (existing && existing.status === 'sampled') continue  // already sampled locally — don't revert
 
@@ -191,7 +205,7 @@ async function pullTodaySessions(headers: Record<string, string>, farmIds: strin
         _orchard_name: orchMap[s.orchard_id] || existing?._orchard_name || 'Unknown orchard',
       })
     }
-    console.log(`[QcSync] Pulled ${sessions.length} pending sessions`)
+    console.log(`[QcSync] Pulled ${sessions.length} pending sessions, cleaned stale local bags`)
   } catch (err) {
     console.warn('[QcSync] Could not pull today sessions:', err)
   }
