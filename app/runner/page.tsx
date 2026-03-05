@@ -171,7 +171,7 @@ export default function RunnerPage() {
     const farmId = localStorage.getItem('runnerapp_farm_id') || ''
     try {
       const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/match_orchard_from_gps`
-      setMatchDebug(`Calling RPC... farm=${farmId.slice(0, 8)}`)
+      setMatchDebug(`lat=${lat}, lng=${lng}, farm=${farmId.slice(0, 8)}`)
       const res = await fetch(url, {
         method: 'POST',
         headers: {
@@ -183,7 +183,7 @@ export default function RunnerPage() {
       })
       if (res.ok) {
         const data = await res.json()
-        setMatchDebug(`RPC ${res.status}: ${JSON.stringify(data)}`)
+        setMatchDebug(`lat=${lat}, lng=${lng} → RPC ${res.status}: ${JSON.stringify(data)}`)
         if (data?.id) {
           const local = orchards.find(o => o.id === data.id)
           setDetectedOrchard(local || { id: data.id, name: data.name, farm_id: farmId, commodity_id: '' } as any)
