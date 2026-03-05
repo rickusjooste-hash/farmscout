@@ -59,6 +59,6 @@ RETURNS json LANGUAGE sql SECURITY DEFINER AS $$
   WHERE o.farm_id = p_farm_id
     AND o.is_active
     AND o.boundary IS NOT NULL
-    AND ST_Contains(o.boundary, ST_SetSRID(ST_Point(p_lng, p_lat), 4326))
+    AND ST_Contains(o.boundary::geometry, ST_SetSRID(ST_Point(p_lng, p_lat), 4326))
   LIMIT 1;
 $$;
