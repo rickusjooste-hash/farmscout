@@ -54,7 +54,7 @@ LANGUAGE sql SECURITY DEFINER AS $$
     COALESCE(fa.fruit_count, 0)      AS fruit_count,
     fa.avg_weight_g,
     COALESCE(ia.issue_count, 0)      AS issue_count,
-    s.status
+    CASE WHEN fa.fruit_count > 0 THEN 'sampled' ELSE s.status END AS status
   FROM qc_bag_sessions s
   JOIN orchards o ON o.id = s.orchard_id
   JOIN commodities c ON c.id = o.commodity_id
