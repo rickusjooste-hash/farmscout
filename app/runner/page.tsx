@@ -168,7 +168,34 @@ export default function RunnerPage() {
       }
       const lat = pos.coords.latitude; const lng = pos.coords.longitude
       setGpsCoords({ lat, lng })
-      setDetectedOrchard(await matchOrchardFromGPS(lat, lng))
+      // Match orchard server-side via PostGIS (avoids downloading huge boundaries)
+      try {
+        const token = localStorage.getItem('runnerapp_access_token') || ''
+        const farmId = localStorage.getItem('runnerapp_farm_id') || ''
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/match_orchard_from_gps`,
+          {
+            method: 'POST',
+            headers: {
+              apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ p_lat: lat, p_lng: lng, p_farm_id: farmId }),
+          }
+        )
+        if (res.ok) {
+          const data = await res.json()
+          if (data?.id) {
+            // Find from local list or build a minimal orchard object
+            const local = orchards.find(o => o.id === data.id)
+            setDetectedOrchard(local || { id: data.id, name: data.name, farm_id: farmId, commodity_id: '' } as any)
+          }
+        }
+      } catch {
+        // Fall back to offline matching if server call fails
+        setDetectedOrchard(await matchOrchardFromGPS(lat, lng))
+      }
     } catch (err: any) {
       const code = err?.code
       if (code === 1) setGpsError('Location permission denied — check browser settings')
