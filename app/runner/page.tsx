@@ -110,7 +110,25 @@ export default function RunnerPage() {
         qcGetAll('employees'), qcGetAll('orchards'),
       ])
       setEmployees(emps)
-      setOrchards(orchs)
+
+      // If IndexedDB has orchards, use those; otherwise fall back to direct REST fetch
+      let orchardList = orchs
+      if (!orchardList.length) {
+        try {
+          const token = localStorage.getItem('runnerapp_access_token') || localStorage.getItem('qcapp_access_token') || ''
+          const farmId = localStorage.getItem('runnerapp_farm_id') || localStorage.getItem('qcapp_farm_id') || ''
+          if (token && farmId) {
+            const res = await fetch(
+              `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/orchards?farm_id=eq.${farmId}&is_active=eq.true&select=id,name,variety,farm_id,commodity_id`,
+              { headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '', Authorization: `Bearer ${token}` } }
+            )
+            if (res.ok) orchardList = await res.json()
+          }
+        } catch {}
+      }
+      orchardList.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''))
+      setOrchards(orchardList)
+
       const bags = await countTodayBags()
       setTodayBags(bags)
     } finally { if (showLoading) setLoading(false) }
@@ -131,16 +149,33 @@ export default function RunnerPage() {
     getNextBagSeq().then(seq => setBagSeq(seq))
   }
 
+  const [gpsError, setGpsError] = useState('')
+
   async function captureGps() {
     setGpsLoading(true)
+    setGpsError('')
     try {
-      const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
-        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 })
-      )
+      // Try high accuracy first (GPS hardware), fall back to network location
+      let pos: GeolocationPosition
+      try {
+        pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 })
+        )
+      } catch {
+        pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: false, timeout: 10000, maximumAge: 120000 })
+        )
+      }
       const lat = pos.coords.latitude; const lng = pos.coords.longitude
       setGpsCoords({ lat, lng })
       setDetectedOrchard(await matchOrchardFromGPS(lat, lng))
-    } catch { } finally { setGpsLoading(false) }
+    } catch (err: any) {
+      const code = err?.code
+      if (code === 1) setGpsError('Location permission denied — check browser settings')
+      else if (code === 2) setGpsError('GPS unavailable on this device')
+      else if (code === 3) setGpsError('GPS timed out — select orchard manually')
+      else setGpsError('GPS failed — select orchard manually')
+    } finally { setGpsLoading(false) }
   }
 
   async function startLabelScanner() {
@@ -327,9 +362,14 @@ export default function RunnerPage() {
           </div>
           <div style={st.confirmRow}>
             <span style={st.confirmLabel}>GPS</span>
-            <span style={st.confirmValue}>
-              {gpsLoading ? '📍 Getting location...' : gpsCoords ? `${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lng.toFixed(5)}` : '⚠️ GPS unavailable'}
-            </span>
+            <div style={{ textAlign: 'right' as const }}>
+              <span style={st.confirmValue}>
+                {gpsLoading ? '📍 Getting location...' : gpsCoords ? `${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lng.toFixed(5)}` : gpsError ? `⚠️ ${gpsError}` : '⚠️ GPS unavailable'}
+              </span>
+              {!gpsLoading && !gpsCoords && (
+                <button style={{ background: 'none', border: '1px solid #3a6a3a', borderRadius: 4, color: '#7cbe4a', fontSize: 12, padding: '4px 10px', marginTop: 4, cursor: 'pointer' }} onClick={captureGps}>Retry GPS</button>
+              )}
+            </div>
           </div>
           <div style={st.confirmRow}>
             <span style={st.confirmLabel}>Orchard</span>
@@ -339,7 +379,7 @@ export default function RunnerPage() {
           </div>
           {!detectedOrchard && !gpsLoading && (
             <select style={st.select} value={manualOrchard?.id || ''} onChange={e => setManualOrchard(orchards.find(x => x.id === e.target.value) || null)}>
-              <option value="">— Select orchard —</option>
+              <option value="">— Select orchard ({orchards.length} available) —</option>
               {orchards.map(o => <option key={o.id} value={o.id}>{o.name}{o.variety ? ` (${o.variety})` : ''}</option>)}
             </select>
           )}
