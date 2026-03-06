@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { saveAndQueue, runFullSync } from '../../lib/scout-sync'
 import { getAll, getAllByIndex, getOne, upsertRecord } from '../../lib/scout-db'
+import booleanPointInPolygon from '@turf/boolean-point-in-polygon'
+import { point as turfPoint } from '@turf/helpers'
 
 type SubView = 'zone_list' | 'tree_list' | 'inspecting'
 type ObservationMethod = 'present_absent' | 'count' | 'leaf_inspection'
@@ -89,10 +91,10 @@ export default function TreeInspectionView({
 
   const photoInputRef = useRef<HTMLInputElement>(null)
 
-  // GPS watch — only active while inspecting a tree (saves battery on zone/tree list screens)
+  // GPS watch — active during tree_list (gives GPS time to lock) and inspecting
   useEffect(() => {
-    if (subView !== 'inspecting') {
-      // Clear stale GPS state when not inspecting
+    if (subView !== 'inspecting' && subView !== 'tree_list') {
+      // Clear stale GPS state when on zone list
       setGpsLocation(null)
       setGpsUnavailable(false)
       setGpsErrorMsg(null)
@@ -292,6 +294,46 @@ export default function TreeInspectionView({
 
     // Load pests for this commodity, filtered by farm overrides
     await loadPests(zone.commodity_id)
+
+    // ── GPS boundary check: warn if scout is not inside the selected orchard ──
+    try {
+      const orchard = await getOne('orchards', zone.orchard_id)
+      if (orchard?.boundary) {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true, timeout: 10000, maximumAge: 30000,
+          })
+        })
+        const pt = turfPoint([pos.coords.longitude, pos.coords.latitude])
+        if (!booleanPointInPolygon(pt, orchard.boundary)) {
+          // Scout is outside — try to find which orchard they're actually in
+          const allOrchards = await getAll('orchards')
+          let actualOrchard: string | null = null
+          for (const o of allOrchards) {
+            if (!o.boundary) continue
+            try {
+              if (booleanPointInPolygon(pt, o.boundary)) {
+                actualOrchard = o.name
+                break
+              }
+            } catch { /* skip malformed boundaries */ }
+          }
+          const msg = actualOrchard
+            ? `It looks like you are in ${actualOrchard}, but you selected ${zone.orchard_name} (${zone.zone_name}). Continue anyway?`
+            : `Your GPS position is outside ${zone.orchard_name}. Continue anyway?`
+          if (!confirm(msg)) {
+            // Reset state and go back to zone list
+            setSelectedZone(null)
+            setSession(null)
+            setCompletedTreeNrs(new Set())
+            setPests([])
+            return
+          }
+        }
+      }
+    } catch {
+      // GPS unavailable or boundary missing — skip check silently
+    }
 
     setSubView('tree_list')
   }

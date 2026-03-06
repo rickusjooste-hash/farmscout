@@ -17,6 +17,12 @@ export async function pullReferenceData(supabaseKey: string, accessToken?: strin
     const orchardsRes = await fetch(`${SUPABASE_REST}/orchards?select=*`, { headers })
     if (orchardsRes.ok) {
       const orchards = await orchardsRes.json()
+      // Parse boundary GeoJSON strings into objects if needed
+      for (const o of orchards) {
+        if (o.boundary && typeof o.boundary === 'string') {
+          try { o.boundary = JSON.parse(o.boundary) } catch { o.boundary = null }
+        }
+      }
       await upsertMany('orchards', orchards)
       console.log(`[Sync] Pulled ${orchards.length} orchards`)
     }
