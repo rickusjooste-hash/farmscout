@@ -419,7 +419,24 @@ export default function RunnerPage() {
             type="text"
             placeholder="Type name or employee #..."
             value={pickerSearch}
-            onChange={e => setPickerSearch(e.target.value)}
+            onChange={e => {
+              const val = e.target.value
+              // If value is all digits and long enough, it's likely an RFID scan in progress — don't update search
+              if (/^\d{6,}$/.test(val)) return
+              setPickerSearch(val)
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                const val = (e.target as HTMLInputElement).value
+                // Detect RFID tag: 8+ digits entered rapidly (scanner sends digits + Enter)
+                if (/^\d{8,}$/.test(val)) {
+                  e.preventDefault()
+                  setPickerSearch('')
+                  handleRfidScan(val)
+                  return
+                }
+              }
+            }}
             autoFocus
           />
         </div>
