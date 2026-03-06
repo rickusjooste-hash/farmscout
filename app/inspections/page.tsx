@@ -237,7 +237,16 @@ export default function InspectionsPage() {
         p_week_start: from.toISOString(),
         p_week_end: to.toISOString(),
       })
-      if (!error) setDots((data || []) as TreeDot[])
+      if (error) {
+        console.error('[Inspections] RPC error:', error)
+      } else {
+        const all = (data || []) as TreeDot[]
+        const creche = all.filter((d: any) => d.orchard_name?.toLowerCase().includes('creche'))
+        const withGps = creche.filter((d: any) => d.has_location && d.lat != null)
+        console.log(`[Inspections] Total: ${all.length}, Creche: ${creche.length} (${withGps.length} with GPS)`)
+        if (creche.length > 0) console.log('[Inspections] Creche sample:', creche[0])
+        setDots(all)
+      }
       setLoading(false)
     }
     loadDots()
