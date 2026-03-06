@@ -232,15 +232,27 @@ export default function InspectionsPage() {
       const { from, to } = dateMode === 'today'
         ? dayRange(selectedDate!)
         : isoWeekRange(weekYear, weekNum)
-      const { data, error } = await supabase.rpc('get_tree_inspection_dots', {
-        p_farm_ids: effectiveFarmIds,
-        p_week_start: from.toISOString(),
-        p_week_end: to.toISOString(),
-      }).limit(10000)
-      if (error) {
-        console.error('[Inspections] RPC error:', error)
+      // Direct fetch to bypass PostgREST default 1000-row cap
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/get_tree_inspection_dots`, {
+        method: 'POST',
+        headers: {
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Range': '0-9999',
+        },
+        body: JSON.stringify({
+          p_farm_ids: effectiveFarmIds,
+          p_week_start: from.toISOString(),
+          p_week_end: to.toISOString(),
+        }),
+      })
+      if (!res.ok) {
+        console.error('[Inspections] RPC error:', res.status, await res.text())
       } else {
-        const all = (data || []) as TreeDot[]
+        const all = (await res.json()) as TreeDot[]
         console.log(`[Inspections] Total: ${all.length}, Orchards: ${[...new Set(all.map((d: any) => d.orchard_name))].sort().join(', ')}`)
         setDots(all)
       }
@@ -477,12 +489,22 @@ export default function InspectionsPage() {
         const { from, to } = dateMode === 'today'
           ? dayRange(selectedDate!)
           : isoWeekRange(weekYear, weekNum)
-        const { data } = await supabase.rpc('get_tree_inspection_dots', {
-          p_farm_ids: effectiveFarmIds,
-          p_week_start: from.toISOString(),
-          p_week_end: to.toISOString(),
-        }).limit(10000)
-        if (data) setDots(data as TreeDot[])
+        const { data: { session: s2 } } = await supabase.auth.getSession()
+        const reloadRes = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/get_tree_inspection_dots`, {
+          method: 'POST',
+          headers: {
+            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            'Authorization': `Bearer ${s2?.access_token}`,
+            'Content-Type': 'application/json',
+            'Range': '0-9999',
+          },
+          body: JSON.stringify({
+            p_farm_ids: effectiveFarmIds,
+            p_week_start: from.toISOString(),
+            p_week_end: to.toISOString(),
+          }),
+        })
+        if (reloadRes.ok) setDots((await reloadRes.json()) as TreeDot[])
       } else {
         const err = await res.json()
         alert(`Failed: ${err.error}`)
