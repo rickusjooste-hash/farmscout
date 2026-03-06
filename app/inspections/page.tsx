@@ -160,6 +160,12 @@ export default function InspectionsPage() {
   const [observations, setObservations] = useState<TreeObservation[]>([])
   const [loadingDetail, setLoadingDetail] = useState(false)
 
+  // Edit zone state
+  const [editing, setEditing] = useState(false)
+  const [zoneOptions, setZoneOptions] = useState<{ id: string; name: string; orchard_name: string }[]>([])
+  const [selectedZoneId, setSelectedZoneId] = useState('')
+  const [savingReassign, setSavingReassign] = useState(false)
+
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
   const leafletRef = useRef<any>(null)
@@ -231,7 +237,8 @@ export default function InspectionsPage() {
   // ── Load detail on tree select ────────────────────────────────────────────
 
   useEffect(() => {
-    if (!selectedTree) { setObservations([]); return }
+    if (!selectedTree) { setObservations([]); setEditing(false); return }
+    setEditing(false)
     async function loadDetail() {
       setLoadingDetail(true)
       const treeId = selectedTree!.tree_id
@@ -384,6 +391,63 @@ export default function InspectionsPage() {
       )
     }
   }, [mapReady, visibleDots, selectedTree])
+
+  // ── Edit zone ───────────────────────────────────────────────────────────
+
+  async function startEditing() {
+    if (zoneOptions.length === 0) {
+      const { data } = await supabase
+        .from('zones')
+        .select('id, name, orchards!inner(name)')
+        .order('name')
+      setZoneOptions(
+        (data || []).map((z: any) => ({
+          id: z.id,
+          name: z.name,
+          orchard_name: z.orchards?.name || '',
+        }))
+      )
+    }
+    setSelectedZoneId('')
+    setEditing(true)
+  }
+
+  async function handleReassign(mode: 'tree' | 'session') {
+    if (!selectedTree || !selectedZoneId) return
+    setSavingReassign(true)
+    try {
+      const res = await fetch('/api/inspections/reassign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode,
+          tree_id: selectedTree.tree_id,
+          session_id: selectedTree.session_id,
+          zone_id: selectedZoneId,
+        }),
+      })
+      if (res.ok) {
+        setEditing(false)
+        setSelectedTree(null)
+        // Reload dots to reflect the change
+        const { from, to } = dateMode === 'today'
+          ? dayRange(selectedDate!)
+          : isoWeekRange(weekYear, weekNum)
+        const { data } = await supabase.rpc('get_tree_inspection_dots', {
+          p_farm_ids: effectiveFarmIds,
+          p_week_start: from.toISOString(),
+          p_week_end: to.toISOString(),
+        })
+        if (data) setDots(data as TreeDot[])
+      } else {
+        const err = await res.json()
+        alert(`Failed: ${err.error}`)
+      }
+    } catch (e: any) {
+      alert(`Error: ${e.message}`)
+    }
+    setSavingReassign(false)
+  }
 
   // ── Nav helpers ───────────────────────────────────────────────────────────
 
@@ -723,7 +787,7 @@ export default function InspectionsPage() {
                       <div style={{ fontSize: 13, color: '#9aaa9f', padding: '8px 0' }}>No observations recorded.</div>
                     ) : (
                       observations.map((obs, i) => (
-                        <div key={obs.pest_id ?? i} className="tim-obs-row">
+                        <div key={i} className="tim-obs-row">
                           <div className="tim-obs-names">
                             <div style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a' }}>{obs.pest_name}</div>
                             {obs.scientific_name && (
@@ -739,6 +803,66 @@ export default function InspectionsPage() {
                           >{obs.count}</div>
                         </div>
                       ))
+                    )}
+                  </div>
+
+                  {/* Edit Zone */}
+                  <div style={{ borderTop: '1px solid #f0ede6', paddingTop: 12 }}>
+                    {!editing ? (
+                      <button
+                        onClick={startEditing}
+                        style={{
+                          width: '100%', padding: '8px 0', borderRadius: 8,
+                          border: '1.5px solid #e0ddd6', background: '#fff',
+                          color: '#3a4a40', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                        }}
+                      >Edit Zone / Orchard</button>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div className="tim-section-label">Move to zone</div>
+                        <select
+                          value={selectedZoneId}
+                          onChange={e => setSelectedZoneId(e.target.value)}
+                          style={{
+                            width: '100%', padding: '8px 10px', borderRadius: 8,
+                            border: '1.5px solid #e0ddd6', fontSize: 13, color: '#1c3a2a',
+                          }}
+                        >
+                          <option value="">Select zone…</option>
+                          {zoneOptions.map(z => (
+                            <option key={z.id} value={z.id}>
+                              {z.orchard_name} — {z.name}
+                            </option>
+                          ))}
+                        </select>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            disabled={!selectedZoneId || savingReassign}
+                            onClick={() => handleReassign('tree')}
+                            style={{
+                              flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
+                              background: selectedZoneId ? '#2a6e45' : '#ccc',
+                              color: '#fff', fontSize: 12, fontWeight: 600, cursor: selectedZoneId ? 'pointer' : 'default',
+                            }}
+                          >{savingReassign ? 'Saving…' : 'This Tree'}</button>
+                          <button
+                            disabled={!selectedZoneId || savingReassign}
+                            onClick={() => handleReassign('session')}
+                            style={{
+                              flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
+                              background: selectedZoneId ? '#1c3a2a' : '#ccc',
+                              color: '#fff', fontSize: 12, fontWeight: 600, cursor: selectedZoneId ? 'pointer' : 'default',
+                            }}
+                          >{savingReassign ? 'Saving…' : 'All Trees'}</button>
+                        </div>
+                        <button
+                          onClick={() => setEditing(false)}
+                          style={{
+                            background: 'none', border: 'none', color: '#9aaa9f',
+                            fontSize: 12, cursor: 'pointer', padding: '4px 0',
+                          }}
+                        >Cancel</button>
+                      </div>
                     )}
                   </div>
                 </div>
