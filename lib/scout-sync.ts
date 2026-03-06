@@ -1,4 +1,4 @@
-import { addToQueue, getPendingQueue, deleteFromQueue, upsertMany, upsertRecord, getPendingPhotos, markPhotoSynced, clearStore } from './scout-db'
+import { addToQueue, getPendingQueue, deleteFromQueue, upsertMany, upsertRecord, getPendingPhotos, markPhotoSynced, clearStore, deleteRecord, getAll, getAllByIndex } from './scout-db'
 
 const SUPABASE_URL = 'https://agktzdeskpyevurhabpg.supabase.co'
 const SUPABASE_REST = `${SUPABASE_URL}/rest/v1`
@@ -14,14 +14,30 @@ export async function pullReferenceData(supabaseKey: string, accessToken?: strin
     }
 
     // Fetch orchards
-    const orchardsRes = await fetch(`${SUPABASE_REST}/orchards?select=*`, { headers })
+    // Fetch orchards + boundaries in parallel
+    const [orchardsRes, boundariesRes] = await Promise.all([
+      fetch(`${SUPABASE_REST}/orchards?select=*`, { headers }),
+      fetch(`${SUPABASE_REST}/rpc/get_orchard_boundaries`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: '{}',
+      }),
+    ])
     if (orchardsRes.ok) {
       const orchards = await orchardsRes.json()
-      // Parse boundary GeoJSON strings into objects if needed
-      for (const o of orchards) {
-        if (o.boundary && typeof o.boundary === 'string') {
-          try { o.boundary = JSON.parse(o.boundary) } catch { o.boundary = null }
+      // Merge GeoJSON boundaries from RPC (raw REST returns WKB hex, not usable)
+      if (boundariesRes.ok) {
+        const boundaries = await boundariesRes.json()
+        const boundaryMap = new Map<string, any>()
+        for (const b of boundaries) {
+          if (b.id && b.boundary) boundaryMap.set(b.id, b.boundary)
         }
+        for (const o of orchards) {
+          o.boundary = boundaryMap.get(o.id) || null
+        }
+      } else {
+        // Fallback: clear unusable WKB boundaries
+        for (const o of orchards) { o.boundary = null }
       }
       await upsertMany('orchards', orchards)
       console.log(`[Sync] Pulled ${orchards.length} orchards`)
@@ -268,6 +284,8 @@ export async function pushPendingPhotos(supabaseKey: string, accessToken?: strin
         }
 
         await markPhotoSynced(photo.id)
+        // Free storage immediately — base64 blob no longer needed
+        await deleteRecord('photos', photo.id)
         uploaded++
       } else {
         const errText = await uploadRes.text()
@@ -434,11 +452,99 @@ export async function pushPendingRecords(supabaseKey: string) {
   return { pushed, failed, firstError }
 }
 
+// ── Prune old synced data from IndexedDB ──────────────────────────────────
+// Retention: current week only. Never touches unsynced data.
+
+function getWeekCutoff(): Date {
+  const now = new Date()
+  const day = now.getDay() // 0=Sun
+  const diffToMonday = day === 0 ? 6 : day - 1
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diffToMonday)
+  return monday // Monday 00:00 local time
+}
+
+export async function pruneOldData(): Promise<{ deleted: number }> {
+  let deleted = 0
+  const cutoff = getWeekCutoff()
+
+  // Phase A — Synced photos (safety net for any missed in pushPendingPhotos)
+  const allPhotos = await getAll('photos')
+  for (const photo of allPhotos) {
+    if (photo.synced === true) {
+      await deleteRecord('photos', photo.id)
+      deleted++
+    }
+  }
+
+  // Phase B — Old tree scouting data (cascade: sessions → trees → observations)
+  const allSessions = await getAll('inspection_sessions')
+  for (const session of allSessions) {
+    if (session._syncStatus !== 'synced') continue
+    const sessionDate = new Date(session.inspected_at)
+    if (isNaN(sessionDate.getTime()) || sessionDate >= cutoff) continue
+
+    // Delete child trees and their observations
+    const trees = await getAllByIndex('inspection_trees', 'by_session', session.id)
+    for (const tree of trees) {
+      const observations = await getAllByIndex('inspection_observations', 'by_tree', tree.id)
+      for (const obs of observations) {
+        await deleteRecord('inspection_observations', obs.id)
+        deleted++
+      }
+      await deleteRecord('inspection_trees', tree.id)
+      deleted++
+    }
+    await deleteRecord('inspection_sessions', session.id)
+    deleted++
+  }
+
+  // Phase C — Old trap inspection data (cascade: inspections → counts)
+  const allTrapInspections = await getAll('trap_inspections')
+  for (const inspection of allTrapInspections) {
+    if (inspection._syncStatus !== 'synced') continue
+    const inspDate = new Date(inspection.inspected_at)
+    if (isNaN(inspDate.getTime()) || inspDate >= cutoff) continue
+
+    const counts = await getAllByIndex('trap_counts', 'by_trap_inspection', inspection.id)
+    for (const count of counts) {
+      await deleteRecord('trap_counts', count.id)
+      deleted++
+    }
+    await deleteRecord('trap_inspections', inspection.id)
+    deleted++
+  }
+
+  // Phase D — Stale sync_queue items (30+ days old, still unsynced)
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+  const allQueue = await getAll('sync_queue')
+  for (const item of allQueue) {
+    if (item.synced) continue // already handled by normal cleanup
+    const created = new Date(item.createdAt)
+    if (!isNaN(created.getTime()) && created < thirtyDaysAgo) {
+      await deleteRecord('sync_queue', item.id)
+      deleted++
+    }
+  }
+
+  return { deleted }
+}
+
 // ── Full sync: pull down + push up ────────────────────────────────────────
 
 export async function runFullSync(supabaseKey: string, accessToken?: string) {
   const pull = await pullReferenceData(supabaseKey, accessToken)
   const photos = await pushPendingPhotos(supabaseKey, accessToken)  // photos first
   const push = await pushPendingRecords(supabaseKey)                // then records
+
+  // Prune old synced data only after a fully successful push
+  if (push.failed === 0) {
+    try {
+      const pruned = await pruneOldData()
+      console.log(`[Sync] Pruned ${pruned.deleted} old records`)
+    } catch (err) {
+      console.error('[Sync] Prune failed (non-fatal):', err)
+    }
+  }
+
   return { pull, photos, push }
 }

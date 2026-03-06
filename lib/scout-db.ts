@@ -310,6 +310,11 @@ export async function upsertRecord<T extends keyof FarmScoutDB>(
   await (db as any).put(storeName, record)
 }
 
+export async function deleteRecord(storeName: any, key: string | number): Promise<void> {
+  const db = await getScoutDB()
+  await (db as any).delete(storeName, key)
+}
+
 export async function clearStore(storeName: any): Promise<void> {
   const db = await getScoutDB()
   await db.clear(storeName)
