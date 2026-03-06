@@ -1,5 +1,6 @@
 -- Update get_tree_inspection_dots to return orchard centroid as fallback for trees without GPS.
 -- New columns: orchard_lat, orchard_lng (always populated from orchard.location or boundary centroid).
+DROP FUNCTION IF EXISTS get_tree_inspection_dots(uuid[], timestamptz, timestamptz);
 CREATE OR REPLACE FUNCTION get_tree_inspection_dots(
   p_farm_ids   uuid[],
   p_week_start timestamptz,
