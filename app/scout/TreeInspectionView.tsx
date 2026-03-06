@@ -255,6 +255,7 @@ export default function TreeInspectionView({
     // Runs BEFORE session creation so Cancel doesn't leave an orphan session
     try {
       const orchard = await getOne('orchards', zone.orchard_id)
+      console.log('[TreeScouting] Boundary check:', zone.orchard_name, 'has boundary:', !!orchard?.boundary, orchard?.boundary?.type)
       if (orchard?.boundary) {
         setZoneLoading('Checking GPS location…')
         const pos = await new Promise<GeolocationPosition>((resolve, reject) => {

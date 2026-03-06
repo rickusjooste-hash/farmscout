@@ -35,7 +35,11 @@ export async function pullReferenceData(supabaseKey: string, accessToken?: strin
         for (const o of orchards) {
           o.boundary = boundaryMap.get(o.id) || null
         }
+        const withBoundary = orchards.filter((o: any) => o.boundary).length
+        console.log(`[Sync] Boundaries: ${boundaryMap.size} from RPC, ${withBoundary}/${orchards.length} orchards matched`)
       } else {
+        const errText = await boundariesRes.text().catch(() => '')
+        console.warn(`[Sync] Boundary RPC failed (${boundariesRes.status}): ${errText}`)
         // Fallback: clear unusable WKB boundaries
         for (const o of orchards) { o.boundary = null }
       }
