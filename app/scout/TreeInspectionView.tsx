@@ -366,12 +366,16 @@ export default function TreeInspectionView({
       // Save one observation record per pest
       for (const pest of pests) {
         const value = observations.get(pest.id) ?? 0
+        // leaf_inspection stores a bitmask in state — convert to count for DB
+        const count = pest.observation_method === 'leaf_inspection'
+          ? [1, 2, 4, 8, 16].filter(b => value & b).length
+          : value
         const obsRecord = {
           id: crypto.randomUUID(),
           tree_id: treeId,
           organisation_id: session.organisation_id,
           pest_id: pest.pest_id,
-          count: value,
+          count,
           severity: 'none',
         }
         await saveAndQueue('inspection_observations', obsRecord, supabaseKey)
@@ -472,10 +476,13 @@ export default function TreeInspectionView({
   }
 
   function renderLeafInspection(pestId: string, val: number) {
+    // val is a bitmask: bit 0 = leaf 1, bit 1 = leaf 2, etc.
+    const count = [1, 2, 4, 8, 16].filter(b => val & b).length
     return (
       <div style={styles.leafRow}>
-        {[1, 2, 3, 4, 5].map(i => {
-          const filled = i <= val
+        {[0, 1, 2, 3, 4].map(i => {
+          const bit = 1 << i
+          const filled = !!(val & bit)
           return (
             <button
               key={i}
@@ -483,18 +490,17 @@ export default function TreeInspectionView({
                 ...styles.leafCircle,
                 background: filled ? '#f0a500' : '#2a3020',
                 border: `2px solid ${filled ? '#f0a500' : '#3a4228'}`,
+                position: 'relative' as const,
               }}
-              onClick={() => {
-                if (filled) {
-                  setObs(pestId, i - 1)
-                } else {
-                  setObs(pestId, i)
-                }
-              }}
-            />
+              onClick={() => setObs(pestId, val ^ bit)}
+            >
+              <span style={{ fontSize: 12, fontWeight: 700, color: filled ? '#000' : '#7a8a5a', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
+                {i + 1}
+              </span>
+            </button>
           )
         })}
-        <span style={{ fontSize: 13, color: '#7a8a5a', marginLeft: 8 }}>{val}/5</span>
+        <span style={{ fontSize: 13, color: '#7a8a5a', marginLeft: 8 }}>{count}/5</span>
       </div>
     )
   }
