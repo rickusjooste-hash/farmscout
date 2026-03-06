@@ -50,11 +50,23 @@ export async function POST(req: NextRequest) {
     }
 
     for (const table of TABLE_ORDER) {
-      const records = byTable[table]
+      let records = byTable[table]
       if (!records?.length) continue
+
+      // Deduplicate by conflict columns to avoid
+      // "ON CONFLICT DO UPDATE command cannot affect row a second time"
+      const conflictKey = CONFLICT_COLS[table] || 'id'
+      const keys = conflictKey.split(',')
+      const seen = new Map<string, object>()
+      for (const r of records) {
+        const k = keys.map(c => (r as any)[c]).join('|')
+        seen.set(k, r) // last write wins
+      }
+      records = [...seen.values()]
+
       const { error: upsertError } = await supabase
         .from(table)
-        .upsert(records, { onConflict: CONFLICT_COLS[table] || 'id' })
+        .upsert(records, { onConflict: conflictKey })
       if (upsertError) {
         return NextResponse.json({ error: `${table}: ${upsertError.message}` }, { status: 500 })
       }

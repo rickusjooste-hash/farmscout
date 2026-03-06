@@ -80,12 +80,42 @@ interface PickerIssueRow {
   fruit_sampled: number
 }
 
-type DateFilter = 'today' | 'this_week' | 'last_7' | 'this_month'
+type DateFilter = 'today' | 'this_week' | 'last_7' | 'this_month' | 'season'
 type Lang = 'en' | 'af'
+
+// ── Season helpers ──────────────────────────────────────────────────────────
+
+function getCurrentSeason(): string {
+  const now = new Date()
+  const yr = now.getFullYear()
+  const mo = now.getMonth() + 1
+  const startYr = mo < 8 ? yr - 1 : yr
+  const endYr = (startYr + 1).toString().slice(-2)
+  return `${startYr}/${endYr}`
+}
+
+function buildSeasonOptions(fromYear: number): string[] {
+  const current = getCurrentSeason()
+  const currentStartYr = parseInt(current.split('/')[0])
+  const seasons = []
+  for (let yr = fromYear; yr <= currentStartYr; yr++) {
+    const endYr = (yr + 1).toString().slice(-2)
+    seasons.push(`${yr}/${endYr}`)
+  }
+  return seasons.reverse()
+}
+
+function getSeasonRange(season: string): { from: Date; to: Date } {
+  const startYr = parseInt(season.split('/')[0])
+  return {
+    from: new Date(startYr, 7, 1),     // Aug 1
+    to:   new Date(startYr + 1, 6, 31), // Jul 31
+  }
+}
 
 // ── Date helpers ────────────────────────────────────────────────────────────
 
-function getDateRange(filter: DateFilter): { from: Date; to: Date } {
+function getDateRange(filter: DateFilter, season?: string): { from: Date; to: Date } {
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const tomorrow = new Date(today.getTime() + 86400000)
@@ -103,20 +133,26 @@ function getDateRange(filter: DateFilter): { from: Date; to: Date } {
     return { from: new Date(today.getTime() - 6 * 86400000), to: tomorrow }
   }
 
+  if (filter === 'season' && season) {
+    return getSeasonRange(season)
+  }
+
   // this_month
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
   const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 1)
   return { from: monthStart, to: monthEnd }
 }
 
-function fmtDateFilter(filter: DateFilter): string {
-  const { from, to } = getDateRange(filter)
+function fmtDateFilter(filter: DateFilter, season?: string): string {
   if (filter === 'today') return 'Today'
   if (filter === 'this_week') {
+    const { from, to } = getDateRange(filter)
     const end = new Date(to.getTime() - 1)
     return `${from.getDate()} – ${end.getDate()} ${end.toLocaleString('en-ZA', { month: 'short' })}`
   }
   if (filter === 'last_7') return 'Last 7 days'
+  if (filter === 'season' && season) return `Season ${season}`
+  const { from } = getDateRange(filter)
   return from.toLocaleString('en-ZA', { month: 'long', year: 'numeric' })
 }
 
@@ -219,6 +255,7 @@ export default function QcDashboardPage() {
   const [commodities, setCommodities] = useState<Commodity[]>([])
 
   const [dateFilter, setDateFilter] = useState<DateFilter>('this_week')
+  const [season, setSeason] = useState<string>(getCurrentSeason())
   const [commodityId, setCommodityId] = useState<string | null>(null)
   const [orchardId, setOrchardId] = useState<string | null>(null)
   const [lang, setLang] = useState<Lang>('en')
@@ -234,7 +271,22 @@ export default function QcDashboardPage() {
   const [bagDetail, setBagDetail] = useState<BagDetail | null>(null)
 
   // Orchard edit state
-  const [allOrchards, setAllOrchards] = useState<{ id: string; name: string }[]>([])
+  const [allOrchards, setAllOrchards] = useState<{ id: string; name: string; variety: string | null; commodity_id: string }[]>([])
+
+  // Filter orchards by selected commodity
+  const filteredOrchards = useMemo(() => {
+    if (!commodityId) return allOrchards
+    return allOrchards.filter(o => o.commodity_id === commodityId)
+  }, [allOrchards, commodityId])
+
+  // Reset orchard when commodity changes and current orchard doesn't match
+  useEffect(() => {
+    if (orchardId && commodityId) {
+      const match = allOrchards.find(o => o.id === orchardId)
+      if (match && match.commodity_id !== commodityId) setOrchardId(null)
+    }
+  }, [commodityId])
+
   const [editingOrchard, setEditingOrchard] = useState(false)
   const [newOrchardId, setNewOrchardId] = useState('')
   const [savingOrchard, setSavingOrchard] = useState(false)
@@ -277,10 +329,10 @@ export default function QcDashboardPage() {
       comms.sort((a, b) => a.name.localeCompare(b.name))
       setCommodities(comms)
 
-      // Load orchards for edit dropdown
-      const oq = supabase.from('orchards').select('id, name').eq('is_active', true).order('name')
+      // Load orchards for filter dropdown
+      const oq = supabase.from('orchards').select('id, name, variety, commodity_id').eq('is_active', true).order('name')
       const { data: orchData } = ids.length > 0 ? await oq.in('farm_id', ids) : await oq
-      setAllOrchards((orchData || []) as { id: string; name: string }[])
+      setAllOrchards((orchData || []) as { id: string; name: string; variety: string | null; commodity_id: string }[])
     }
     init()
   }, [contextLoaded])
@@ -289,12 +341,12 @@ export default function QcDashboardPage() {
   useEffect(() => {
     if (effectiveFarmIds.length === 0) return
     fetchAll()
-  }, [effectiveFarmIds, dateFilter, commodityId, orchardId])
+  }, [effectiveFarmIds, dateFilter, season, commodityId, orchardId])
 
   async function fetchAll() {
     setLoading(true)
     setBagPage(0)
-    const { from, to } = getDateRange(dateFilter)
+    const { from, to } = getDateRange(dateFilter, season)
     const fromIso = from.toISOString()
     const toIso   = to.toISOString()
 
@@ -334,7 +386,12 @@ export default function QcDashboardPage() {
     ])
 
     setKpis((kpisRes.data as KpiData) || null)
-    setSizeData((sizeRes.data as SizeBin[]) || [])
+    const rawSize = (sizeRes.data as SizeBin[]) || []
+    const totalFruit = rawSize.reduce((sum, b) => sum + Number(b.fruit_count), 0)
+    setSizeData(rawSize.map(b => ({
+      ...b,
+      pct_of_total: totalFruit > 0 ? Math.round(Number(b.fruit_count) / totalFruit * 1000) / 10 : 0,
+    })))
     setIssueData(((issueRes.data as IssueRow[]) || []).filter(r => r.category !== 'picking_issue'))
     setPickerBreakdown((pickerIssueRes.data as PickerIssueRow[]) || [])
 
@@ -518,6 +575,27 @@ export default function QcDashboardPage() {
                 {f === 'today' ? 'Today' : f === 'this_week' ? 'This Week' : f === 'last_7' ? 'Last 7 Days' : 'This Month'}
               </button>
             ))}
+            <button
+              style={dateFilter === 'season' ? s.pillActive : s.pill}
+              onClick={() => setDateFilter('season')}
+            >
+              Season
+            </button>
+            {dateFilter === 'season' && (
+              <select
+                value={season}
+                onChange={e => setSeason(e.target.value)}
+                style={{
+                  padding: '5px 10px', borderRadius: 20, border: '1.5px solid #2a6e45',
+                  background: '#2a6e45', color: '#fff',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                {buildSeasonOptions(2023).map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div style={s.divider} />
@@ -556,8 +634,8 @@ export default function QcDashboardPage() {
             }}
           >
             <option value="">All Orchards</option>
-            {allOrchards.map(o => (
-              <option key={o.id} value={o.id}>{o.name}</option>
+            {filteredOrchards.map(o => (
+              <option key={o.id} value={o.id}>{o.name}{o.variety ? ` (${o.variety})` : ''}</option>
             ))}
           </select>
 
@@ -584,7 +662,7 @@ export default function QcDashboardPage() {
                 <div style={s.kpiAccent} />
                 <div style={s.kpiLabel}>Bags Collected</div>
                 <div style={s.kpiValue}>{kpis?.bags_collected ?? 0}</div>
-                <div style={s.kpiSub}>{fmtDateFilter(dateFilter)}</div>
+                <div style={s.kpiSub}>{fmtDateFilter(dateFilter, season)}</div>
               </div>
 
               {/* Bags Sampled */}
@@ -668,9 +746,9 @@ export default function QcDashboardPage() {
                     <BarChart data={sizeData} margin={{ top: 20, right: 8, bottom: 4, left: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" />
                       <XAxis dataKey="bin_label" tick={{ fontSize: 11, fill: '#7a8a80' }} />
-                      <YAxis tick={{ fontSize: 11, fill: '#7a8a80' }} />
+                      <YAxis tick={{ fontSize: 11, fill: '#7a8a80' }} tickFormatter={(v: number) => `${v}%`} />
                       <Tooltip content={<CustomTooltip />} />
-                      <Bar dataKey="fruit_count" name="Fruit" radius={[4, 4, 0, 0]}>
+                      <Bar dataKey="pct_of_total" name="%" radius={[4, 4, 0, 0]}>
                         <LabelList
                           dataKey="pct_of_total"
                           position="top"
