@@ -236,15 +236,12 @@ export default function InspectionsPage() {
         p_farm_ids: effectiveFarmIds,
         p_week_start: from.toISOString(),
         p_week_end: to.toISOString(),
-      })
+      }).limit(10000)
       if (error) {
         console.error('[Inspections] RPC error:', error)
       } else {
         const all = (data || []) as TreeDot[]
-        const creche = all.filter((d: any) => d.orchard_name?.toLowerCase().includes('creche'))
-        const withGps = creche.filter((d: any) => d.has_location && d.lat != null)
-        console.log(`[Inspections] Total: ${all.length}, Creche: ${creche.length} (${withGps.length} with GPS)`)
-        if (creche.length > 0) console.log('[Inspections] Creche sample:', creche[0])
+        console.log(`[Inspections] Total: ${all.length}, Orchards: ${[...new Set(all.map((d: any) => d.orchard_name))].sort().join(', ')}`)
         setDots(all)
       }
       setLoading(false)
@@ -484,7 +481,7 @@ export default function InspectionsPage() {
           p_farm_ids: effectiveFarmIds,
           p_week_start: from.toISOString(),
           p_week_end: to.toISOString(),
-        })
+        }).limit(10000)
         if (data) setDots(data as TreeDot[])
       } else {
         const err = await res.json()
