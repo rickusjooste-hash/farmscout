@@ -23,6 +23,8 @@ interface TreeDot {
   scout_name: string
   total_count: number
   pest_count: number
+  orchard_lat: number | null
+  orchard_lng: number | null
 }
 
 interface TreeObservation {
@@ -193,8 +195,15 @@ export default function InspectionsPage() {
     [dots, selectedScoutId]
   )
 
-  const noGpsCount = allFilteredDots.length - visibleDots.length
+  const noGpsDots = useMemo(
+    () => allFilteredDots.filter(d => !d.has_location || d.lat == null || d.lng == null),
+    [allFilteredDots]
+  )
+
+  const noGpsCount = noGpsDots.length
   const treesWithPests = visibleDots.filter(d => d.pest_count > 0).length
+
+  const [noGpsExpanded, setNoGpsExpanded] = useState(false)
 
   // ── Load farms ────────────────────────────────────────────────────────────
 
@@ -340,13 +349,14 @@ export default function InspectionsPage() {
 
     if (dotsLayerRef.current) dotsLayerRef.current.remove()
 
-    if (visibleDots.length === 0) {
+    if (visibleDots.length === 0 && noGpsDots.length === 0) {
       dotsLayerRef.current = null
       return
     }
 
     const layer = L.layerGroup()
 
+    // GPS dots — solid circles
     visibleDots.forEach(d => {
       const isSelected = selectedTree?.tree_id === d.tree_id
 
@@ -380,17 +390,45 @@ export default function InspectionsPage() {
         .addTo(layer)
     })
 
+    // No-GPS dots — hollow diamonds at orchard centroid
+    noGpsDots.forEach(d => {
+      if (d.orchard_lat == null || d.orchard_lng == null) return
+      const isSelected = selectedTree?.tree_id === d.tree_id
+      // Small random offset so trees in same orchard don't stack exactly
+      const jitter = () => (Math.random() - 0.5) * 0.0003
+      const pos = L.latLng(d.orchard_lat + jitter(), d.orchard_lng + jitter())
+
+      L.circleMarker(pos, {
+        radius: isSelected ? 9 : 6,
+        fillColor: dotColor(d),
+        fillOpacity: 0.25,
+        color: dotColor(d),
+        weight: 2,
+        dashArray: '3 2',
+        pane: 'dotsPane',
+      })
+        .bindTooltip(
+          `Tree #${d.tree_nr} · ${d.zone_name}<br/>${d.orchard_name} · ${d.scout_name}<br/><i>No GPS — orchard centroid</i>`,
+          { className: 'tim-tooltip' }
+        )
+        .on('click', () => setSelectedTree(prev => prev?.tree_id === d.tree_id ? null : d))
+        .addTo(layer)
+    })
+
     layer.addTo(map)
     dotsLayerRef.current = layer
 
     // Auto-fit on first load (no tree selected)
-    if (!selectedTree && visibleDots.length > 0) {
-      map.fitBounds(
-        L.latLngBounds(visibleDots.map(d => L.latLng(d.lat!, d.lng!))),
-        { padding: [40, 40], maxZoom: 17 }
-      )
+    if (!selectedTree) {
+      const allPoints = [
+        ...visibleDots.map(d => L.latLng(d.lat!, d.lng!)),
+        ...noGpsDots.filter(d => d.orchard_lat != null && d.orchard_lng != null).map(d => L.latLng(d.orchard_lat!, d.orchard_lng!)),
+      ]
+      if (allPoints.length > 0) {
+        map.fitBounds(L.latLngBounds(allPoints), { padding: [40, 40], maxZoom: 17 })
+      }
     }
-  }, [mapReady, visibleDots, selectedTree])
+  }, [mapReady, visibleDots, noGpsDots, selectedTree])
 
   // ── Edit zone ───────────────────────────────────────────────────────────
 
@@ -712,6 +750,10 @@ export default function InspectionsPage() {
                   <div className="tim-legend-dot" style={{ background: '#e85a4a' }} />
                   <span>High load (5+)</span>
                 </div>
+                <div className="tim-legend-row">
+                  <div className="tim-legend-dot" style={{ background: 'transparent', border: '2px dashed #9aaa9f' }} />
+                  <span>No GPS (centroid)</span>
+                </div>
               </div>
 
               {/* Empty state */}
@@ -727,6 +769,71 @@ export default function InspectionsPage() {
                       {dateMode === 'today' ? '← Go to a previous day' : '← Go to a previous week'}
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* No-GPS drawer */}
+              {noGpsCount > 0 && (
+                <div style={{
+                  position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000,
+                  background: 'rgba(255,255,255,0.96)', borderTop: '1px solid #e8e4dc',
+                  boxShadow: '0 -2px 12px rgba(0,0,0,0.08)',
+                  maxHeight: noGpsExpanded ? '45%' : 36, overflow: 'hidden',
+                  transition: 'max-height 0.25s ease',
+                }}>
+                  <button
+                    onClick={() => setNoGpsExpanded(v => !v)}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '8px 16px', background: 'none', border: 'none', cursor: 'pointer',
+                    }}
+                  >
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#1c3a2a' }}>
+                      {noGpsCount} tree{noGpsCount !== 1 ? 's' : ''} without GPS
+                    </span>
+                    <span style={{ fontSize: 14, color: '#9aaa9f', transform: noGpsExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                      ▲
+                    </span>
+                  </button>
+                  {noGpsExpanded && (
+                    <div style={{ overflowY: 'auto', maxHeight: 'calc(45vh - 36px)' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: '#f4f1ea', position: 'sticky', top: 0 }}>
+                            <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 600, color: '#6a7a70' }}>Tree</th>
+                            <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 600, color: '#6a7a70' }}>Orchard</th>
+                            <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 600, color: '#6a7a70' }}>Zone</th>
+                            <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 600, color: '#6a7a70' }}>Scout</th>
+                            <th style={{ padding: '6px 12px', textAlign: 'right', fontWeight: 600, color: '#6a7a70' }}>Pests</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {noGpsDots.map(d => (
+                            <tr
+                              key={d.tree_id}
+                              onClick={() => setSelectedTree(prev => prev?.tree_id === d.tree_id ? null : d)}
+                              style={{
+                                cursor: 'pointer', borderBottom: '1px solid #f0ede6',
+                                background: selectedTree?.tree_id === d.tree_id ? '#e8f5e9' : undefined,
+                              }}
+                            >
+                              <td style={{ padding: '7px 12px', fontWeight: 600, color: '#1c3a2a' }}>#{d.tree_nr}</td>
+                              <td style={{ padding: '7px 12px', color: '#3a4a40' }}>{d.orchard_name}</td>
+                              <td style={{ padding: '7px 12px', color: '#6a7a70' }}>{d.zone_name}</td>
+                              <td style={{ padding: '7px 12px', color: '#6a7a70' }}>{d.scout_name}</td>
+                              <td style={{ padding: '7px 12px', textAlign: 'right' }}>
+                                <span style={{
+                                  display: 'inline-block', padding: '1px 8px', borderRadius: 10,
+                                  fontSize: 11, fontWeight: 700, color: '#fff',
+                                  background: countBadgeColor(d.total_count),
+                                }}>{d.total_count}</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
