@@ -220,6 +220,7 @@ export default function QcDashboardPage() {
 
   const [dateFilter, setDateFilter] = useState<DateFilter>('this_week')
   const [commodityId, setCommodityId] = useState<string | null>(null)
+  const [orchardId, setOrchardId] = useState<string | null>(null)
   const [lang, setLang] = useState<Lang>('en')
 
   const [kpis, setKpis] = useState<KpiData | null>(null)
@@ -288,7 +289,7 @@ export default function QcDashboardPage() {
   useEffect(() => {
     if (effectiveFarmIds.length === 0) return
     fetchAll()
-  }, [effectiveFarmIds, dateFilter, commodityId])
+  }, [effectiveFarmIds, dateFilter, commodityId, orchardId])
 
   async function fetchAll() {
     setLoading(true)
@@ -299,31 +300,36 @@ export default function QcDashboardPage() {
 
     const [kpisRes, sizeRes, issueRes, bagRes, pickerIssueRes] = await Promise.all([
       supabase.rpc('get_qc_dashboard_kpis', {
-        p_farm_ids: effectiveFarmIds,
-        p_from:     fromIso,
-        p_to:       toIso,
+        p_farm_ids:   effectiveFarmIds,
+        p_from:       fromIso,
+        p_to:         toIso,
+        p_orchard_id: orchardId ?? null,
       }),
       supabase.rpc('get_qc_size_distribution', {
         p_farm_ids:     effectiveFarmIds,
         p_from:         fromIso,
         p_to:           toIso,
         p_commodity_id: commodityId ?? null,
+        p_orchard_id:   orchardId ?? null,
       }),
       supabase.rpc('get_qc_issue_breakdown', {
         p_farm_ids:     effectiveFarmIds,
         p_from:         fromIso,
         p_to:           toIso,
         p_commodity_id: commodityId ?? null,
+        p_orchard_id:   orchardId ?? null,
       }),
       supabase.rpc('get_qc_bag_list', {
-        p_farm_ids: effectiveFarmIds,
-        p_from:     fromIso,
-        p_to:       toIso,
+        p_farm_ids:   effectiveFarmIds,
+        p_from:       fromIso,
+        p_to:         toIso,
+        p_orchard_id: orchardId ?? null,
       }),
       supabase.rpc('get_qc_picker_issue_breakdown', {
-        p_farm_ids: effectiveFarmIds,
-        p_from:     fromIso,
-        p_to:       toIso,
+        p_farm_ids:   effectiveFarmIds,
+        p_from:       fromIso,
+        p_to:         toIso,
+        p_orchard_id: orchardId ?? null,
       }),
     ])
 
@@ -534,6 +540,26 @@ export default function QcDashboardPage() {
               </button>
             ))}
           </div>
+
+          <div style={s.divider} />
+
+          {/* Orchard dropdown */}
+          <select
+            value={orchardId ?? ''}
+            onChange={e => setOrchardId(e.target.value || null)}
+            style={{
+              padding: '6px 12px', borderRadius: 20, border: '1.5px solid #e0ddd6',
+              background: orchardId ? '#1c3a2a' : '#fff',
+              color: orchardId ? '#fff' : '#3a4a40',
+              fontSize: 12, fontWeight: 500, cursor: 'pointer',
+              maxWidth: 200,
+            }}
+          >
+            <option value="">All Orchards</option>
+            {allOrchards.map(o => (
+              <option key={o.id} value={o.id}>{o.name}</option>
+            ))}
+          </select>
 
           <div style={s.divider} />
 
