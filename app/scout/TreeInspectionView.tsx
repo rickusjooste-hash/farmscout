@@ -327,6 +327,8 @@ export default function TreeInspectionView({
             setSession(null)
             setCompletedTreeNrs(new Set())
             setPests([])
+            setSubView('zone_list')
+            loadZones()
             return
           }
         }
