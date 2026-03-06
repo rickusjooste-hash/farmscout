@@ -493,11 +493,7 @@ export default function TreeInspectionView({
                 position: 'relative' as const,
               }}
               onClick={() => setObs(pestId, val ^ bit)}
-            >
-              <span style={{ fontSize: 12, fontWeight: 700, color: filled ? '#000' : '#7a8a5a', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
-                {i + 1}
-              </span>
-            </button>
+            />
           )
         })}
         <span style={{ fontSize: 13, color: '#7a8a5a', marginLeft: 8 }}>{count}/5</span>
@@ -912,8 +908,8 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 10,
   },
   leafCircle: {
-    width: 36,
-    height: 36,
+    width: 48,
+    height: 48,
     borderRadius: '50%',
     cursor: 'pointer',
   },
