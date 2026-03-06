@@ -232,30 +232,24 @@ export default function InspectionsPage() {
       const { from, to } = dateMode === 'today'
         ? dayRange(selectedDate!)
         : isoWeekRange(weekYear, weekNum)
-      // Direct fetch to bypass PostgREST default 1000-row cap
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
-      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/get_tree_inspection_dots`, {
-        method: 'POST',
-        headers: {
-          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Range': '0-9999',
-        },
-        body: JSON.stringify({
+      // Paginate to bypass PostgREST 1000-row cap
+      const PAGE = 1000
+      let allDots: TreeDot[] = []
+      let page = 0
+      while (true) {
+        const { data, error } = await supabase.rpc('get_tree_inspection_dots', {
           p_farm_ids: effectiveFarmIds,
           p_week_start: from.toISOString(),
           p_week_end: to.toISOString(),
-        }),
-      })
-      if (!res.ok) {
-        console.error('[Inspections] RPC error:', res.status, await res.text())
-      } else {
-        const all = (await res.json()) as TreeDot[]
-        console.log(`[Inspections] Total: ${all.length}, Orchards: ${[...new Set(all.map((d: any) => d.orchard_name))].sort().join(', ')}`)
-        setDots(all)
+        }).range(page * PAGE, (page + 1) * PAGE - 1)
+        if (error) { console.error('[Inspections] RPC error:', error); break }
+        const batch = (data || []) as TreeDot[]
+        allDots = allDots.concat(batch)
+        if (batch.length < PAGE) break
+        page++
       }
+      console.log(`[Inspections] Total: ${allDots.length} (${page + 1} pages), Orchards: ${[...new Set(allDots.map(d => d.orchard_name))].sort().join(', ')}`)
+      setDots(allDots)
       setLoading(false)
     }
     loadDots()
@@ -489,22 +483,21 @@ export default function InspectionsPage() {
         const { from, to } = dateMode === 'today'
           ? dayRange(selectedDate!)
           : isoWeekRange(weekYear, weekNum)
-        const { data: { session: s2 } } = await supabase.auth.getSession()
-        const reloadRes = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/get_tree_inspection_dots`, {
-          method: 'POST',
-          headers: {
-            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            'Authorization': `Bearer ${s2?.access_token}`,
-            'Content-Type': 'application/json',
-            'Range': '0-9999',
-          },
-          body: JSON.stringify({
+        // Reload with pagination
+        let reloadDots: TreeDot[] = []
+        let rp = 0
+        while (true) {
+          const { data: rd } = await supabase.rpc('get_tree_inspection_dots', {
             p_farm_ids: effectiveFarmIds,
             p_week_start: from.toISOString(),
             p_week_end: to.toISOString(),
-          }),
-        })
-        if (reloadRes.ok) setDots((await reloadRes.json()) as TreeDot[])
+          }).range(rp * 1000, (rp + 1) * 1000 - 1)
+          const batch = (rd || []) as TreeDot[]
+          reloadDots = reloadDots.concat(batch)
+          if (batch.length < 1000) break
+          rp++
+        }
+        setDots(reloadDots)
       } else {
         const err = await res.json()
         alert(`Failed: ${err.error}`)
