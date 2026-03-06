@@ -89,8 +89,17 @@ export default function TreeInspectionView({
   const [gpsErrorMsg, setGpsErrorMsg] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [zoneLoading, setZoneLoading] = useState<string | null>(null)
+  const [confirmModal, setConfirmModal] = useState<{ message: string; resolve: (v: boolean) => void } | null>(null)
 
   const photoInputRef = useRef<HTMLInputElement>(null)
+
+  function showConfirm(message: string): Promise<boolean> {
+    return new Promise(resolve => setConfirmModal({ message, resolve }))
+  }
+  function handleConfirm(result: boolean) {
+    confirmModal?.resolve(result)
+    setConfirmModal(null)
+  }
 
   // GPS watch — active during tree_list (gives GPS time to lock) and inspecting
   useEffect(() => {
@@ -281,7 +290,7 @@ export default function TreeInspectionView({
           const msg = actualOrchard
             ? `It looks like you are in ${actualOrchard}, but you selected ${zone.orchard_name} (${zone.zone_name}). Continue anyway?`
             : `Your GPS position is outside ${zone.orchard_name}. Continue anyway?`
-          if (!confirm(msg)) {
+          if (!(await showConfirm(msg))) {
             setSelectedZone(null)
             return
           }
@@ -453,10 +462,10 @@ export default function TreeInspectionView({
     setSaving(false)
   }
 
-  function handleBackFromInspecting() {
+  async function handleBackFromInspecting() {
     const hasData = observations.size > 0 || photo || comments
     if (hasData) {
-      if (!confirm('Discard unsaved tree data and go back?')) return
+      if (!(await showConfirm('Discard unsaved tree data and go back?'))) return
     }
     setSubView('tree_list')
   }
@@ -606,6 +615,7 @@ export default function TreeInspectionView({
             </div>
           </div>
         )}
+        {confirmModal && <ConfirmModal message={confirmModal.message} onConfirm={() => handleConfirm(true)} onCancel={() => handleConfirm(false)} />}
       </div>
     )
   }
@@ -758,12 +768,46 @@ export default function TreeInspectionView({
             {saving ? 'Saving…' : !gpsLocation ? (gpsUnavailable ? 'GPS unavailable' : 'Acquiring GPS…') : 'Save Tree'}
           </button>
         </div>
+        {confirmModal && <ConfirmModal message={confirmModal.message} onConfirm={() => handleConfirm(true)} onCancel={() => handleConfirm(false)} />}
       </div>
     )
   }
 
   // Fallback while loading
   return <div style={styles.container}><div style={styles.emptyState}>Loading…</div></div>
+}
+
+function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
+      padding: 24,
+    }}>
+      <div style={{
+        background: '#222918', border: '1px solid #3a4228', borderRadius: 16,
+        padding: 24, maxWidth: 340, width: '100%',
+      }}>
+        <div style={{ fontSize: 15, color: '#e8e8d8', lineHeight: 1.5, marginBottom: 24 }}>{message}</div>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button
+            onClick={onCancel}
+            style={{
+              flex: 1, padding: '14px 0', borderRadius: 8, fontSize: 14, fontWeight: 700,
+              background: '#2a3020', border: '1px solid #3a4228', color: '#e8e8d8', cursor: 'pointer',
+            }}
+          >Go Back</button>
+          <button
+            onClick={onConfirm}
+            style={{
+              flex: 1, padding: '14px 0', borderRadius: 8, fontSize: 14, fontWeight: 700,
+              background: '#f0a500', border: 'none', color: '#000', cursor: 'pointer',
+            }}
+          >Continue</button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 const styles: Record<string, React.CSSProperties> = {
