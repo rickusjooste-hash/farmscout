@@ -70,17 +70,17 @@ export default function RunnerPage() {
 
   const handleRfidScan = useCallback((tagNumber: string) => {
     if (view !== 'picker') return
-    // FCS stores last 5 digits (with leading zeros) of the 10-digit RFID tag
-    const last5 = tagNumber.slice(-5)
+    // FCS RFID: last 4 digits of 10-digit tag, leading zeros truncated
+    const last4 = tagNumber.slice(-4).replace(/^0+/, '')
     const emp = employees.find(e => e.rfid_tag === tagNumber)   // full match
-      || employees.find(e => e.rfid_tag === last5)              // last-5 match
+      || employees.find(e => e.rfid_tag === last4)              // last-4 match
       || employees.find(e => e.rfid_tag && tagNumber.endsWith(e.rfid_tag)) // tag ends with stored value
     if (emp) {
       setRfidStatus('found')
       selectEmployee(emp)
     } else {
       setRfidStatus('not_found')
-      console.log(`[RFID] Tag: ${tagNumber} (last5: ${last5}) — no match in ${employees.filter(e => e.rfid_tag).length} tagged employees`)
+      console.log(`[RFID] Tag: ${tagNumber} (last4: ${last4}) — no match in ${employees.filter(e => e.rfid_tag).length} tagged employees`)
       setTimeout(() => setRfidStatus('ready'), 2000)
     }
   }, [view, employees])
