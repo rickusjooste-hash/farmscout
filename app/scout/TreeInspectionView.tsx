@@ -88,6 +88,7 @@ export default function TreeInspectionView({
   const [gpsUnavailable, setGpsUnavailable] = useState(false)
   const [gpsErrorMsg, setGpsErrorMsg] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [zoneLoading, setZoneLoading] = useState<string | null>(null)
 
   const photoInputRef = useRef<HTMLInputElement>(null)
 
@@ -250,6 +251,48 @@ export default function TreeInspectionView({
   async function handleZoneSelect(zone: ZoneWithProgress) {
     setSelectedZone(zone)
 
+    // ── GPS boundary check: warn if scout is not inside the selected orchard ──
+    // Runs BEFORE session creation so Cancel doesn't leave an orphan session
+    try {
+      const orchard = await getOne('orchards', zone.orchard_id)
+      if (orchard?.boundary) {
+        setZoneLoading('Checking GPS location…')
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true, timeout: 10000, maximumAge: 30000,
+          })
+        })
+        const pt = turfPoint([pos.coords.longitude, pos.coords.latitude])
+        if (!booleanPointInPolygon(pt, orchard.boundary)) {
+          // Scout is outside — try to find which orchard they're actually in
+          const allOrchards = await getAll('orchards')
+          let actualOrchard: string | null = null
+          for (const o of allOrchards) {
+            if (!o.boundary) continue
+            try {
+              if (booleanPointInPolygon(pt, o.boundary)) {
+                actualOrchard = o.name
+                break
+              }
+            } catch { /* skip malformed boundaries */ }
+          }
+          setZoneLoading(null)
+          const msg = actualOrchard
+            ? `It looks like you are in ${actualOrchard}, but you selected ${zone.orchard_name} (${zone.zone_name}). Continue anyway?`
+            : `Your GPS position is outside ${zone.orchard_name}. Continue anyway?`
+          if (!confirm(msg)) {
+            setSelectedZone(null)
+            return
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[TreeScouting] GPS boundary check skipped:', err)
+      setZoneLoading(null)
+    }
+
+    setZoneLoading('Loading session…')
+
     const userId = localStorage.getItem('farmscout_user_id') || ''
     const farmId = localStorage.getItem('farmscout_farm_id') || ''
     const orgId = localStorage.getItem('farmscout_organisation_id') || ''
@@ -295,48 +338,7 @@ export default function TreeInspectionView({
     // Load pests for this commodity, filtered by farm overrides
     await loadPests(zone.commodity_id)
 
-    // ── GPS boundary check: warn if scout is not inside the selected orchard ──
-    try {
-      const orchard = await getOne('orchards', zone.orchard_id)
-      if (orchard?.boundary) {
-        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true, timeout: 10000, maximumAge: 30000,
-          })
-        })
-        const pt = turfPoint([pos.coords.longitude, pos.coords.latitude])
-        if (!booleanPointInPolygon(pt, orchard.boundary)) {
-          // Scout is outside — try to find which orchard they're actually in
-          const allOrchards = await getAll('orchards')
-          let actualOrchard: string | null = null
-          for (const o of allOrchards) {
-            if (!o.boundary) continue
-            try {
-              if (booleanPointInPolygon(pt, o.boundary)) {
-                actualOrchard = o.name
-                break
-              }
-            } catch { /* skip malformed boundaries */ }
-          }
-          const msg = actualOrchard
-            ? `It looks like you are in ${actualOrchard}, but you selected ${zone.orchard_name} (${zone.zone_name}). Continue anyway?`
-            : `Your GPS position is outside ${zone.orchard_name}. Continue anyway?`
-          if (!confirm(msg)) {
-            // Reset state and go back to zone list
-            setSelectedZone(null)
-            setSession(null)
-            setCompletedTreeNrs(new Set())
-            setPests([])
-            setSubView('zone_list')
-            loadZones()
-            return
-          }
-        }
-      }
-    } catch {
-      // GPS unavailable or boundary missing — skip check silently
-    }
-
+    setZoneLoading(null)
     setSubView('tree_list')
   }
 
@@ -557,6 +559,7 @@ export default function TreeInspectionView({
   if (subView === 'zone_list') {
     return (
       <div style={styles.container}>
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
         <div style={styles.header}>
           <button style={styles.backBtn} onClick={onBack}>← Back</button>
           <div style={styles.headerTitle}>{commodityLabel} Scouting</div>
@@ -592,6 +595,16 @@ export default function TreeInspectionView({
             })
           )}
         </div>
+
+        {/* Loading overlay while GPS check / session setup runs */}
+        {zoneLoading && (
+          <div style={styles.loadingOverlay}>
+            <div style={styles.loadingBox}>
+              <div style={styles.loadingSpinner} />
+              <div style={{ color: '#e8e8d8', fontSize: 14, fontWeight: 600 }}>{zoneLoading}</div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -1020,5 +1033,32 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     padding: '16px 0',
     cursor: 'pointer',
+  },
+  loadingOverlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.7)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+  },
+  loadingBox: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: 16,
+    padding: '32px 40px',
+    background: '#222918',
+    borderRadius: 16,
+    border: '1px solid #3a4228',
+  },
+  loadingSpinner: {
+    width: 32,
+    height: 32,
+    border: '3px solid #3a4228',
+    borderTop: '3px solid #f0a500',
+    borderRadius: '50%',
+    animation: 'spin 0.8s linear infinite',
   },
 }
