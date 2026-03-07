@@ -22,6 +22,7 @@ interface Orchard {
   variety: string
   ha: number
   is_active: boolean
+  section_id: string | null
 }
 
 
@@ -66,7 +67,7 @@ export default function DashboardPage() {
         // Orchards + active trap IDs — scoped to accessible farms, fetched in parallel
         let orchardQuery = supabase
           .from('orchards')
-          .select('id, name, variety, ha, is_active')
+          .select('id, name, variety, ha, is_active, section_id')
           .eq('is_active', true)
           .order('name')
         let trapIdsQuery = supabase.from('traps').select('id').eq('is_active', true)
@@ -93,7 +94,7 @@ export default function DashboardPage() {
         weekStart.setHours(0, 0, 0, 0)
 
         // Build scout query scoped to all accessible farms
-        let scoutQuery = supabase.from('scouts').select('user_id, full_name, first_trap_id').eq('is_active', true)
+        let scoutQuery = supabase.from('scouts').select('user_id, full_name, first_trap_id, section_id').eq('is_active', true)
         if (!isSuperAdminUser && farmIds.length > 0) {
           scoutQuery = scoutQuery.in('farm_id', farmIds)
         }
@@ -120,9 +121,9 @@ export default function DashboardPage() {
           scoutQuery,
         ])
 
-        // Build scout lookup: user_id → { name, first_trap_id }
-        const scoutLookup: Record<string, { name: string; firstTrapId: string | null }> = {}
-        ;(scoutData || []).forEach((s: any) => { scoutLookup[s.user_id] = { name: s.full_name, firstTrapId: s.first_trap_id } })
+        // Build scout lookup: user_id → { name, first_trap_id, sectionId }
+        const scoutLookup: Record<string, { name: string; firstTrapId: string | null; sectionId: string | null }> = {}
+        ;(scoutData || []).forEach((s: any) => { scoutLookup[s.user_id] = { name: s.full_name, firstTrapId: s.first_trap_id, sectionId: s.section_id } })
 
         // Fetch route lengths for each scout that has a route
         const scoutRouteLengths: Record<string, number> = {}
@@ -161,18 +162,13 @@ export default function DashboardPage() {
         setOrchards(orchardData || [])
         setWeekSessions([...new Set((weekData || []).map((r: any) => r.orchard_id))])
 
-        // Fetch scout zone assignments → distinct orchards per scout
-        const { data: zoneAssignData } = await supabase
-          .from('scout_zone_assignments')
-          .select('user_id, zones!inner(orchard_id)')
-          .or('assigned_until.is.null,assigned_until.gte.' + new Date().toISOString().slice(0, 10))
-        const scoutAssignedOrchards: Record<string, Set<string>> = {}
-        ;(zoneAssignData || []).forEach((r: any) => {
-          const sid = r.user_id
-          if (!scoutAssignedOrchards[sid]) scoutAssignedOrchards[sid] = new Set()
-          const z = r.zones
-          if (Array.isArray(z)) z.forEach((zone: any) => scoutAssignedOrchards[sid].add(zone.orchard_id))
-          else if (z?.orchard_id) scoutAssignedOrchards[sid].add(z.orchard_id)
+        // Build section → orchards map for scout assignment
+        const sectionOrchards: Record<string, string[]> = {}
+        ;(orchardData || []).forEach((o: any) => {
+          if (o.section_id) {
+            if (!sectionOrchards[o.section_id]) sectionOrchards[o.section_id] = []
+            sectionOrchards[o.section_id].push(o.id)
+          }
         })
 
         // Build per-scout tree scouting map
@@ -184,7 +180,8 @@ export default function DashboardPage() {
         })
         const scoutMapResult: Record<string, { name: string; orchardIds: string[]; assignedOrchardIds: string[] }> = {}
         Object.entries(scoutOrchardSets).forEach(([sid, orchardSet]) => {
-          const assigned = scoutAssignedOrchards[sid] ? [...scoutAssignedOrchards[sid]] : []
+          const sectionId = scoutLookup[sid]?.sectionId
+          const assigned = sectionId && sectionOrchards[sectionId] ? sectionOrchards[sectionId] : []
           scoutMapResult[sid] = { name: scoutLookup[sid]?.name || 'Unknown', orchardIds: [...orchardSet], assignedOrchardIds: assigned }
         })
         setWeekScoutMap(scoutMapResult)
