@@ -267,6 +267,17 @@ async function pullTodaySessions(headers: Record<string, string>, farmIds: strin
 
     const localBags = await qcGetAll('bag_sessions')
 
+    // Clean up old collected bags from previous days (stale IndexedDB entries)
+    const db = await import('./qc-db').then(m => m.getQcDB())
+    for (const bag of localBags) {
+      if (bag.status !== 'collected') continue
+      if (bag._syncStatus === 'pending') continue  // don't remove unsynced local data
+      const bagDate = (bag.collected_at || bag.created_at || '').slice(0, 10)
+      if (bagDate && bagDate < today) {
+        await db.delete('bag_sessions', bag.id)
+      }
+    }
+
     for (const s of pendingSessions) {
       // Don't overwrite local records that are ahead of Supabase
       const existing = localBags.find(b => b.id === s.id)
