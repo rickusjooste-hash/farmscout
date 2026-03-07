@@ -68,6 +68,7 @@ interface BagDetail {
   issues: Array<{ pest_name: string; pest_name_af: string; category: string; count: number }>
 }
 
+interface Farm { id: string; name: string }
 interface Commodity { id: string; name: string }
 
 interface PickerIssueRow {
@@ -251,12 +252,19 @@ export default function QcDashboardPage() {
   const { farmIds, isSuperAdmin, contextLoaded, orgId } = useUserContext()
   const modules = useOrgModules()
 
-  const [effectiveFarmIds, setEffectiveFarmIds] = useState<string[]>([])
+  const [allFarms, setAllFarms] = useState<Farm[]>([])
+  const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null)
   const [commodities, setCommodities] = useState<Commodity[]>([])
 
-  const [dateFilter, setDateFilter] = useState<DateFilter>('this_week')
+  const effectiveFarmIds = useMemo(() => {
+    if (selectedFarmId) return [selectedFarmId]
+    return allFarms.map(f => f.id)
+  }, [allFarms, selectedFarmId])
+
+  const [dateFilter, setDateFilter] = useState<DateFilter>('today')
   const [season, setSeason] = useState<string>(getCurrentSeason())
   const [commodityId, setCommodityId] = useState<string | null>(null)
+  const [variety, setVariety] = useState<string | null>(null)
   const [orchardId, setOrchardId] = useState<string | null>(null)
   const [lang, setLang] = useState<Lang>('en')
 
@@ -271,21 +279,42 @@ export default function QcDashboardPage() {
   const [bagDetail, setBagDetail] = useState<BagDetail | null>(null)
 
   // Orchard edit state
-  const [allOrchards, setAllOrchards] = useState<{ id: string; name: string; variety: string | null; commodity_id: string }[]>([])
+  const [allOrchards, setAllOrchards] = useState<{ id: string; name: string; variety: string | null; commodity_id: string; farm_id: string }[]>([])
 
-  // Filter orchards by selected commodity
-  const filteredOrchards = useMemo(() => {
-    if (!commodityId) return allOrchards
-    return allOrchards.filter(o => o.commodity_id === commodityId)
+  // Unique varieties for the selected commodity
+  const varieties = useMemo(() => {
+    if (!commodityId) return []
+    const vs = allOrchards
+      .filter(o => o.commodity_id === commodityId && o.variety)
+      .map(o => o.variety!)
+    return [...new Set(vs)].sort()
   }, [allOrchards, commodityId])
 
-  // Reset orchard when commodity changes and current orchard doesn't match
+  // Filter orchards by selected farm + commodity + variety
+  const filteredOrchards = useMemo(() => {
+    let filtered = allOrchards
+    if (selectedFarmId) filtered = filtered.filter(o => o.farm_id === selectedFarmId)
+    if (commodityId) filtered = filtered.filter(o => o.commodity_id === commodityId)
+    if (variety) filtered = filtered.filter(o => o.variety === variety)
+    return filtered
+  }, [allOrchards, selectedFarmId, commodityId, variety])
+
+  // Reset variety + orchard when commodity changes
   useEffect(() => {
+    setVariety(null)
     if (orchardId && commodityId) {
       const match = allOrchards.find(o => o.id === orchardId)
       if (match && match.commodity_id !== commodityId) setOrchardId(null)
     }
   }, [commodityId])
+
+  // Reset orchard when variety changes and current orchard doesn't match
+  useEffect(() => {
+    if (orchardId && variety) {
+      const match = allOrchards.find(o => o.id === orchardId)
+      if (match && match.variety !== variety) setOrchardId(null)
+    }
+  }, [variety])
 
   const [editingOrchard, setEditingOrchard] = useState(false)
   const [newOrchardId, setNewOrchardId] = useState('')
@@ -308,10 +337,11 @@ export default function QcDashboardPage() {
   useEffect(() => {
     if (!contextLoaded) return
     async function init() {
-      const q = supabase.from('farms').select('id').eq('is_active', true)
+      const q = supabase.from('farms').select('id, full_name').eq('is_active', true).order('full_name')
       const { data } = isSuperAdmin ? await q : await q.in('id', farmIds)
-      const ids = (data || []).map((f: any) => f.id)
-      setEffectiveFarmIds(ids)
+      const farms: Farm[] = (data || []).map((f: any) => ({ id: f.id, name: f.full_name }))
+      setAllFarms(farms)
+      const ids = farms.map(f => f.id)
 
       // Commodities with QC/picking issues configured — this is the source of truth
       // for which commodities make sense to filter by in this dashboard.
@@ -330,9 +360,9 @@ export default function QcDashboardPage() {
       setCommodities(comms)
 
       // Load orchards for filter dropdown
-      const oq = supabase.from('orchards').select('id, name, variety, commodity_id').eq('is_active', true).order('name')
+      const oq = supabase.from('orchards').select('id, name, variety, commodity_id, farm_id').eq('is_active', true).order('name')
       const { data: orchData } = ids.length > 0 ? await oq.in('farm_id', ids) : await oq
-      setAllOrchards((orchData || []) as { id: string; name: string; variety: string | null; commodity_id: string }[])
+      setAllOrchards((orchData || []) as { id: string; name: string; variety: string | null; commodity_id: string; farm_id: string }[])
     }
     init()
   }, [contextLoaded])
@@ -341,7 +371,7 @@ export default function QcDashboardPage() {
   useEffect(() => {
     if (effectiveFarmIds.length === 0) return
     fetchAll()
-  }, [effectiveFarmIds, dateFilter, season, commodityId, orchardId])
+  }, [effectiveFarmIds, dateFilter, season, commodityId, variety, orchardId, selectedFarmId])
 
   async function fetchAll() {
     setLoading(true)
@@ -357,6 +387,7 @@ export default function QcDashboardPage() {
         p_to:           toIso,
         p_commodity_id: commodityId ?? null,
         p_orchard_id:   orchardId ?? null,
+        p_variety:      variety ?? null,
       }),
       supabase.rpc('get_qc_size_distribution', {
         p_farm_ids:     effectiveFarmIds,
@@ -364,6 +395,7 @@ export default function QcDashboardPage() {
         p_to:           toIso,
         p_commodity_id: commodityId ?? null,
         p_orchard_id:   orchardId ?? null,
+        p_variety:      variety ?? null,
       }),
       supabase.rpc('get_qc_issue_breakdown', {
         p_farm_ids:     effectiveFarmIds,
@@ -371,6 +403,7 @@ export default function QcDashboardPage() {
         p_to:           toIso,
         p_commodity_id: commodityId ?? null,
         p_orchard_id:   orchardId ?? null,
+        p_variety:      variety ?? null,
       }),
       supabase.rpc('get_qc_bag_list', {
         p_farm_ids:     effectiveFarmIds,
@@ -378,6 +411,7 @@ export default function QcDashboardPage() {
         p_to:           toIso,
         p_commodity_id: commodityId ?? null,
         p_orchard_id:   orchardId ?? null,
+        p_variety:      variety ?? null,
       }),
       supabase.rpc('get_qc_picker_issue_breakdown', {
         p_farm_ids:     effectiveFarmIds,
@@ -385,6 +419,7 @@ export default function QcDashboardPage() {
         p_to:           toIso,
         p_commodity_id: commodityId ?? null,
         p_orchard_id:   orchardId ?? null,
+        p_variety:      variety ?? null,
       }),
     ])
 
@@ -568,6 +603,30 @@ export default function QcDashboardPage() {
 
         {/* Filters */}
         <div style={s.filters}>
+          {/* Farm pills — only show if user has access to multiple farms */}
+          {allFarms.length > 1 && (
+            <>
+              <div style={s.filterGroup}>
+                <button
+                  style={selectedFarmId === null ? s.pillActive : s.pill}
+                  onClick={() => setSelectedFarmId(null)}
+                >
+                  All Farms
+                </button>
+                {allFarms.map(f => (
+                  <button
+                    key={f.id}
+                    style={f.id === selectedFarmId ? s.pillActive : s.pill}
+                    onClick={() => setSelectedFarmId(f.id)}
+                  >
+                    {f.name}
+                  </button>
+                ))}
+              </div>
+              <div style={s.divider} />
+            </>
+          )}
+
           {/* Date pills */}
           <div style={s.filterGroup}>
             {(['today', 'this_week', 'last_7', 'this_month'] as DateFilter[]).map(f => (
@@ -622,6 +681,30 @@ export default function QcDashboardPage() {
               </button>
             ))}
           </div>
+
+          {/* Variety pills — only when commodity selected and varieties exist */}
+          {commodityId && varieties.length > 1 && (
+            <>
+              <div style={s.divider} />
+              <div style={s.filterGroup}>
+                <button
+                  style={variety === null ? s.pillActive : s.pill}
+                  onClick={() => setVariety(null)}
+                >
+                  All varieties
+                </button>
+                {varieties.map(v => (
+                  <button
+                    key={v}
+                    style={v === variety ? s.pillActive : s.pill}
+                    onClick={() => setVariety(v)}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           <div style={s.divider} />
 
