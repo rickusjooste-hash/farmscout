@@ -352,10 +352,11 @@ export default function QcDashboardPage() {
 
     const [kpisRes, sizeRes, issueRes, bagRes, pickerIssueRes] = await Promise.all([
       supabase.rpc('get_qc_dashboard_kpis', {
-        p_farm_ids:   effectiveFarmIds,
-        p_from:       fromIso,
-        p_to:         toIso,
-        p_orchard_id: orchardId ?? null,
+        p_farm_ids:     effectiveFarmIds,
+        p_from:         fromIso,
+        p_to:           toIso,
+        p_commodity_id: commodityId ?? null,
+        p_orchard_id:   orchardId ?? null,
       }),
       supabase.rpc('get_qc_size_distribution', {
         p_farm_ids:     effectiveFarmIds,
@@ -372,18 +373,23 @@ export default function QcDashboardPage() {
         p_orchard_id:   orchardId ?? null,
       }),
       supabase.rpc('get_qc_bag_list', {
-        p_farm_ids:   effectiveFarmIds,
-        p_from:       fromIso,
-        p_to:         toIso,
-        p_orchard_id: orchardId ?? null,
+        p_farm_ids:     effectiveFarmIds,
+        p_from:         fromIso,
+        p_to:           toIso,
+        p_commodity_id: commodityId ?? null,
+        p_orchard_id:   orchardId ?? null,
       }),
       supabase.rpc('get_qc_picker_issue_breakdown', {
-        p_farm_ids:   effectiveFarmIds,
-        p_from:       fromIso,
-        p_to:         toIso,
-        p_orchard_id: orchardId ?? null,
+        p_farm_ids:     effectiveFarmIds,
+        p_from:         fromIso,
+        p_to:           toIso,
+        p_commodity_id: commodityId ?? null,
+        p_orchard_id:   orchardId ?? null,
       }),
     ])
+
+    if (issueRes.error) console.error('[QC Dashboard] issue_breakdown error:', JSON.stringify(issueRes.error))
+    if (kpisRes.error) console.error('[QC Dashboard] kpis error:', JSON.stringify(kpisRes.error))
 
     setKpis((kpisRes.data as KpiData) || null)
     const rawSize = (sizeRes.data as SizeBin[]) || []
@@ -395,9 +401,7 @@ export default function QcDashboardPage() {
     setIssueData(((issueRes.data as IssueRow[]) || []).filter(r => r.category !== 'picking_issue'))
     setPickerBreakdown((pickerIssueRes.data as PickerIssueRow[]) || [])
 
-    // Filter bag list by commodity if selected
-    let bags = (bagRes.data as BagRow[]) || []
-    if (commodityId) bags = bags.filter(b => b.commodity_id === commodityId)
+    const bags = (bagRes.data as BagRow[]) || []
     setBagList(bags)
     setLoading(false)
   }
@@ -873,32 +877,41 @@ export default function QcDashboardPage() {
                   /* ── Bubble Map view ── */
                   if (issueView === 'bubbles') {
                     const maxPct = Number(sorted[0]?.pct_of_fruit) || 1
+                    const MAX_R = 90, MIN_R = 16
                     const bubbles = sorted.map((issue, i) => ({
                       ...issue,
-                      r: Math.sqrt(Number(issue.pct_of_fruit) / maxPct) * 80 + 14,
+                      r: Math.max(MIN_R, Math.sqrt(Number(issue.pct_of_fruit) / maxPct) * MAX_R),
                       color: ISSUE_PALETTE[i % ISSUE_PALETTE.length],
                       pct: Number(issue.pct_of_fruit),
                       label: lang === 'af' ? issue.pest_name_af : issue.pest_name,
                     }))
-                    // Circle-pack layout
+                    // Deterministic circle-pack: place largest at center, spiral outward
                     const placed: { cx: number; cy: number; r: number }[] = []
                     const W = 600, H = 400
-                    const positions = bubbles.map((b) => {
+                    const GAP = 4
+                    const positions = bubbles.map((b, idx) => {
+                      if (idx === 0) {
+                        placed.push({ cx: W / 2, cy: H / 2, r: b.r })
+                        return { cx: W / 2, cy: H / 2 }
+                      }
+                      // Try placing touching an existing circle, at various angles
                       let bestX = W / 2, bestY = H / 2, bestDist = Infinity
-                      for (let attempt = 0; attempt < 200; attempt++) {
-                        const angle = Math.random() * Math.PI * 2
-                        const dist = Math.random() * (Math.min(W, H) * 0.4)
-                        const cx = W / 2 + Math.cos(angle) * dist
-                        const cy = H / 2 + Math.sin(angle) * dist
-                        if (cx - b.r < 5 || cx + b.r > W - 5 || cy - b.r < 5 || cy + b.r > H - 5) continue
-                        let overlap = false
-                        for (const p of placed) {
-                          const dx = cx - p.cx, dy = cy - p.cy
-                          if (Math.sqrt(dx * dx + dy * dy) < b.r + p.r + 4) { overlap = true; break }
-                        }
-                        if (!overlap) {
-                          const d = Math.sqrt((cx - W / 2) ** 2 + (cy - H / 2) ** 2)
-                          if (d < bestDist) { bestX = cx; bestY = cy; bestDist = d }
+                      for (const p of placed) {
+                        const targetDist = p.r + b.r + GAP
+                        for (let a = 0; a < 36; a++) {
+                          const angle = (a / 36) * Math.PI * 2
+                          const cx = p.cx + Math.cos(angle) * targetDist
+                          const cy = p.cy + Math.sin(angle) * targetDist
+                          if (cx - b.r < 2 || cx + b.r > W - 2 || cy - b.r < 2 || cy + b.r > H - 2) continue
+                          let overlap = false
+                          for (const q of placed) {
+                            const dx = cx - q.cx, dy = cy - q.cy
+                            if (Math.sqrt(dx * dx + dy * dy) < b.r + q.r + GAP) { overlap = true; break }
+                          }
+                          if (!overlap) {
+                            const d = Math.sqrt((cx - W / 2) ** 2 + (cy - H / 2) ** 2)
+                            if (d < bestDist) { bestX = cx; bestY = cy; bestDist = d }
+                          }
                         }
                       }
                       placed.push({ cx: bestX, cy: bestY, r: b.r })
