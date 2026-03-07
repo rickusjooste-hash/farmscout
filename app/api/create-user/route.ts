@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     farm_id?: string
     farm_ids?: string[]
     employee_nr?: string
-    type: 'scout' | 'manager'
+    type: 'scout' | 'manager' | 'qc_worker' | 'runner'
     role?: string
   }
 
@@ -97,6 +97,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Failed to create org membership: ${orgUserError.message}` }, { status: 500 })
     }
 
+    // 5. Insert user_farm_access
+    const { error: farmAccessError } = await supabase
+      .from('user_farm_access')
+      .insert({ organisation_id, user_id: userId, farm_id })
+
+    if (farmAccessError) {
+      await supabase.auth.admin.deleteUser(userId)
+      return NextResponse.json({ error: `Failed to assign farm access: ${farmAccessError.message}` }, { status: 500 })
+    }
+
     return NextResponse.json({ success: true, scout_id: scoutData.id })
   }
 
@@ -105,6 +115,38 @@ export async function POST(req: NextRequest) {
     const { error: orgUserError } = await supabase
       .from('organisation_users')
       .insert({ organisation_id, user_id: userId, role: role || 'farm_manager' })
+
+    if (orgUserError) {
+      await supabase.auth.admin.deleteUser(userId)
+      return NextResponse.json({ error: `Failed to create org membership: ${orgUserError.message}` }, { status: 500 })
+    }
+
+    // 4. Insert user_farm_access for each farm
+    const farms = farm_ids?.length ? farm_ids : farm_id ? [farm_id] : []
+    if (farms.length > 0) {
+      const farmAccessRows = farms.map((fid) => ({
+        organisation_id,
+        user_id: userId,
+        farm_id: fid,
+      }))
+      const { error: farmAccessError } = await supabase
+        .from('user_farm_access')
+        .insert(farmAccessRows)
+
+      if (farmAccessError) {
+        await supabase.auth.admin.deleteUser(userId)
+        return NextResponse.json({ error: `Failed to assign farm access: ${farmAccessError.message}` }, { status: 500 })
+      }
+    }
+
+    return NextResponse.json({ success: true })
+  }
+
+  if (type === 'qc_worker' || type === 'runner') {
+    // 3. Insert organisation_users
+    const { error: orgUserError } = await supabase
+      .from('organisation_users')
+      .insert({ organisation_id, user_id: userId, role: type })
 
     if (orgUserError) {
       await supabase.auth.admin.deleteUser(userId)

@@ -47,6 +47,7 @@ export default function RunnerPage() {
   const [lastLoggedUuid, setLastLoggedUuid] = useState('')
   const [rfidStatus, setRfidStatus] = useState<'ready' | 'found' | 'not_found' | null>(null)
   const [pendingCount, setPendingCount] = useState(0)
+  const [syncStatus, setSyncStatus] = useState<string | null>(null)
 
   // Camera scanner
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -111,9 +112,17 @@ export default function RunnerPage() {
   }, [])
 
   async function handleSync() {
-    await qcRunFullSync(localStorage.getItem('runnerapp_access_token') || undefined)
-    await loadData(false)
-    await loadPendingCount()
+    setSyncStatus('Syncing...')
+    try {
+      await qcRunFullSync(localStorage.getItem('runnerapp_access_token') || undefined)
+      await loadData(false)
+      await loadPendingCount()
+      const queue = await qcGetPendingQueue()
+      setSyncStatus(queue.length > 0 ? `Sync done · ${queue.length} still pending` : 'Synced OK')
+    } catch (err: any) {
+      setSyncStatus(`Sync failed: ${err.message}`)
+    }
+    setTimeout(() => setSyncStatus(null), 5000)
   }
 
   async function loadPendingCount() {
@@ -493,6 +502,11 @@ export default function RunnerPage() {
             <div style={st.cardSub}>{todayBags > 0 ? `Bag #${todayBags} logged today` : 'No bags logged yet today'}</div>
           </button>
         </div>
+        {syncStatus && (
+          <div style={{ margin: '0 20px', padding: '10px 14px', background: syncStatus.includes('failed') ? '#3a1a1a' : '#1a2e1a', border: `1px solid ${syncStatus.includes('failed') ? '#e05c4b' : '#2e5a2e'}`, borderRadius: 8, fontSize: 13, color: syncStatus.includes('failed') ? '#e05c4b' : '#7aaa6a', textAlign: 'center' as const }}>
+            {syncStatus}
+          </div>
+        )}
         <div style={st.logoutRow}>
           <button style={st.logoutBtn} onClick={() => {
             // Clear runner-specific keys
