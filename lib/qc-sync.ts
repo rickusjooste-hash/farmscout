@@ -11,6 +11,7 @@ import {
   type QcFruit,
   type QcFruitIssue,
   type QcBagIssue,
+  type QcSyncQueueItem,
 } from './qc-db'
 
 const SUPABASE_URL = 'https://agktzdeskpyevurhabpg.supabase.co'
@@ -439,6 +440,8 @@ async function uploadUnknownPhoto(
 
 // ── Push pending records to Supabase ─────────────────────────────────────
 
+const BATCH_SIZE = 100
+
 export async function qcPushPendingRecords(): Promise<{ pushed: number; failed: number }> {
   const queue = await qcGetPendingQueue()
   if (queue.length === 0) return { pushed: 0, failed: 0 }
@@ -457,44 +460,102 @@ export async function qcPushPendingRecords(): Promise<{ pushed: number; failed: 
   let pushed = 0
   let failed = 0
 
+  // Separate PATCH (single-record updates) from POST (batchable inserts)
+  const patchItems: QcSyncQueueItem[] = []
+  const postByTable: Record<string, QcSyncQueueItem[]> = {}
+
   for (const item of queue) {
-    try {
-      // For unknown bag issues: upload photo to Storage first, inject photo_url into body
-      let body = item.body
-      if (item.tableName === 'qc_bag_issues') {
-        const localRecord = await (await import('./qc-db').then(m => m.getQcDB()))
-          .get('bag_issues', item.localId) as any
-        if (localRecord?._photo) {
-          const photoPath = await uploadUnknownPhoto(localRecord._photo, item.localId, freshToken, anonKey)
-          if (photoPath) {
-            const parsed = JSON.parse(body)
-            parsed.photo_url = photoPath
-            body = JSON.stringify(parsed)
+    if (item.method === 'PATCH') {
+      patchItems.push(item)
+    } else {
+      if (!postByTable[item.tableName]) postByTable[item.tableName] = []
+      postByTable[item.tableName].push(item)
+    }
+  }
+
+  // ── Batch POST records by table (up to BATCH_SIZE per request) ──────
+  for (const [tableName, items] of Object.entries(postByTable)) {
+    for (let i = 0; i < items.length; i += BATCH_SIZE) {
+      const batch = items.slice(i, i + BATCH_SIZE)
+      try {
+        // Handle photos for bag_issues before batching
+        const cleanBodies: any[] = []
+        for (const item of batch) {
+          let body = item.body
+          if (item.tableName === 'qc_bag_issues') {
+            const localRecord = await (await import('./qc-db').then(m => m.getQcDB()))
+              .get('bag_issues', item.localId) as any
+            if (localRecord?._photo) {
+              const photoPath = await uploadUnknownPhoto(localRecord._photo, item.localId, freshToken, anonKey)
+              if (photoPath) {
+                const parsed = JSON.parse(body)
+                parsed.photo_url = photoPath
+                body = JSON.stringify(parsed)
+              }
+            }
           }
+          const parsed = JSON.parse(body)
+          cleanBodies.push(Object.fromEntries(Object.entries(parsed).filter(([k]) => !k.startsWith('_'))))
+        }
+
+        const res = await fetch(`${SUPABASE_REST}/${tableName}`, {
+          method: 'POST',
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${freshToken}`,
+            'Content-Type': 'application/json',
+            Prefer: 'resolution=merge-duplicates',
+          },
+          body: JSON.stringify(cleanBodies),
+        })
+
+        if (res.ok) {
+          for (const item of batch) {
+            await qcDeleteFromQueue(item.id!)
+            const parsed = JSON.parse(item.body)
+            const dbStore = storeMap[item.tableName] || item.tableName
+            await qcPut(dbStore as any, { ...parsed, _syncStatus: 'synced' })
+          }
+          pushed += batch.length
+          console.log(`[QcSync] Batch pushed ${batch.length} ${tableName} (${i + batch.length}/${items.length})`)
+        } else {
+          const errText = await res.text()
+          throw new Error(`HTTP ${res.status}: ${errText}`)
+        }
+      } catch (err: any) {
+        console.error(`[QcSync] Batch failed for ${tableName}:`, err.message)
+        const db = await import('./qc-db').then(m => m.getQcDB())
+        for (const item of batch) {
+          await db.put('sync_queue', {
+            ...item,
+            retries: (item.retries || 0) + 1,
+            lastError: err.message,
+            lastAttempt: new Date().toISOString(),
+          })
+          failed++
         }
       }
+    }
+  }
 
-      // Strip local-only fields (prefixed with _) before sending to Supabase
-      const parsed = JSON.parse(body)
+  // ── PATCH records (status updates) — must go individually ───────────
+  for (const item of patchItems) {
+    try {
+      const parsed = JSON.parse(item.body)
       const clean = Object.fromEntries(Object.entries(parsed).filter(([k]) => !k.startsWith('_')))
-      body = JSON.stringify(clean)
-
-      // Refresh auth headers with current token
-      const headers = {
-        ...item.headers,
-        Authorization: `Bearer ${freshToken}`,
-        apikey: anonKey,
-      }
 
       const res = await fetch(item.url, {
-        method: item.method,
-        headers,
-        body,
+        method: 'PATCH',
+        headers: {
+          ...item.headers,
+          Authorization: `Bearer ${freshToken}`,
+          apikey: anonKey,
+        },
+        body: JSON.stringify(clean),
       })
 
       if (res.ok) {
         await qcDeleteFromQueue(item.id!)
-        const parsed = JSON.parse(item.body)
         const dbStore = storeMap[item.tableName] || item.tableName
         await qcPut(dbStore as any, { ...parsed, _syncStatus: 'synced' })
         pushed++
@@ -503,8 +564,7 @@ export async function qcPushPendingRecords(): Promise<{ pushed: number; failed: 
         throw new Error(`HTTP ${res.status}: ${errText}`)
       }
     } catch (err: any) {
-      console.error(`[QcSync] Failed to upload ${item.tableName}:`, err.message)
-
+      console.error(`[QcSync] PATCH failed for ${item.tableName}:`, err.message)
       const db = await import('./qc-db').then(m => m.getQcDB())
       await db.put('sync_queue', {
         ...item,
