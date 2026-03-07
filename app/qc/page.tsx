@@ -20,6 +20,7 @@ import {
   countTodaySampled,
   getPendingBagSessions,
   qcRunFullSync,
+  qcClearSyncQueue,
 } from '@/lib/qc-sync'
 import { beep, relTime, findSizeBin, generateUUID } from '@/lib/qc-utils'
 
@@ -418,7 +419,16 @@ export default function QcHome() {
           <div style={s.headerTitle}>🍎 Orchard QC</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {pendingCount > 0 && (
-              <div style={s.pendingBadge} onClick={handleSync}>{pendingCount} pending</div>
+              <div style={s.pendingBadge} onClick={async () => {
+                if (pendingCount > 500 && confirm(`Clear ${pendingCount} stuck queue entries? (Data is already synced)`)) {
+                  await qcClearSyncQueue()
+                  await loadPendingCount()
+                  setSyncStatus('Queue cleared')
+                  setTimeout(() => setSyncStatus(null), 3000)
+                } else {
+                  handleSync()
+                }
+              }}>{pendingCount} pending</div>
             )}
             <button style={s.langBtn} onClick={toggleLang} title="Switch language / Verander taal">
               {lang === 'en' ? 'AF' : 'EN'}

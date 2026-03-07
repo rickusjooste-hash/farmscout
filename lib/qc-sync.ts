@@ -518,7 +518,8 @@ export async function qcPushPendingRecords(): Promise<{ pushed: number; failed: 
           body: JSON.stringify(cleanBodies),
         })
 
-        if (res.ok) {
+        // 2xx = success, 409 = duplicate (data already exists) — both mean we can clear queue
+        if (res.ok || res.status === 409) {
           for (const item of batch) {
             await qcDeleteFromQueue(item.id!)
             const parsed = JSON.parse(item.body)
@@ -526,7 +527,7 @@ export async function qcPushPendingRecords(): Promise<{ pushed: number; failed: 
             await qcPut(dbStore as any, { ...parsed, _syncStatus: 'synced' })
           }
           pushed += batch.length
-          console.log(`[QcSync] Batch pushed ${batch.length} ${tableName} (${i + batch.length}/${items.length})`)
+          console.log(`[QcSync] Batch pushed ${batch.length} ${tableName} (${i + batch.length}/${items.length})${res.status === 409 ? ' (already existed)' : ''}`)
         } else {
           const errText = await res.text()
           throw new Error(`HTTP ${res.status}: ${errText}`)
@@ -535,13 +536,21 @@ export async function qcPushPendingRecords(): Promise<{ pushed: number; failed: 
         console.error(`[QcSync] Batch failed for ${tableName}:`, err.message)
         const db = await import('./qc-db').then(m => m.getQcDB())
         for (const item of batch) {
-          await db.put('sync_queue', {
-            ...item,
-            retries: (item.retries || 0) + 1,
-            lastError: err.message,
-            lastAttempt: new Date().toISOString(),
-          })
-          failed++
+          const retries = (item.retries || 0) + 1
+          if (retries >= 10) {
+            // Too many retries — data is likely already in DB; drop the queue entry
+            await db.delete('sync_queue', item.id!)
+            console.warn(`[QcSync] Dropped ${item.tableName} after ${retries} retries: ${item.localId}`)
+            pushed++
+          } else {
+            await db.put('sync_queue', {
+              ...item,
+              retries,
+              lastError: err.message,
+              lastAttempt: new Date().toISOString(),
+            })
+            failed++
+          }
         }
       }
     }
@@ -575,18 +584,37 @@ export async function qcPushPendingRecords(): Promise<{ pushed: number; failed: 
     } catch (err: any) {
       console.error(`[QcSync] PATCH failed for ${item.tableName}:`, err.message)
       const db = await import('./qc-db').then(m => m.getQcDB())
-      await db.put('sync_queue', {
-        ...item,
-        retries: (item.retries || 0) + 1,
-        lastError: err.message,
-        lastAttempt: new Date().toISOString(),
-      })
-      failed++
+      const retries = (item.retries || 0) + 1
+      if (retries >= 10) {
+        await db.delete('sync_queue', item.id!)
+        console.warn(`[QcSync] Dropped PATCH ${item.tableName} after ${retries} retries: ${item.localId}`)
+        pushed++
+      } else {
+        await db.put('sync_queue', {
+          ...item,
+          retries,
+          lastError: err.message,
+          lastAttempt: new Date().toISOString(),
+        })
+        failed++
+      }
     }
   }
 
   console.log(`[QcSync] Done: ${pushed} pushed, ${failed} failed`)
   return { pushed, failed }
+}
+
+// ── Emergency: clear all pending queue entries (data already in Supabase) ──
+
+export async function qcClearSyncQueue(): Promise<number> {
+  const db = await import('./qc-db').then(m => m.getQcDB())
+  const all = await db.getAll('sync_queue')
+  for (const item of all) {
+    await db.delete('sync_queue', item.id!)
+  }
+  console.log(`[QcSync] Cleared ${all.length} queue entries`)
+  return all.length
 }
 
 // ── Full sync ─────────────────────────────────────────────────────────────

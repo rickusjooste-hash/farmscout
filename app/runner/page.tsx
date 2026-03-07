@@ -16,6 +16,7 @@ import {
   getNextBagSeq,
   countTodayBags,
   qcRunFullSync,
+  qcClearSyncQueue,
 } from '@/lib/qc-sync'
 import { beep } from '@/lib/qc-utils'
 import { useRfidScanner } from '@/lib/useRfidScanner'
@@ -490,7 +491,16 @@ export default function RunnerPage() {
           <div style={st.headerTitle}>🏃 Orchard Runner</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {pendingCount > 0 && (
-              <div style={st.pendingBadge} onClick={handleSync}>{pendingCount} pending</div>
+              <div style={st.pendingBadge} onClick={async () => {
+                if (pendingCount > 500 && confirm(`Clear ${pendingCount} stuck queue entries? (Data is already synced)`)) {
+                  await qcClearSyncQueue()
+                  await loadPendingCount()
+                  setSyncStatus('Queue cleared')
+                  setTimeout(() => setSyncStatus(null), 3000)
+                } else {
+                  handleSync()
+                }
+              }}>{pendingCount} pending</div>
             )}
             <button style={st.syncBtn} onClick={handleSync}>↻ Sync</button>
           </div>
