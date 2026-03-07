@@ -26,6 +26,7 @@ interface CommodityPest {
   pest_id: string
   pest_name: string
   display_name: string
+  display_name_af?: string
   observation_method: ObservationMethod
   display_order: number
 }
@@ -62,12 +63,19 @@ function getISOWeekNr(date: Date): number {
   return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
 }
 
+function cpDisplayName(pest: CommodityPest, lang: 'en' | 'af'): string {
+  if (lang === 'af') return pest.display_name_af || pest.display_name
+  return pest.display_name
+}
+
 export default function TreeInspectionView({
   onBack,
   commodityCode,
+  language = 'en',
 }: {
   onBack: () => void
   commodityCode?: string
+  language?: 'en' | 'af'
 }) {
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
@@ -418,6 +426,7 @@ export default function TreeInspectionView({
           pest_id: cp.pest_id,
           pest_name: pest?.name || 'Unknown',
           display_name: cp.display_name || pest?.name || 'Unknown',
+          display_name_af: cp.display_name_af || pest?.name_af || undefined,
           observation_method: cp.observation_method || 'count',
           display_order: cp.display_order ?? 0,
         }
@@ -736,7 +745,7 @@ export default function TreeInspectionView({
               const val = observations.get(pest.id) ?? 0
               return (
                 <div key={pest.id} style={styles.pestRow}>
-                  <div style={styles.pestName}>{pest.display_name}</div>
+                  <div style={styles.pestName}>{cpDisplayName(pest, language)}</div>
                   {pest.observation_method === 'present_absent' && renderPresentAbsent(pest.id, val)}
                   {pest.observation_method === 'count' && renderCount(pest.id, val)}
                   {pest.observation_method === 'leaf_inspection' && renderLeafInspection(pest.id, val)}

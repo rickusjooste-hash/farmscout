@@ -34,14 +34,19 @@ interface TrapWithDetails {
   next_trap_id: string | null
   seq: number
   zone: { name: string }
-  pest: { id: string; name: string; image_url: string }
+  pest: { id: string; name: string; name_af?: string; image_url: string }
   lure_type: { rebait_weeks: number; name: string }
   last_inspection?: { inspected_at: string; rebaited: boolean } | null
   rebait_required: boolean
   weeks_since_rebait: number | null
 }
 
-export default function TrapInspectionView({ onBack }: { onBack: () => void }) {
+function pestName(pest: { name: string; name_af?: string } | null | undefined, lang: 'en' | 'af'): string {
+  if (!pest) return 'Unknown Pest'
+  return lang === 'af' ? (pest.name_af || pest.name) : pest.name
+}
+
+export default function TrapInspectionView({ onBack, language = 'en' }: { onBack: () => void; language?: 'en' | 'af' }) {
   const [trap, setTrap] = useState<TrapWithDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -119,7 +124,7 @@ export default function TrapInspectionView({ onBack }: { onBack: () => void }) {
               t.zone_id ? fetch(`${SUPABASE_URL}/rest/v1/zones?id=eq.${t.zone_id}&select=name`, {
                 headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` }
               }) : null,
-              t.pest_id ? fetch(`${SUPABASE_URL}/rest/v1/pests?id=eq.${t.pest_id}&select=name,image_url`, {
+              t.pest_id ? fetch(`${SUPABASE_URL}/rest/v1/pests?id=eq.${t.pest_id}&select=name,name_af,image_url`, {
                 headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` }
               }) : null,
               t.lure_type_id ? fetch(`${SUPABASE_URL}/rest/v1/lure_types?id=eq.${t.lure_type_id}&select=name,rebait_weeks`, {
@@ -524,12 +529,12 @@ export default function TrapInspectionView({ onBack }: { onBack: () => void }) {
         <div style={styles.pestRow}>
           <div style={styles.pestThumb}>
             {trap.pest?.image_url ? (
-              <img src={trap.pest.image_url} alt={trap.pest.name} style={styles.pestThumbImg} />
+              <img src={trap.pest.image_url} alt={pestName(trap.pest, language)} style={styles.pestThumbImg} />
             ) : (
               <span style={{ fontSize: 28 }}>🐛</span>
             )}
           </div>
-          <div style={styles.pestLabel}>{trap.pest?.name || 'Unknown Pest'}</div>
+          <div style={styles.pestLabel}>{pestName(trap.pest, language)}</div>
           {trap.weeks_since_rebait !== null && (
             <div style={styles.rebaitChip}>
               {trap.rebait_required ? '⚠' : '🔄'} {trap.weeks_since_rebait}w

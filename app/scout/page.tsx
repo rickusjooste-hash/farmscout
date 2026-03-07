@@ -43,6 +43,7 @@ export default function ScoutApp() {
   const [view, setView] = useState<'home' | 'trap-inspection' | 'tree-inspection'>('home')
   const [rebaitDueCount, setRebaitDueCount] = useState(0)
   const [commodityCode, setCommodityCode] = useState<string | null>(null)
+  const [language, setLanguage] = useState<'en' | 'af'>('en')
   const isSyncingRef = useRef(false)
 
   useEffect(() => {
@@ -56,6 +57,10 @@ export default function ScoutApp() {
     // Load scout name
     const name = localStorage.getItem('farmscout_scout_name') || ''
     setScoutName(name)
+
+    // Load language preference
+    const savedLang = localStorage.getItem('farmscout_language')
+    if (savedLang === 'af') setLanguage('af')
 
     // Load rebait due count (synchronous, works offline)
     const rebaitDue = parseInt(localStorage.getItem('farmscout_rebait_due') || '0', 10)
@@ -202,12 +207,18 @@ export default function ScoutApp() {
   // Get first name only for greeting
   const firstName = scoutName.split(' ')[0]
 
+  function toggleLanguage() {
+    const next = language === 'en' ? 'af' : 'en'
+    setLanguage(next)
+    localStorage.setItem('farmscout_language', next)
+  }
+
   if (view === 'trap-inspection') {
-    return <TrapInspectionView onBack={() => { setView('home'); checkTrapStatus(); loadPendingCount() }} />
+    return <TrapInspectionView language={language} onBack={() => { setView('home'); checkTrapStatus(); loadPendingCount() }} />
   }
 
   if (view === 'tree-inspection') {
-    return <TreeInspectionView commodityCode={commodityCode || undefined} onBack={() => { setView('home'); loadPendingCount(); if (navigator.onLine) handleSync() }} />
+    return <TreeInspectionView language={language} commodityCode={commodityCode || undefined} onBack={() => { setView('home'); loadPendingCount(); if (navigator.onLine) handleSync() }} />
   }
 
   return (
@@ -321,8 +332,24 @@ export default function ScoutApp() {
 
       </div>
 
-      {/* Bottom bar with logout */}
+      {/* Bottom bar with language toggle + logout */}
       <div style={styles.bottomBar}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            style={{
+              ...styles.langBtn,
+              ...(language === 'en' ? styles.langBtnActive : {}),
+            }}
+            onClick={() => language !== 'en' && toggleLanguage()}
+          >EN</button>
+          <button
+            style={{
+              ...styles.langBtn,
+              ...(language === 'af' ? styles.langBtnActive : {}),
+            }}
+            onClick={() => language !== 'af' && toggleLanguage()}
+          >AF</button>
+        </div>
         <button style={styles.logoutBtn} onClick={handleLogout}>
           Sign Out
         </button>
@@ -445,6 +472,24 @@ const styles: Record<string, React.CSSProperties> = {
     background: '#222918',
     borderTop: '1px solid #3a4228',
     flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+  },
+  langBtn: {
+    background: 'transparent',
+    border: '1px solid #3a4228',
+    borderRadius: 6,
+    color: '#7a8a5a',
+    fontSize: 13,
+    fontWeight: 600,
+    padding: '8px 14px',
+    cursor: 'pointer',
+  },
+  langBtnActive: {
+    background: '#f0a500',
+    borderColor: '#f0a500',
+    color: '#000',
   },
   logoutBtn: {
     width: '100%',

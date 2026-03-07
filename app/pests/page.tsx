@@ -17,10 +17,11 @@ interface PestRow {
   commodity_id: string
   category: string
   display_name: string | null
+  display_name_af: string | null
   display_order: number
   observation_method: string
   is_active: boolean
-  pests: { id: string; name: string; scientific_name: string | null }
+  pests: { id: string; name: string; name_af: string | null; scientific_name: string | null }
 }
 interface FarmConfig { id: string; farm_id: string; commodity_pest_id: string; is_active: boolean }
 interface Farm { id: string; full_name: string; code: string }
@@ -53,7 +54,7 @@ function SortablePestRow({
   row: PestRow
   isSuperAdmin: boolean
   isEditing: boolean
-  editForm: { displayName: string; observationMethod: string; displayOrder: number; isActive: boolean; category: string }
+  editForm: { displayName: string; displayNameAf: string; nameAf: string; observationMethod: string; displayOrder: number; isActive: boolean; category: string }
   editSubmitting: boolean
   editError: string
   farmActive: boolean
@@ -61,7 +62,7 @@ function SortablePestRow({
   onStartEdit: () => void
   onSaveEdit: () => void
   onCancelEdit: () => void
-  onEditFormChange: (updates: Partial<{ displayName: string; observationMethod: string; displayOrder: number; isActive: boolean; category: string }>) => void
+  onEditFormChange: (updates: Partial<{ displayName: string; displayNameAf: string; nameAf: string; observationMethod: string; displayOrder: number; isActive: boolean; category: string }>) => void
   onFarmToggle: () => void
   onGlobalToggle: () => void
   onRemove: () => void
@@ -153,6 +154,20 @@ function SortablePestRow({
                 onChange={e => onEditFormChange({ displayOrder: parseInt(e.target.value) || 0 })} />
             </div>
           </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>Pest Name (Afrikaans)</label>
+              <input type="text" value={editForm.nameAf}
+                onChange={e => onEditFormChange({ nameAf: e.target.value })}
+                placeholder="e.g. Kodlingmot" />
+            </div>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>Display Label (Afrikaans)</label>
+              <input type="text" value={editForm.displayNameAf}
+                onChange={e => onEditFormChange({ displayNameAf: e.target.value })}
+                placeholder="Shown to scouts in AF mode" />
+            </div>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, flexWrap: 'wrap', gap: 8 }}>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn-sm primary" onClick={onSaveEdit} disabled={editSubmitting}>
@@ -212,7 +227,7 @@ export default function PestsPage() {
   // Inline edit state (super admin)
   const [editingRowId, setEditingRowId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({
-    displayName: '', observationMethod: 'count', displayOrder: 0, isActive: true, category: 'pest',
+    displayName: '', displayNameAf: '', nameAf: '', observationMethod: 'count', displayOrder: 0, isActive: true, category: 'pest',
   })
   const [editSubmitting, setEditSubmitting] = useState(false)
   const [editError, setEditError] = useState('')
@@ -232,7 +247,7 @@ export default function PestsPage() {
     async function load() {
       const [{ data: comms }, { data: pests }, { data: farmData }] = await Promise.all([
         supabase.from('commodities').select('id,code,name').order('name'),
-        supabase.from('commodity_pests').select('*, pests(id,name,scientific_name)').order('display_order'),
+        supabase.from('commodity_pests').select('*, pests(id,name,name_af,scientific_name)').order('display_order'),
         isSuperAdmin
           ? supabase.from('farms').select('id,full_name,code').order('full_name')
           : supabase.from('farms').select('id,full_name,code').in('id', farmIds).order('full_name'),
@@ -315,6 +330,8 @@ export default function PestsPage() {
     setEditingRowId(row.id)
     setEditForm({
       displayName: row.display_name || '',
+      displayNameAf: row.display_name_af || '',
+      nameAf: row.pests?.name_af || '',
       observationMethod: row.observation_method,
       displayOrder: row.display_order,
       isActive: row.is_active,
@@ -332,7 +349,10 @@ export default function PestsPage() {
       body: JSON.stringify({
         type: 'update',
         commodityPestId: row.id,
+        pestId: row.pests?.id,
         displayName: editForm.displayName,
+        displayNameAf: editForm.displayNameAf,
+        nameAf: editForm.nameAf,
         observationMethod: editForm.observationMethod,
         displayOrder: editForm.displayOrder,
         isActive: editForm.isActive,
@@ -348,10 +368,12 @@ export default function PestsPage() {
     setPestRows(prev => prev.map(r => r.id === row.id ? {
       ...r,
       display_name: editForm.displayName || null,
+      display_name_af: editForm.displayNameAf || null,
       observation_method: editForm.observationMethod,
       display_order: editForm.displayOrder,
       is_active: editForm.isActive,
       category: editForm.category,
+      pests: { ...r.pests, name_af: editForm.nameAf || null },
     } : r))
     setEditingRowId(null)
   }
@@ -417,7 +439,7 @@ export default function PestsPage() {
     // Reload pest rows
     const { data } = await supabase
       .from('commodity_pests')
-      .select('*, pests(id,name,scientific_name)')
+      .select('*, pests(id,name,name_af,scientific_name)')
       .order('display_order')
     setPestRows(data || [])
 
