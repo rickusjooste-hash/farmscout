@@ -223,17 +223,22 @@ export default function RunnerPage() {
       }
 
       // 2. No exact match — find nearby orchards within 50m
+      console.log('[Runner] No exact match, trying nearby orchards...')
       const nearbyUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/nearby_orchards_from_gps`
       const allNearby: Array<{ id: string; name: string; distance_m: number }> = []
       for (const farmId of farmIds) {
         const res = await fetch(nearbyUrl, {
           method: 'POST',
           headers: apiHeaders,
-          body: JSON.stringify({ p_lat: lat, p_lng: lng, p_farm_id: farmId, p_radius: 50 }),
+          body: JSON.stringify({ p_lat: lat, p_lng: lng, p_farm_id: farmId, p_radius: 100 }),
         })
         if (res.ok) {
           const data = await res.json()
+          console.log(`[Runner] Nearby for farm ${farmId}:`, data)
           if (Array.isArray(data)) allNearby.push(...data)
+        } else {
+          const errText = await res.text().catch(() => '')
+          console.warn(`[Runner] Nearby RPC failed (${res.status}):`, errText)
         }
       }
 
@@ -262,9 +267,12 @@ export default function RunnerPage() {
     try {
       const match = await matchOrchardFromGPS(lat, lng)
       if (match) { setDetectedOrchard(match); setNearbyOrchards([]); setShowNearbyPicker(false); return }
-    } catch {}
+    } catch (err: any) {
+      console.warn('[Runner] Offline point-in-polygon failed:', err.message)
+    }
 
-    // 4. Offline fallback — nearest by centroid distance
+    // 4. Offline fallback — nearest by centroid/boundary distance
+    console.log(`[Runner] Offline fallback: ${orchards.length} orchards, ${orchards.filter(o => o.boundary).length} with boundaries`)
     if (orchards.length > 0) {
       const withDist = orchards
         .filter(o => o.boundary?.coordinates || (o as any).location)
@@ -285,7 +293,7 @@ export default function RunnerPage() {
           const dist = haversineDistance(lat, lng, oLat, oLng)
           return { id: o.id, name: o.name, distance_m: Math.round(dist) }
         })
-        .filter((x): x is { id: string; name: string; distance_m: number } => x !== null && x.distance_m <= 100)
+        .filter((x): x is { id: string; name: string; distance_m: number } => x !== null && x.distance_m <= 200)
         .sort((a, b) => a.distance_m - b.distance_m)
         .slice(0, 10)
 
