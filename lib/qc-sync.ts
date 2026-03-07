@@ -474,7 +474,16 @@ export async function qcPushPendingRecords(): Promise<{ pushed: number; failed: 
   }
 
   // ── Batch POST records by table (up to BATCH_SIZE per request) ──────
-  for (const [tableName, items] of Object.entries(postByTable)) {
+  // Process in FK dependency order: sessions → fruit → fruit_issues → bag_issues
+  const TABLE_ORDER = ['qc_bag_sessions', 'qc_fruit', 'qc_fruit_issues', 'qc_bag_issues']
+  const sortedTables = Object.keys(postByTable).sort((a, b) => {
+    const ai = TABLE_ORDER.indexOf(a)
+    const bi = TABLE_ORDER.indexOf(b)
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
+  })
+
+  for (const tableName of sortedTables) {
+    const items = postByTable[tableName]
     for (let i = 0; i < items.length; i += BATCH_SIZE) {
       const batch = items.slice(i, i + BATCH_SIZE)
       try {
@@ -583,7 +592,15 @@ export async function qcPushPendingRecords(): Promise<{ pushed: number; failed: 
 // ── Full sync ─────────────────────────────────────────────────────────────
 
 export async function qcRunFullSync(accessToken?: string): Promise<void> {
-  await qcPushPendingRecords()
+  // Loop push until queue is drained or no more progress
+  let prevPushed = -1
+  for (let pass = 0; pass < 5; pass++) {
+    const { pushed } = await qcPushPendingRecords()
+    if (pushed === 0) break          // nothing left or nothing succeeded
+    if (pushed === prevPushed) break  // no progress — stop retrying
+    prevPushed = pushed
+    console.log(`[QcSync] Pass ${pass + 1}: pushed ${pushed}, checking for more...`)
+  }
   await pullQcReferenceData(accessToken)
 }
 
