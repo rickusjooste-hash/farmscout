@@ -31,7 +31,7 @@ export default function DashboardPage() {
   const [orchards, setOrchards] = useState<Orchard[]>([])
   const [weekSessions, setWeekSessions] = useState<string[]>([])
   const [weekExpanded, setWeekExpanded] = useState(false)
-  const [weekScoutMap, setWeekScoutMap] = useState<Record<string, { name: string; orchardIds: string[] }>>({})
+  const [weekScoutMap, setWeekScoutMap] = useState<Record<string, { name: string; orchardIds: string[]; assignedOrchardIds: string[] }>>({})
   const [expandedWeekScout, setExpandedWeekScout] = useState<string | null>(null)
   const [trapWeekExpanded, setTrapWeekExpanded] = useState(false)
   const [trapWeekData, setTrapWeekData] = useState<{
@@ -161,6 +161,20 @@ export default function DashboardPage() {
         setOrchards(orchardData || [])
         setWeekSessions([...new Set((weekData || []).map((r: any) => r.orchard_id))])
 
+        // Fetch scout zone assignments → distinct orchards per scout
+        const { data: zoneAssignData } = await supabase
+          .from('scout_zone_assignments')
+          .select('user_id, zones!inner(orchard_id)')
+          .or('assigned_until.is.null,assigned_until.gte.' + new Date().toISOString().slice(0, 10))
+        const scoutAssignedOrchards: Record<string, Set<string>> = {}
+        ;(zoneAssignData || []).forEach((r: any) => {
+          const sid = r.user_id
+          if (!scoutAssignedOrchards[sid]) scoutAssignedOrchards[sid] = new Set()
+          const z = r.zones
+          if (Array.isArray(z)) z.forEach((zone: any) => scoutAssignedOrchards[sid].add(zone.orchard_id))
+          else if (z?.orchard_id) scoutAssignedOrchards[sid].add(z.orchard_id)
+        })
+
         // Build per-scout tree scouting map
         const scoutOrchardSets: Record<string, Set<string>> = {}
         ;(weekData || []).forEach((r: any) => {
@@ -168,9 +182,10 @@ export default function DashboardPage() {
           if (!scoutOrchardSets[sid]) scoutOrchardSets[sid] = new Set()
           scoutOrchardSets[sid].add(r.orchard_id)
         })
-        const scoutMapResult: Record<string, { name: string; orchardIds: string[] }> = {}
+        const scoutMapResult: Record<string, { name: string; orchardIds: string[]; assignedOrchardIds: string[] }> = {}
         Object.entries(scoutOrchardSets).forEach(([sid, orchardSet]) => {
-          scoutMapResult[sid] = { name: scoutLookup[sid]?.name || 'Unknown', orchardIds: [...orchardSet] }
+          const assigned = scoutAssignedOrchards[sid] ? [...scoutAssignedOrchards[sid]] : []
+          scoutMapResult[sid] = { name: scoutLookup[sid]?.name || 'Unknown', orchardIds: [...orchardSet], assignedOrchardIds: assigned }
         })
         setWeekScoutMap(scoutMapResult)
       } catch (err) {
@@ -606,9 +621,14 @@ export default function DashboardPage() {
                   ) : (
                     Object.entries(weekScoutMap)
                       .sort((a, b) => b[1].orchardIds.length - a[1].orchardIds.length)
-                      .map(([scoutId, { name, orchardIds }]) => {
-                        const pct = totalOrchards > 0 ? (orchardIds.length / totalOrchards) * 100 : 0
+                      .map(([scoutId, { name, orchardIds, assignedOrchardIds }]) => {
+                        const scoutTotal = assignedOrchardIds.length > 0 ? assignedOrchardIds.length : totalOrchards
+                        const pct = scoutTotal > 0 ? Math.round((orchardIds.length / scoutTotal) * 100) : 0
                         const isScoutExpanded = expandedWeekScout === scoutId
+                        // Show assigned orchards if available, otherwise all orchards
+                        const displayOrchards = assignedOrchardIds.length > 0
+                          ? orchards.filter(o => assignedOrchardIds.includes(o.id))
+                          : orchards
                         return (
                           <div key={scoutId}>
                             <div
@@ -618,9 +638,9 @@ export default function DashboardPage() {
                             >
                               <div className="scout-name">{name}</div>
                               <div className="pest-bar-bg">
-                                <div className="pest-bar-fill" style={{ width: `${pct}%` }} />
+                                <div className="pest-bar-fill" style={{ width: `${Math.min(pct, 100)}%` }} />
                               </div>
-                              <div className="scout-count">{orchardIds.length}/{totalOrchards}</div>
+                              <div className="scout-count">{pct}%</div>
                               <span style={{
                                 fontSize: 11, color: '#7a8a80', transition: 'transform 0.2s',
                                 display: 'inline-block', transform: isScoutExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -628,7 +648,7 @@ export default function DashboardPage() {
                             </div>
                             {isScoutExpanded && (
                               <div className="orchard-pills" style={{ paddingLeft: 12, marginBottom: 8 }}>
-                                {orchards.map(o => {
+                                {displayOrchards.map(o => {
                                   const done = orchardIds.includes(o.id)
                                   return (
                                     <div key={o.id} className={`orchard-pill ${done ? 'done' : 'pending'}`}>
