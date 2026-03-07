@@ -441,8 +441,22 @@ async function uploadUnknownPhoto(
 // ── Push pending records to Supabase ─────────────────────────────────────
 
 const BATCH_SIZE = 100
+let _syncLock = false
 
 export async function qcPushPendingRecords(): Promise<{ pushed: number; failed: number }> {
+  if (_syncLock) {
+    console.log('[QcSync] Sync already in progress, skipping')
+    return { pushed: 0, failed: 0 }
+  }
+  _syncLock = true
+  try {
+    return await _doPush()
+  } finally {
+    _syncLock = false
+  }
+}
+
+async function _doPush(): Promise<{ pushed: number; failed: number }> {
   const queue = await qcGetPendingQueue()
   if (queue.length === 0) return { pushed: 0, failed: 0 }
 
@@ -536,15 +550,17 @@ export async function qcPushPendingRecords(): Promise<{ pushed: number; failed: 
         console.error(`[QcSync] Batch failed for ${tableName}:`, err.message)
         const db = await import('./qc-db').then(m => m.getQcDB())
         for (const item of batch) {
-          const retries = (item.retries || 0) + 1
+          // Only update if the queue entry still exists (another sync may have already handled it)
+          const existing = await db.get('sync_queue', item.id!)
+          if (!existing) continue
+          const retries = (existing.retries || 0) + 1
           if (retries >= 10) {
-            // Too many retries — data is likely already in DB; drop the queue entry
             await db.delete('sync_queue', item.id!)
             console.warn(`[QcSync] Dropped ${item.tableName} after ${retries} retries: ${item.localId}`)
             pushed++
           } else {
             await db.put('sync_queue', {
-              ...item,
+              ...existing,
               retries,
               lastError: err.message,
               lastAttempt: new Date().toISOString(),
@@ -584,14 +600,17 @@ export async function qcPushPendingRecords(): Promise<{ pushed: number; failed: 
     } catch (err: any) {
       console.error(`[QcSync] PATCH failed for ${item.tableName}:`, err.message)
       const db = await import('./qc-db').then(m => m.getQcDB())
-      const retries = (item.retries || 0) + 1
+      // Only update if the queue entry still exists
+      const existing = await db.get('sync_queue', item.id!)
+      if (!existing) continue
+      const retries = (existing.retries || 0) + 1
       if (retries >= 10) {
         await db.delete('sync_queue', item.id!)
         console.warn(`[QcSync] Dropped PATCH ${item.tableName} after ${retries} retries: ${item.localId}`)
         pushed++
       } else {
         await db.put('sync_queue', {
-          ...item,
+          ...existing,
           retries,
           lastError: err.message,
           lastAttempt: new Date().toISOString(),
