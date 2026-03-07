@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase-auth'
 import { useUserContext } from '@/lib/useUserContext'
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent,
 } from '@dnd-kit/core'
@@ -17,6 +17,8 @@ interface Scout {
   section_id: string | null
   first_trap_id: string | null
   is_active: boolean
+  enforce_gps_spread: boolean
+  gps_spread_pin: string | null
   sections: { id: string; name: string; section_nr: number } | null
 }
 
@@ -89,6 +91,9 @@ export default function ScoutsPage() {
   const [farms, setFarms] = useState<Farm[]>([])
   const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null)
   const [assigning, setAssigning] = useState<string | null>(null)
+  const [expandedSpreadId, setExpandedSpreadId] = useState<string | null>(null)
+  const [spreadSaving, setSpreadSaving] = useState(false)
+  const [spreadForm, setSpreadForm] = useState<{ enforce: boolean; pin: string }>({ enforce: false, pin: '' })
 
   // Route manager state
   const [selectedScout, setSelectedScout] = useState<Scout | null>(null)
@@ -126,7 +131,7 @@ export default function ScoutsPage() {
     const [scoutRes, sectionRes] = await Promise.all([
       supabase
         .from('scouts')
-        .select('id, full_name, email, farm_id, section_id, first_trap_id, is_active, sections(id, name, section_nr)')
+        .select('id, full_name, email, farm_id, section_id, first_trap_id, is_active, enforce_gps_spread, gps_spread_pin, sections(id, name, section_nr)')
         .eq('farm_id', farmId)
         .eq('is_active', true)
         .order('full_name'),
@@ -152,6 +157,40 @@ export default function ScoutsPage() {
       body: JSON.stringify({ scoutId, sectionId }),
     })
     setAssigning(null)
+  }
+
+  function toggleSpreadRow(scout: Scout) {
+    if (expandedSpreadId === scout.id) {
+      setExpandedSpreadId(null)
+    } else {
+      setExpandedSpreadId(scout.id)
+      setSpreadForm({ enforce: scout.enforce_gps_spread, pin: scout.gps_spread_pin || '' })
+    }
+  }
+
+  async function handleSaveSpread(scoutId: string) {
+    setSpreadSaving(true)
+    const res = await fetch('/api/scouts/toggle-spread', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scoutId,
+        enforceGpsSpread: spreadForm.enforce,
+        gpsSpreadPin: spreadForm.pin || null,
+      }),
+    })
+    if (res.ok) {
+      setScouts(prev => prev.map(s => s.id === scoutId
+        ? { ...s, enforce_gps_spread: spreadForm.enforce, gps_spread_pin: spreadForm.enforce ? (spreadForm.pin || null) : null }
+        : s
+      ))
+      setExpandedSpreadId(null)
+    } else {
+      const errBody = await res.text().catch(() => '')
+      console.error('[ScoutsPage] toggle-spread failed:', res.status, errBody)
+      alert(`Failed to save: ${errBody || res.statusText}`)
+    }
+    setSpreadSaving(false)
   }
 
   function openRouteManager(scout: Scout) {
@@ -444,12 +483,14 @@ export default function ScoutsPage() {
                           <th>Name</th>
                           <th>Section</th>
                           <th>Route</th>
+                          <th>GPS Spread</th>
                           <th></th>
                         </tr>
                       </thead>
                       <tbody>
                         {scouts.map(scout => (
-                          <tr key={scout.id}>
+                          <Fragment key={scout.id}>
+                          <tr>
                             <td>
                               <div style={{ fontWeight: 600, color: '#1c3a2a' }}>{scout.full_name}</div>
                               <div style={{ fontSize: 11, color: '#9aaa9f', marginTop: 2 }}>{scout.email}</div>
@@ -475,6 +516,14 @@ export default function ScoutsPage() {
                                 : <span className="route-badge-none">— No route</span>
                               }
                             </td>
+                            <td
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => toggleSpreadRow(scout)}
+                            >
+                              <span className={scout.enforce_gps_spread ? 'route-badge-set' : 'route-badge-none'}>
+                                {scout.enforce_gps_spread ? '✓ Enforced' : 'Off'}
+                              </span>
+                            </td>
                             <td>
                               <button
                                 className="btn btn-secondary"
@@ -485,6 +534,57 @@ export default function ScoutsPage() {
                               </button>
                             </td>
                           </tr>
+                          {expandedSpreadId === scout.id && (
+                            <tr>
+                              <td colSpan={5} style={{ background: '#f9f7f3', padding: '16px 20px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#1c3a2a', fontWeight: 600 }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={spreadForm.enforce}
+                                      onChange={e => setSpreadForm(f => ({ ...f, enforce: e.target.checked }))}
+                                      style={{ width: 18, height: 18, accentColor: '#2a6e45' }}
+                                    />
+                                    Enforce GPS spread (15m min)
+                                  </label>
+                                  {spreadForm.enforce && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                      <label style={{ fontSize: 12, color: '#9aaa9f', fontWeight: 600 }}>Override PIN:</label>
+                                      <input
+                                        type="tel"
+                                        inputMode="numeric"
+                                        maxLength={4}
+                                        value={spreadForm.pin}
+                                        onChange={e => setSpreadForm(f => ({ ...f, pin: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                                        placeholder="4 digits"
+                                        style={{
+                                          width: 80, padding: '6px 10px', borderRadius: 6, border: '1.5px solid #e0ddd6',
+                                          fontFamily: 'monospace', fontSize: 14, textAlign: 'center', letterSpacing: '0.2em',
+                                          color: '#1c3a2a', background: '#fff',
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+                                  <button
+                                    className="btn btn-primary"
+                                    style={{ fontSize: 12, padding: '6px 14px' }}
+                                    disabled={spreadSaving || (spreadForm.enforce && spreadForm.pin.length > 0 && spreadForm.pin.length < 4)}
+                                    onClick={() => handleSaveSpread(scout.id)}
+                                  >
+                                    {spreadSaving ? 'Saving...' : 'Save'}
+                                  </button>
+                                  <button
+                                    className="btn btn-secondary"
+                                    style={{ fontSize: 12, padding: '6px 14px' }}
+                                    onClick={() => setExpandedSpreadId(null)}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          </Fragment>
                         ))}
                       </tbody>
                     </table>

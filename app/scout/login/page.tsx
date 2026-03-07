@@ -71,6 +71,8 @@ export default function ScoutLogin() {
       localStorage.setItem('farmscout_organisation_id', scout.organisation_id)
       localStorage.setItem('farmscout_user_id', userId)
       if (scout.section_id) localStorage.setItem('farmscout_section_id', scout.section_id)
+      localStorage.setItem('farmscout_enforce_gps_spread', scout.enforce_gps_spread ? 'true' : 'false')
+      localStorage.setItem('farmscout_gps_spread_pin', scout.gps_spread_pin || '')
 
       // Get route length in one fast database call
       const routeLengthRes = await fetch(

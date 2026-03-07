@@ -91,6 +91,15 @@ export default function TreeInspectionView({
   const [zoneLoading, setZoneLoading] = useState<string | null>(null)
   const [confirmModal, setConfirmModal] = useState<{ message: string; resolve: (v: boolean) => void } | null>(null)
 
+  // GPS spread enforcement state
+  const enforceSpread = useRef(typeof window !== 'undefined' && localStorage.getItem('farmscout_enforce_gps_spread') === 'true')
+  const spreadPin = useRef(typeof window !== 'undefined' ? (localStorage.getItem('farmscout_gps_spread_pin') || '') : '')
+  const [savedTreeLocations, setSavedTreeLocations] = useState<Array<{ lat: number; lng: number }>>([])
+  const [pinOverrideGranted, setPinOverrideGranted] = useState(false)
+  const [showPinModal, setShowPinModal] = useState(false)
+  const [pinInput, setPinInput] = useState('')
+  const [pinError, setPinError] = useState(false)
+
   const photoInputRef = useRef<HTMLInputElement>(null)
 
   function showConfirm(message: string): Promise<boolean> {
@@ -100,6 +109,35 @@ export default function TreeInspectionView({
     confirmModal?.resolve(result)
     setConfirmModal(null)
   }
+
+  // ── GPS spread enforcement helpers ──────────────────────────────────────
+
+  const MIN_TREE_DISTANCE = 15 // metres
+
+  function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371000
+    const dLat = (lat2 - lat1) * Math.PI / 180
+    const dLng = (lng2 - lng1) * Math.PI / 180
+    const a = Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng / 2) ** 2
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  }
+
+  const nearestTreeDistance: number | null = (() => {
+    if (!gpsLocation || savedTreeLocations.length === 0) return null
+    let min = Infinity
+    for (const loc of savedTreeLocations) {
+      const d = haversineDistance(gpsLocation.lat, gpsLocation.lng, loc.lat, loc.lng)
+      if (d < min) min = d
+    }
+    return Math.round(min)
+  })()
+
+  const tooClose = enforceSpread.current &&
+    !pinOverrideGranted &&
+    nearestTreeDistance !== null &&
+    nearestTreeDistance < MIN_TREE_DISTANCE
 
   // GPS watch — active during tree_list (gives GPS time to lock) and inspecting
   useEffect(() => {
@@ -336,14 +374,21 @@ export default function TreeInspectionView({
 
     setSession(currentSession)
 
-    // Load completed tree numbers for this session
+    // Load completed tree numbers and GPS locations for this session
     const allTrees = await getAll('inspection_trees')
-    const done = new Set<number>(
-      allTrees
-        .filter((t: any) => t.session_id === currentSession.id)
-        .map((t: any) => t.tree_nr as number)
-    )
+    const sessionTrees = allTrees.filter((t: any) => t.session_id === currentSession.id)
+    const done = new Set<number>(sessionTrees.map((t: any) => t.tree_nr as number))
     setCompletedTreeNrs(done)
+
+    // Load GPS locations for spread enforcement (session resume)
+    const locations: Array<{ lat: number; lng: number }> = []
+    for (const t of sessionTrees) {
+      if (t.location && typeof t.location === 'string') {
+        const match = t.location.match(/POINT\(([-\d.]+)\s+([-\d.]+)\)/)
+        if (match) locations.push({ lat: parseFloat(match[2]), lng: parseFloat(match[1]) })
+      }
+    }
+    setSavedTreeLocations(locations)
 
     // Load pests for this commodity, filtered by farm overrides
     await loadPests(zone.commodity_id)
@@ -388,6 +433,7 @@ export default function TreeInspectionView({
     setObservations(new Map())
     setPhoto(null)
     setComments('')
+    setPinOverrideGranted(false)
     setSubView('inspecting')
   }
 
@@ -439,6 +485,11 @@ export default function TreeInspectionView({
 
       const newCompleted = new Set([...completedTreeNrs, selectedTreeNr])
       setCompletedTreeNrs(newCompleted)
+
+      // Track GPS location for spread enforcement
+      if (gpsLocation) {
+        setSavedTreeLocations(prev => [...prev, { lat: gpsLocation.lat, lng: gpsLocation.lng }])
+      }
 
       // Check if session is complete
       if (newCompleted.size >= session.tree_count) {
@@ -721,6 +772,35 @@ export default function TreeInspectionView({
             )}
           </div>
 
+          {/* GPS spread distance indicator */}
+          {enforceSpread.current && gpsLocation && savedTreeLocations.length > 0 && (
+            <div style={{
+              padding: '10px 14px',
+              borderRadius: 8,
+              marginBottom: 20,
+              background: tooClose ? '#2a1a0e' : '#0e2a1a',
+              border: `1px solid ${tooClose ? '#e05c4b' : '#6abf4b'}`,
+            }}>
+              <span style={{ color: tooClose ? '#e05c4b' : '#6abf4b', fontSize: 13, fontWeight: 700 }}>
+                {tooClose
+                  ? `⛔ Too close (${nearestTreeDistance}m away, need ${MIN_TREE_DISTANCE}m). Move further into the zone.`
+                  : `✓ Good spread (${nearestTreeDistance}m from nearest tree)`}
+              </span>
+              {tooClose && spreadPin.current && (
+                <button
+                  onClick={() => { setPinInput(''); setPinError(false); setShowPinModal(true) }}
+                  style={{
+                    display: 'block', marginTop: 8, background: 'none', border: 'none',
+                    color: '#f0a500', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    padding: 0, textDecoration: 'underline',
+                  }}
+                >
+                  Enter override PIN
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Photo section */}
           <div style={styles.photoSection}>
             <div style={styles.sectionLabel}>Photo (optional)</div>
@@ -761,14 +841,29 @@ export default function TreeInspectionView({
         {/* Footer save button */}
         <div style={styles.footer}>
           <button
-            style={{ ...styles.saveBtn, opacity: (saving || !gpsLocation) ? 0.4 : 1, cursor: (saving || !gpsLocation) ? 'not-allowed' : 'pointer' }}
+            style={{ ...styles.saveBtn, opacity: (saving || !gpsLocation || tooClose) ? 0.4 : 1, cursor: (saving || !gpsLocation || tooClose) ? 'not-allowed' : 'pointer' }}
             onClick={handleSaveTree}
-            disabled={saving || !gpsLocation}
+            disabled={saving || !gpsLocation || tooClose}
           >
-            {saving ? 'Saving…' : !gpsLocation ? (gpsUnavailable ? 'GPS unavailable' : 'Acquiring GPS…') : 'Save Tree'}
+            {saving ? 'Saving…' : tooClose ? 'Move further away' : !gpsLocation ? (gpsUnavailable ? 'GPS unavailable' : 'Acquiring GPS…') : 'Save Tree'}
           </button>
         </div>
         {confirmModal && <ConfirmModal message={confirmModal.message} onConfirm={() => handleConfirm(true)} onCancel={() => handleConfirm(false)} />}
+        {showPinModal && <PinOverrideModal
+          onSubmit={(pin) => {
+            if (pin === spreadPin.current) {
+              setPinOverrideGranted(true)
+              setShowPinModal(false)
+            } else {
+              setPinError(true)
+            }
+          }}
+          onCancel={() => setShowPinModal(false)}
+          pinInput={pinInput}
+          setPinInput={setPinInput}
+          pinError={pinError}
+          setPinError={setPinError}
+        />}
       </div>
     )
   }
@@ -804,6 +899,74 @@ function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onCon
               background: '#f0a500', border: 'none', color: '#000', cursor: 'pointer',
             }}
           >Continue</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PinOverrideModal({
+  onSubmit, onCancel, pinInput, setPinInput, pinError, setPinError,
+}: {
+  onSubmit: (pin: string) => void
+  onCancel: () => void
+  pinInput: string
+  setPinInput: (v: string) => void
+  pinError: boolean
+  setPinError: (v: boolean) => void
+}) {
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
+      padding: 24,
+    }}>
+      <div style={{
+        background: '#222918', border: '1px solid #3a4228', borderRadius: 16,
+        padding: 24, maxWidth: 300, width: '100%',
+      }}>
+        <div style={{ fontSize: 15, color: '#e8e8d8', fontWeight: 700, marginBottom: 16 }}>Manager Override PIN</div>
+        <input
+          type="tel"
+          inputMode="numeric"
+          maxLength={4}
+          autoFocus
+          value={pinInput}
+          onChange={e => {
+            const val = e.target.value.replace(/\D/g, '').slice(0, 4)
+            setPinInput(val)
+            if (pinError) setPinError(false)
+          }}
+          placeholder="4-digit PIN"
+          style={{
+            width: '100%', background: '#1a1f0e', border: `1px solid ${pinError ? '#e05c4b' : '#3a4228'}`,
+            borderRadius: 8, color: '#e8e8d8', fontSize: 24, padding: '14px',
+            textAlign: 'center', letterSpacing: '0.3em', outline: 'none',
+            boxSizing: 'border-box', fontFamily: 'monospace',
+          }}
+        />
+        {pinError && (
+          <div style={{ color: '#e05c4b', fontSize: 12, marginTop: 8, textAlign: 'center' }}>
+            Incorrect PIN. Ask your manager.
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+          <button
+            onClick={onCancel}
+            style={{
+              flex: 1, padding: '14px 0', borderRadius: 8, fontSize: 14, fontWeight: 700,
+              background: '#2a3020', border: '1px solid #3a4228', color: '#e8e8d8', cursor: 'pointer',
+            }}
+          >Cancel</button>
+          <button
+            onClick={() => onSubmit(pinInput)}
+            disabled={pinInput.length !== 4}
+            style={{
+              flex: 1, padding: '14px 0', borderRadius: 8, fontSize: 14, fontWeight: 700,
+              background: '#f0a500', border: 'none', color: '#000', cursor: 'pointer',
+              opacity: pinInput.length !== 4 ? 0.4 : 1,
+            }}
+          >Confirm</button>
         </div>
       </div>
     </div>

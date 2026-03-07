@@ -39,6 +39,8 @@ export default function RunnerPage() {
   const [detectedOrchard, setDetectedOrchard] = useState<QcOrchard | null>(null)
   const gpsWatchRef = useRef<number | null>(null)
   const [manualOrchard, setManualOrchard] = useState<QcOrchard | null>(null)
+  const [nearbyOrchards, setNearbyOrchards] = useState<Array<{ id: string; name: string; distance_m: number }>>([])
+  const [showNearbyPicker, setShowNearbyPicker] = useState(false)
   const [bagSeq, setBagSeq] = useState<number>(1)
   const [loggedBagSeq, setLoggedBagSeq] = useState<number>(1)
   const [lastLoggedUuid, setLastLoggedUuid] = useState('')
@@ -150,6 +152,7 @@ export default function RunnerPage() {
     stopGpsWatch()
     setView('picker'); setPickerSearch(''); setSelectedEmployee(null)
     setGpsCoords(null); setGpsAccuracy(null); setDetectedOrchard(null); setManualOrchard(null)
+    setNearbyOrchards([]); setShowNearbyPicker(false)
     setRfidStatus('ready')
   }
 
@@ -169,9 +172,18 @@ export default function RunnerPage() {
     }
   }
 
+  function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371000
+    const dLat = (lat2 - lat1) * Math.PI / 180
+    const dLng = (lng2 - lng1) * Math.PI / 180
+    const a = Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng / 2) ** 2
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  }
+
   async function matchOrchard(lat: number, lng: number) {
     const token = localStorage.getItem('runnerapp_access_token') || ''
-    // Try all farm IDs the user has access to (not just the first one)
     let farmIds: string[] = []
     try {
       const stored = localStorage.getItem('runnerapp_farm_ids')
@@ -183,17 +195,19 @@ export default function RunnerPage() {
     }
     if (!farmIds.length) { setDetectedOrchard(null); return }
 
+    const apiHeaders = {
+      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    }
+
     try {
-      const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/match_orchard_from_gps`
-      // Try each farm ID until we get a match
+      // 1. Try exact polygon match first
+      const exactUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/match_orchard_from_gps`
       for (const farmId of farmIds) {
-        const res = await fetch(url, {
+        const res = await fetch(exactUrl, {
           method: 'POST',
-          headers: {
-            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
+          headers: apiHeaders,
           body: JSON.stringify({ p_lat: lat, p_lng: lng, p_farm_id: farmId }),
         })
         if (res.ok) {
@@ -201,17 +215,93 @@ export default function RunnerPage() {
           if (data?.id) {
             const local = orchards.find(o => o.id === data.id)
             setDetectedOrchard(local || { id: data.id, name: data.name, farm_id: farmId, commodity_id: '' } as any)
+            setNearbyOrchards([])
+            setShowNearbyPicker(false)
             return
           }
         }
       }
+
+      // 2. No exact match — find nearby orchards within 50m
+      const nearbyUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/nearby_orchards_from_gps`
+      const allNearby: Array<{ id: string; name: string; distance_m: number }> = []
+      for (const farmId of farmIds) {
+        const res = await fetch(nearbyUrl, {
+          method: 'POST',
+          headers: apiHeaders,
+          body: JSON.stringify({ p_lat: lat, p_lng: lng, p_farm_id: farmId, p_radius: 50 }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data)) allNearby.push(...data)
+        }
+      }
+
+      if (allNearby.length === 1) {
+        // Only one nearby orchard — auto-select it
+        const match = orchards.find(o => o.id === allNearby[0].id)
+        if (match) {
+          setDetectedOrchard(match)
+          setNearbyOrchards([])
+          setShowNearbyPicker(false)
+          return
+        }
+      } else if (allNearby.length > 1) {
+        // Multiple nearby — show picker popup
+        allNearby.sort((a, b) => a.distance_m - b.distance_m)
+        setNearbyOrchards(allNearby)
+        setShowNearbyPicker(true)
+        setDetectedOrchard(null)
+        return
+      }
     } catch (err: any) {
       console.warn('[Runner] GPS match error:', err.message)
-      // Fall back to offline matching if server call fails
-      const match = await matchOrchardFromGPS(lat, lng)
-      if (match) { setDetectedOrchard(match); return }
     }
+
+    // 3. Offline fallback — point-in-polygon from IndexedDB
+    try {
+      const match = await matchOrchardFromGPS(lat, lng)
+      if (match) { setDetectedOrchard(match); setNearbyOrchards([]); setShowNearbyPicker(false); return }
+    } catch {}
+
+    // 4. Offline fallback — nearest by centroid distance
+    if (orchards.length > 0) {
+      const withDist = orchards
+        .filter(o => o.boundary?.coordinates || (o as any).location)
+        .map(o => {
+          // Try to get centroid from boundary or location
+          let oLat: number | null = null, oLng: number | null = null
+          if (o.boundary?.coordinates) {
+            // Approximate centroid from first ring of polygon
+            const ring = o.boundary.type === 'MultiPolygon'
+              ? o.boundary.coordinates[0][0]
+              : o.boundary.coordinates[0]
+            if (ring?.length) {
+              oLng = ring.reduce((s: number, c: number[]) => s + c[0], 0) / ring.length
+              oLat = ring.reduce((s: number, c: number[]) => s + c[1], 0) / ring.length
+            }
+          }
+          if (oLat === null || oLng === null) return null
+          const dist = haversineDistance(lat, lng, oLat, oLng)
+          return { id: o.id, name: o.name, distance_m: Math.round(dist) }
+        })
+        .filter((x): x is { id: string; name: string; distance_m: number } => x !== null && x.distance_m <= 100)
+        .sort((a, b) => a.distance_m - b.distance_m)
+        .slice(0, 10)
+
+      if (withDist.length === 1) {
+        const match = orchards.find(o => o.id === withDist[0].id)
+        if (match) { setDetectedOrchard(match); setNearbyOrchards([]); setShowNearbyPicker(false); return }
+      } else if (withDist.length > 1) {
+        setNearbyOrchards(withDist)
+        setShowNearbyPicker(true)
+        setDetectedOrchard(null)
+        return
+      }
+    }
+
     setDetectedOrchard(null)
+    setNearbyOrchards([])
   }
 
   function captureGps() {
@@ -489,10 +579,37 @@ export default function RunnerPage() {
           <div style={st.confirmRow}>
             <span style={st.confirmLabel}>Orchard</span>
             <span style={st.confirmValue}>
-              {detectedOrchard ? `✅ ${detectedOrchard.name}` : gpsLoading ? 'Detecting...' : '⚠️ Select manually'}
+              {detectedOrchard
+                ? `✅ ${detectedOrchard.name}`
+                : showNearbyPicker
+                  ? `📍 ${nearbyOrchards.length} nearby — tap to select`
+                  : gpsLoading ? 'Detecting...' : '⚠️ Select manually'}
             </span>
           </div>
-          {!detectedOrchard && !gpsLoading && (
+          {/* Nearby orchards popup */}
+          {showNearbyPicker && nearbyOrchards.length > 0 && (
+            <div style={st.nearbySection}>
+              <div style={st.nearbyTitle}>Nearby orchards</div>
+              {nearbyOrchards.map(no => (
+                <button
+                  key={no.id}
+                  style={st.nearbyRow}
+                  onClick={() => {
+                    const match = orchards.find(o => o.id === no.id)
+                    if (match) {
+                      setDetectedOrchard(match)
+                      setShowNearbyPicker(false)
+                      setNearbyOrchards([])
+                    }
+                  }}
+                >
+                  <span style={st.nearbyName}>{no.name}</span>
+                  <span style={st.nearbyDist}>{Math.round(no.distance_m)}m away</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {!detectedOrchard && !showNearbyPicker && !gpsLoading && (
             <select style={st.select} value={manualOrchard?.id || ''} onChange={e => setManualOrchard(orchards.find(x => x.id === e.target.value) || null)}>
               <option value="">— Select orchard ({orchards.length} available) —</option>
               {orchards.map(o => <option key={o.id} value={o.id}>{o.name}{o.variety ? ` (${o.variety})` : ''}</option>)}
@@ -560,6 +677,7 @@ export default function RunnerPage() {
             stopGpsWatch()
             setView('picker'); setPickerSearch(''); setSelectedEmployee(null)
             setGpsCoords(null); setGpsAccuracy(null); setDetectedOrchard(null); setManualOrchard(null)
+            setNearbyOrchards([]); setShowNearbyPicker(false)
             setRfidStatus('ready')
           }}
         >
@@ -614,6 +732,13 @@ const st: Record<string, React.CSSProperties> = {
   confirmValue: { fontSize: 16, color: '#e8f0e0', textAlign: 'right' as const },
   select: { width: '100%', background: '#1a2e1a', border: '1px solid #3a6a3a', borderRadius: 6, color: '#e8f0e0', fontSize: 15, padding: '10px', outline: 'none' },
   primaryBtn: { width: '100%', background: '#7cbe4a', color: '#0a1a0a', fontSize: 18, fontWeight: 700, padding: '16px', border: 'none', borderRadius: 8, cursor: 'pointer', marginBottom: 8 },
+
+  // Nearby orchards
+  nearbySection: { background: '#0e2a1a', border: '1px solid #2e6a3e', borderRadius: 8, overflow: 'hidden' },
+  nearbyTitle: { fontSize: 11, fontWeight: 700, color: '#7aaa6a', textTransform: 'uppercase' as const, letterSpacing: '0.08em', padding: '10px 14px 6px', borderBottom: '1px solid #1e3a2e' },
+  nearbyRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 14px', borderBottom: '1px solid #1e3a2e', background: 'none', border: 'none', width: '100%', cursor: 'pointer', textAlign: 'left' as const },
+  nearbyName: { fontSize: 15, fontWeight: 600, color: '#e8f0e0' },
+  nearbyDist: { fontSize: 12, color: '#7cbe4a', fontWeight: 600, flexShrink: 0, marginLeft: 12 },
 
   // Scanner
   scannerContainer: { position: 'relative' as const, borderRadius: 8, overflow: 'hidden' },

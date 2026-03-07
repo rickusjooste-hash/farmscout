@@ -115,6 +115,25 @@ export async function pullReferenceData(supabaseKey: string, accessToken?: strin
         console.log(`[Sync] Pulled ${configs.length} farm pest config overrides`)
       }
 
+      // Refresh GPS spread enforcement flag from scout record
+      if (userId) {
+        try {
+          const scoutRes = await fetch(
+            `${SUPABASE_REST}/scouts?user_id=eq.${userId}&select=enforce_gps_spread,gps_spread_pin`,
+            { headers }
+          )
+          if (scoutRes.ok) {
+            const scoutRows = await scoutRes.json()
+            if (scoutRows.length > 0) {
+              localStorage.setItem('farmscout_enforce_gps_spread', scoutRows[0].enforce_gps_spread ? 'true' : 'false')
+              localStorage.setItem('farmscout_gps_spread_pin', scoutRows[0].gps_spread_pin || '')
+            }
+          }
+        } catch (err) {
+          console.error('[Sync] GPS spread flag refresh failed:', err)
+        }
+      }
+
       // Fetch rebait due count for the scout's trap route
       const firstTrapId = typeof window !== 'undefined' ? localStorage.getItem('farmscout_first_trap_id') : null
       if (firstTrapId) {
