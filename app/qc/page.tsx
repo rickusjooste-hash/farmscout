@@ -6,6 +6,7 @@ import {
   qcGetAll,
   qcGet,
   qcPut,
+  qcGetPendingQueue,
   type QcEmployee,
   type QcOrchard,
   type QcSizeBin,
@@ -39,6 +40,7 @@ export default function QcHome() {
 
   const [todaySampled, setTodaySampled] = useState(0)
   const [pendingSessions, setPendingSessions] = useState<QcBagSession[]>([])
+  const [pendingCount, setPendingCount] = useState(0)
 
   // QC state
   const [activeSession, setActiveSession] = useState<QcBagSession | null>(null)
@@ -116,6 +118,7 @@ export default function QcHome() {
     if (!token) { window.location.href = '/qc/login'; return }
     setIsLoggedIn(true)
     loadData()
+    loadPendingCount()
     window.addEventListener('online', handleSync)
     const pollInterval = setInterval(() => handleSync(), 30000)
     return () => {
@@ -127,6 +130,14 @@ export default function QcHome() {
   async function handleSync() {
     await qcRunFullSync(localStorage.getItem('qcapp_access_token') || undefined)
     await loadData(false)
+    await loadPendingCount()
+  }
+
+  async function loadPendingCount() {
+    try {
+      const queue = await qcGetPendingQueue()
+      setPendingCount(queue.length)
+    } catch { setPendingCount(0) }
   }
 
   async function loadData(showLoading = true) {
@@ -392,6 +403,9 @@ export default function QcHome() {
         <div style={s.header}>
           <div style={s.headerTitle}>🍎 Orchard QC</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {pendingCount > 0 && (
+              <div style={s.pendingBadge} onClick={handleSync}>{pendingCount} pending</div>
+            )}
             <button style={s.langBtn} onClick={toggleLang} title="Switch language / Verander taal">
               {lang === 'en' ? 'AF' : 'EN'}
             </button>
@@ -752,6 +766,7 @@ const s: Record<string, React.CSSProperties> = {
   cardSub: { fontSize: 13, color: '#7aaa6a' },
   logoutRow: { padding: '0 20px 24px', marginTop: 'auto' },
   logoutBtn: { background: 'none', border: '1px solid #2e4a2e', borderRadius: 6, color: '#4a7a4a', padding: '10px 20px', fontSize: 13, cursor: 'pointer', width: '100%' },
+  pendingBadge: { background: '#f0a500', color: '#000', fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 100, cursor: 'pointer' },
   scanSection: { padding: '20px' },
   scanBtn: { width: 180, height: 180, background: '#4a9e2a', color: '#e8f0e0', fontSize: 16, fontWeight: 700, border: 'none', borderRadius: 16, cursor: 'pointer', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', margin: '8px auto' },
   scannerContainer: { position: 'relative' as const, borderRadius: 8, overflow: 'hidden' },

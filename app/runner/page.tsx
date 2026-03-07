@@ -5,6 +5,7 @@ import jsQR from 'jsqr'
 import {
   qcGetAll,
   qcGet,
+  qcGetPendingQueue,
   matchOrchardFromGPS,
   type QcEmployee,
   type QcOrchard,
@@ -45,6 +46,7 @@ export default function RunnerPage() {
   const [loggedBagSeq, setLoggedBagSeq] = useState<number>(1)
   const [lastLoggedUuid, setLastLoggedUuid] = useState('')
   const [rfidStatus, setRfidStatus] = useState<'ready' | 'found' | 'not_found' | null>(null)
+  const [pendingCount, setPendingCount] = useState(0)
 
   // Camera scanner
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -99,6 +101,7 @@ export default function RunnerPage() {
     if (!token) { window.location.href = '/runner/login'; return }
     setIsLoggedIn(true)
     loadData()
+    loadPendingCount()
     window.addEventListener('online', handleSync)
     const pollInterval = setInterval(() => handleSync(), 30000)
     return () => {
@@ -110,6 +113,14 @@ export default function RunnerPage() {
   async function handleSync() {
     await qcRunFullSync(localStorage.getItem('runnerapp_access_token') || undefined)
     await loadData(false)
+    await loadPendingCount()
+  }
+
+  async function loadPendingCount() {
+    try {
+      const queue = await qcGetPendingQueue()
+      setPendingCount(queue.length)
+    } catch { setPendingCount(0) }
   }
 
   async function loadData(showLoading = true) {
@@ -468,7 +479,12 @@ export default function RunnerPage() {
       <div style={st.page}>
         <div style={st.header}>
           <div style={st.headerTitle}>🏃 Orchard Runner</div>
-          <button style={st.syncBtn} onClick={handleSync}>↻ Sync</button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {pendingCount > 0 && (
+              <div style={st.pendingBadge} onClick={handleSync}>{pendingCount} pending</div>
+            )}
+            <button style={st.syncBtn} onClick={handleSync}>↻ Sync</button>
+          </div>
         </div>
         <div style={st.homeCards}>
           <button style={st.homeCard} onClick={startRunnerFlow}>
@@ -747,6 +763,9 @@ const st: Record<string, React.CSSProperties> = {
   nearbyRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 14px', borderBottom: '1px solid #1e3a2e', background: 'none', border: 'none', width: '100%', cursor: 'pointer', textAlign: 'left' as const },
   nearbyName: { fontSize: 15, fontWeight: 600, color: '#e8f0e0' },
   nearbyDist: { fontSize: 12, color: '#7cbe4a', fontWeight: 600, flexShrink: 0, marginLeft: 12 },
+
+  // Pending badge
+  pendingBadge: { background: '#f0a500', color: '#000', fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 100, cursor: 'pointer' },
 
   // Scanner
   scannerContainer: { position: 'relative' as const, borderRadius: 8, overflow: 'hidden' },
