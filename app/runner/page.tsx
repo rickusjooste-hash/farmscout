@@ -492,11 +492,11 @@ export default function RunnerPage() {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {pendingCount > 0 && (
               <div style={st.pendingBadge} onClick={async () => {
-                if (pendingCount > 500 && confirm(`Clear ${pendingCount} stuck queue entries? (Data is already synced)`)) {
-                  await qcClearSyncQueue()
+                if (pendingCount > 500 && confirm(`Clear ${pendingCount} stuck queue entries?\nOnly entries retried 3+ times will be removed.\nFresh unsynced records are kept.`)) {
+                  const { cleared, kept } = await qcClearSyncQueue()
                   await loadPendingCount()
-                  setSyncStatus('Queue cleared')
-                  setTimeout(() => setSyncStatus(null), 3000)
+                  setSyncStatus(`Cleared ${cleared} stale · ${kept} fresh kept`)
+                  setTimeout(() => setSyncStatus(null), 5000)
                 } else {
                   handleSync()
                 }

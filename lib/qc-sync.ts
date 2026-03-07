@@ -605,16 +605,23 @@ export async function qcPushPendingRecords(): Promise<{ pushed: number; failed: 
   return { pushed, failed }
 }
 
-// ── Emergency: clear all pending queue entries (data already in Supabase) ──
+// ── Clear stale queue entries (retried 3+ times — data already in Supabase) ──
 
-export async function qcClearSyncQueue(): Promise<number> {
+export async function qcClearSyncQueue(): Promise<{ cleared: number; kept: number }> {
   const db = await import('./qc-db').then(m => m.getQcDB())
   const all = await db.getAll('sync_queue')
+  let cleared = 0
+  let kept = 0
   for (const item of all) {
-    await db.delete('sync_queue', item.id!)
+    if ((item.retries || 0) >= 3) {
+      await db.delete('sync_queue', item.id!)
+      cleared++
+    } else {
+      kept++
+    }
   }
-  console.log(`[QcSync] Cleared ${all.length} queue entries`)
-  return all.length
+  console.log(`[QcSync] Cleared ${cleared} stale entries (${kept} fresh entries kept)`)
+  return { cleared, kept }
 }
 
 // ── Full sync ─────────────────────────────────────────────────────────────
