@@ -151,7 +151,7 @@ export default function ScoutApp() {
     }
   }
 
-  async function handleSync() {
+  async function handleSync(forceRefresh = false) {
     if (isSyncingRef.current) return
     isSyncingRef.current = true
     setIsSyncing(true)
@@ -166,7 +166,7 @@ export default function ScoutApp() {
         return
       }
       const token = localStorage.getItem('farmscout_access_token') ?? undefined
-      const result = await runFullSync(supabaseKey, token)
+      const result = await runFullSync(supabaseKey, token, forceRefresh)
       if (result.push.failed > 0) {
         setSyncError(`${result.push.failed} failed: ${result.push.firstError || 'unknown error'}`)
       }
@@ -232,7 +232,7 @@ export default function ScoutApp() {
         </div>
         <div style={styles.headerRight}>
           {pendingCount > 0 && (
-            <div style={styles.pendingBadge} onClick={handleSync}>
+            <div style={styles.pendingBadge} onClick={() => handleSync(true)}>
               {pendingCount} pending
             </div>
           )}
@@ -242,9 +242,11 @@ export default function ScoutApp() {
               background: isOnline ? '#1a3a1a' : '#3a1a1a',
               color: isOnline ? '#6abf4b' : '#e05c4b',
               border: `1px solid ${isOnline ? '#6abf4b' : '#e05c4b'}`,
+              cursor: isOnline ? 'pointer' : 'default',
             }}
+            onClick={() => isOnline && !isSyncing && handleSync(true)}
           >
-            {isSyncing ? '⟳ Syncing' : isOnline ? '● Online' : '● Offline'}
+            {isSyncing ? '⟳ Syncing' : isOnline ? '↻ Sync' : '● Offline'}
           </div>
         </div>
       </div>

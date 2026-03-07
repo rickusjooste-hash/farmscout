@@ -8,16 +8,18 @@ const SUPABASE_REST = `${SUPABASE_URL}/rest/v1`
 
 const SCOUT_REF_CACHE_MS = 30 * 60 * 1000 // 30 minutes
 
-export async function pullReferenceData(supabaseKey: string, accessToken?: string) {
+export async function pullReferenceData(supabaseKey: string, accessToken?: string, forceRefresh = false) {
   try {
     // Skip if reference data was pulled recently (< 30 min)
-    const lastPull = parseInt(
-      typeof window !== 'undefined' ? localStorage.getItem('farmscout_ref_last_pull') || '0' : '0',
-      10
-    )
-    if (Date.now() - lastPull < SCOUT_REF_CACHE_MS) {
-      console.log('[Sync] Reference data cache still fresh, skipping pull')
-      return { success: true }
+    if (!forceRefresh) {
+      const lastPull = parseInt(
+        typeof window !== 'undefined' ? localStorage.getItem('farmscout_ref_last_pull') || '0' : '0',
+        10
+      )
+      if (Date.now() - lastPull < SCOUT_REF_CACHE_MS) {
+        console.log('[Sync] Reference data cache still fresh, skipping pull')
+        return { success: true }
+      }
     }
 
     const headers = {
@@ -571,8 +573,8 @@ export async function pruneOldData(): Promise<{ deleted: number }> {
 
 // ── Full sync: pull down + push up ────────────────────────────────────────
 
-export async function runFullSync(supabaseKey: string, accessToken?: string) {
-  const pull = await pullReferenceData(supabaseKey, accessToken)
+export async function runFullSync(supabaseKey: string, accessToken?: string, forceRefresh = false) {
+  const pull = await pullReferenceData(supabaseKey, accessToken, forceRefresh)
   const photos = await pushPendingPhotos(supabaseKey, accessToken)  // photos first
   const push = await pushPendingRecords(supabaseKey)                // then records
 
