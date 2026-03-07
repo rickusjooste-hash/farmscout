@@ -273,6 +273,7 @@ export default function QcDashboardPage() {
   const [issueData, setIssueData] = useState<IssueRow[]>([])
   const [bagList, setBagList] = useState<BagRow[]>([])
 
+  const [unknownQcCount, setUnknownQcCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [detailLoading, setDetailLoading] = useState(false)
   const [selectedBagId, setSelectedBagId] = useState<string | null>(null)
@@ -363,6 +364,14 @@ export default function QcDashboardPage() {
       const oq = supabase.from('orchards').select('id, name, variety, commodity_id, farm_id').eq('is_active', true).order('name')
       const { data: orchData } = ids.length > 0 ? await oq.in('farm_id', ids) : await oq
       setAllOrchards((orchData || []) as { id: string; name: string; variety: string | null; commodity_id: string; farm_id: string }[])
+
+      // Count unresolved unknown QC issues
+      if (ids.length > 0) {
+        supabase.rpc('get_unknown_qc_issues', { p_farm_ids: ids })
+          .then(({ data }) => {
+            setUnknownQcCount((data ?? []).filter((i: any) => !i.resolved_pest_id).length)
+          }, () => {})
+      }
     }
     init()
   }, [contextLoaded])
@@ -600,6 +609,33 @@ export default function QcDashboardPage() {
             <div style={s.pageSub}>Bag sample quality data</div>
           </div>
         </div>
+
+        {/* Unknown QC issues banner */}
+        {unknownQcCount > 0 && (
+          <a
+            href="/qc/unknowns"
+            style={{
+              display: 'block', background: '#fffbeb', border: '1.5px solid #fde68a',
+              borderRadius: 12, padding: '14px 20px', marginBottom: 16,
+              textDecoration: 'none', color: '#92400e',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 22 }}>📷</span>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>
+                    {unknownQcCount} Unknown QC {unknownQcCount === 1 ? 'Issue' : 'Issues'} Need Review
+                  </div>
+                  <div style={{ fontSize: 12, color: '#b45309' }}>
+                    QC workers flagged unidentified defects — click to classify
+                  </div>
+                </div>
+              </div>
+              <span style={{ color: '#d97706', fontSize: 18 }}>→</span>
+            </div>
+          </a>
+        )}
 
         {/* Filters */}
         <div style={s.filters}>
