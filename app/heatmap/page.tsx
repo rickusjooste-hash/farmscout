@@ -402,10 +402,18 @@ export default function HeatmapPage() {
         .hm-tooltip::before { display: none !important; }
         .hm-mode:hover { opacity: 0.85; }
         .hm-pill:hover { opacity: 0.85; }
+
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+          .hm-sidebar { display: none !important; }
+          .hm-toolbar { padding: 8px 12px !important; gap: 8px !important; }
+          .hm-toolbar > span { font-size: 13px !important; }
+          .hm-pills-row { overflow-x: auto; flex-wrap: nowrap !important; -webkit-overflow-scrolling: touch; }
+        }
       `}</style>
 
       {/* Sidebar */}
-      <aside style={{
+      <aside className="hm-sidebar" style={{
         width: 220, height: '100vh', overflowY: 'auto', background: '#1c3a2a',
         padding: '32px 20px', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0,
       }}>
@@ -431,7 +439,7 @@ export default function HeatmapPage() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#1a2a1a' }}>
 
         {/* Toolbar */}
-        <div style={{
+        <div className="hm-toolbar" style={{
           padding: '10px 20px', background: '#1c3a2a', borderBottom: '1px solid #2a4f38',
           display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', flexShrink: 0,
         }}>
@@ -465,7 +473,7 @@ export default function HeatmapPage() {
           </div>
 
           {/* Pest pills */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginLeft: 'auto' }}>
+          <div className="hm-pills-row" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginLeft: 'auto' }}>
             {loading && <span style={{ fontSize: 11, color: '#6aaa80', marginRight: 4 }}>Loading…</span>}
             {pests.map(p => (
               <button key={p.id} className="hm-pill" onClick={() => setSelectedPestId(p.id)} style={{

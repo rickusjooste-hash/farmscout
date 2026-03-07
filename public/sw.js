@@ -1,7 +1,8 @@
-const CACHE_NAME = 'farmscout-1772793294341'
+const CACHE_NAME = 'farmscout-1772911604247'
 
 // App shell pages to pre-cache on install
 const PRECACHE = [
+  '/',
   '/scout',
   '/scout/login',
   '/qc',
@@ -9,10 +10,13 @@ const PRECACHE = [
   '/runner',
   '/runner/login',
   '/manifest.json',
+  '/manifest-manager.json',
   '/manifest-qc.json',
   '/manifest-runner.json',
   '/icon-192.png',
   '/icon-512.png',
+  '/icon-manager-192.png',
+  '/icon-manager-512.png',
 ]
 
 self.addEventListener('install', (event) => {
@@ -42,8 +46,9 @@ self.addEventListener('fetch', (event) => {
   // Never intercept Supabase API calls — always go to network
   if (url.hostname.includes('supabase.co')) return
 
-  // Network-first for Next.js data/navigation, cache-first for scout pages
+  // Network-first for Next.js data/navigation, cache-first for app pages
   const isScoutPage = url.pathname.startsWith('/scout') || url.pathname.startsWith('/qc') || url.pathname.startsWith('/runner')
+  const isManagerPage = url.pathname === '/' || url.pathname.startsWith('/trap-inspections') || url.pathname.startsWith('/inspections') || url.pathname.startsWith('/heatmap') || url.pathname.startsWith('/orchards') || url.pathname.startsWith('/login')
   const isAsset = url.pathname.startsWith('/_next/static')
 
   if (isAsset) {
@@ -60,8 +65,8 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  if (isScoutPage) {
-    // Scout pages: network-first, fall back to cache when offline
+  if (isScoutPage || isManagerPage) {
+    // App pages: network-first, fall back to cache when offline
     event.respondWith(
       fetch(event.request)
         .then((res) => {

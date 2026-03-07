@@ -611,6 +611,23 @@ export default function InspectionsPage() {
           text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.10);
         }
         @keyframes shimmer { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+          .sidebar { display: none !important; }
+          .top-bar { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
+          .page-title { font-size: 14px; }
+          .scout-pills-bar { padding: 6px 12px; gap: 6px; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+          .body-row { flex-direction: column; }
+          .tim-side-panel {
+            width: 100% !important; min-width: 100% !important;
+            position: absolute !important; bottom: 0 !important; left: 0 !important; right: 0 !important;
+            max-height: 50vh !important; border-left: none !important;
+            border-top: 1px solid #e8e4dc; border-radius: 16px 16px 0 0;
+            z-index: 1100; box-shadow: 0 -4px 20px rgba(0,0,0,0.12);
+          }
+          .tim-legend { bottom: 8px !important; left: 8px !important; padding: 6px 10px !important; }
+        }
       `}</style>
 
       <div className="app">

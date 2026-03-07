@@ -11,6 +11,7 @@ import RebaitSummaryPanel from '@/app/components/RebaitSummaryPanel'
 import { useRouter } from 'next/navigation'
 import { Inter } from 'next/font/google'
 import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
+import MobileNav from '@/app/components/MobileNav'
 import { useOrgModules } from '@/lib/useOrgModules'
 
 const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500', '600', '700'] })
@@ -253,6 +254,23 @@ export default function DashboardPage() {
           font-weight: 600;
           letter-spacing: 0.5px;
           text-transform: uppercase;
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+          .app { flex-direction: column; }
+          .main { padding: 16px 14px 80px; }
+          .page-header { flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 16px; }
+          .page-title { font-size: 22px; }
+          .live-badge { display: none; }
+          .week-card { padding: 16px; margin-bottom: 16px; }
+          .week-card-header { flex-direction: column; gap: 4px; margin-bottom: 10px; }
+          .week-card-title { font-size: 16px; }
+          .week-progress-row { gap: 10px; }
+          .week-progress-label { font-size: 12px; }
+          .scout-name { width: 100px; font-size: 12px; }
+          .scout-count { font-size: 12px; width: 50px; }
+          .stats-grid { grid-template-columns: repeat(2, 1fr); }
         }
         .live-dot {
           width: 7px; height: 7px;
@@ -736,6 +754,8 @@ export default function DashboardPage() {
 
             <PestTrendChart />
           </main>
+
+          <MobileNav isSuperAdmin={isSuperAdmin} modules={modules} />
         </div>
       )}
     </div>

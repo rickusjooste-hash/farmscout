@@ -229,8 +229,18 @@ export default function PestTrendChart() {
       background: '#fff', borderRadius: 14,
       border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 20,
     }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .ptc-header { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; padding: 14px 16px 10px !important; }
+          .ptc-filters { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; padding: 8px 16px !important; }
+          .ptc-filter-group { overflow-x: auto; flex-wrap: nowrap !important; -webkit-overflow-scrolling: touch; }
+          .ptc-pest-toggles { overflow-x: auto; flex-wrap: nowrap !important; -webkit-overflow-scrolling: touch; padding: 8px 16px !important; }
+          .ptc-chart { padding: 16px !important; }
+          .ptc-chart .recharts-responsive-container { height: 220px !important; }
+        }
+      `}</style>
       {/* Header row — title + season buttons */}
-      <div style={{
+      <div className="ptc-header" style={{
         padding: '20px 24px 14px', borderBottom: '1px solid #f0ede6',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
       }}>
@@ -258,12 +268,12 @@ export default function PestTrendChart() {
 
       {/* Filter row — farm + commodity pills */}
       {(farms.length > 0 || commodities.length > 0) && (
-        <div style={{
+        <div className="ptc-filters" style={{
           padding: '10px 24px', borderBottom: '1px solid #f0ede6',
           display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
         }}>
           {farms.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <div className="ptc-filter-group" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 11, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Farm</span>
               <FilterPill label="All" active={!selectedFarmId} onClick={() => setSelectedFarmId('')} />
               {farms.map(f => (
@@ -282,7 +292,7 @@ export default function PestTrendChart() {
           )}
 
           {commodities.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <div className="ptc-filter-group" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 11, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Commodity</span>
               <FilterPill label="All" active={!selectedCommodityId} onClick={() => setSelectedCommodityId('')} />
               {commodities.map(c => (
@@ -300,7 +310,7 @@ export default function PestTrendChart() {
 
       {/* Pest toggles */}
       {pestNames.length > 0 && (
-        <div style={{ padding: '10px 24px', borderBottom: '1px solid #f0ede6', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className="ptc-pest-toggles" style={{ padding: '10px 24px', borderBottom: '1px solid #f0ede6', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {pestNames.map((name, i) => (
             <button key={name} onClick={() => togglePest(name)} style={{
               padding: '4px 12px', borderRadius: 20,
@@ -317,7 +327,7 @@ export default function PestTrendChart() {
       )}
 
       {/* Chart */}
-      <div style={{ padding: '24px 24px 16px' }}>
+      <div className="ptc-chart" style={{ padding: '24px 24px 16px' }}>
         {loading && (
           <div style={{ height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9aaa9f', fontSize: 14 }}>
             Loading {season} season data…

@@ -282,6 +282,11 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
           padding: 4px 10px !important; font-family: 'Inter', sans-serif !important;
         }
         .tsa-tooltip::before { display: none !important; }
+        @media (max-width: 768px) {
+          .tsa-body { flex-direction: column !important; height: auto !important; }
+          .tsa-pest-list { flex: none !important; border-right: none !important; border-bottom: 1px solid #e8e4dc; max-height: 200px; overflow-y: auto; }
+          .tsa-map-panel { flex: none !important; height: 300px !important; }
+        }
       `}</style>
 
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 20 }}>
@@ -311,9 +316,9 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
 
         {/* Body: pest list + map */}
         {expanded && (
-          <div style={{ display: 'flex', height: 660 }}>
+          <div className="tsa-body" style={{ display: 'flex', height: 660 }}>
             {/* Left: pest list */}
-            <div style={{ flex: '0 0 35%', overflowY: 'auto', borderRight: '1px solid #e8e4dc' }}>
+            <div className="tsa-pest-list" style={{ flex: '0 0 35%', overflowY: 'auto', borderRight: '1px solid #e8e4dc' }}>
               {rows.map(row => {
                 const method = row.observation_method
                 const twSev = calcSeverity(method, Number(row.tw_trees_inspected), Number(row.tw_trees_affected), Number(row.tw_total_count))
@@ -352,7 +357,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
             </div>
 
             {/* Right: map */}
-            <div style={{ flex: '0 0 65%', position: 'relative' }}>
+            <div className="tsa-map-panel" style={{ flex: '0 0 65%', position: 'relative' }}>
               <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
               {/* Legend */}
               <div style={{

@@ -403,6 +403,14 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
           padding: 4px 10px !important; font-family: 'Inter', sans-serif !important;
         }
         .opm-tooltip::before { display: none !important; }
+        @media (max-width: 768px) {
+          .opm-body { flex-direction: column !important; height: auto !important; }
+          .opm-map { flex: none !important; height: 280px !important; width: 100% !important; }
+          .opm-table-panel { flex: none !important; width: 100% !important; border-left: none !important; border-top: 1px solid #e8e4dc; max-height: 300px; }
+          .opm-header { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+          .opm-pills { margin-left: 0 !important; overflow-x: auto; flex-wrap: nowrap !important; -webkit-overflow-scrolling: touch; }
+          .opm-chart-container { height: 180px; }
+        }
         .opm-th {
           position: sticky; top: 0; background: #f9f7f3; text-align: left;
           font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px;
@@ -418,7 +426,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 20 }}>
 
         {/* Card header */}
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0ede6', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+        <div className="opm-header" style={{ padding: '16px 20px', borderBottom: '1px solid #f0ede6', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a', flexShrink: 0 }}>Orchard Trap Pressure</div>
 
           {/* Week navigation */}
@@ -437,8 +445,8 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
           </div>
 
           {/* Pest pills */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginLeft: 'auto' }}>
-            <span style={{ fontSize: 11, color: '#9aaa9f', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pest</span>
+          <div className="opm-pills" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginLeft: 'auto' }}>
+            <span style={{ fontSize: 11, color: '#9aaa9f', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', flexShrink: 0 }}>Pest</span>
             {pests.map(p => (
               <button key={p.id} onClick={() => setSelectedPest(p)} style={{
                 padding: '3px 10px', borderRadius: 20,
@@ -457,10 +465,10 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
         )}
 
         {/* Body: map + table */}
-        <div style={{ display: 'flex', height: 440 }}>
+        <div className="opm-body" style={{ display: 'flex', height: 440 }}>
 
           {/* Map */}
-          <div style={{ flex: '0 0 60%', position: 'relative' }}>
+          <div className="opm-map" style={{ flex: '0 0 60%', position: 'relative' }}>
             <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
             {/* Legend */}
             <div style={{
@@ -479,7 +487,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
           </div>
 
           {/* Table panel */}
-          <div style={{ flex: '0 0 40%', borderLeft: '1px solid #e8e4dc', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div className="opm-table-panel" style={{ flex: '0 0 40%', borderLeft: '1px solid #e8e4dc', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {/* Table header */}
             <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0ede6', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
               {selectedOrchardId ? (

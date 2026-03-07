@@ -89,6 +89,9 @@ export function ManagerSidebarStyles() {
         gap: 8px;
         flex-shrink: 0;
       }
+      @media (max-width: 768px) {
+        .ms-sidebar { display: none; }
+      }
       .ms-logo {
         font-family: 'Inter', sans-serif;
         font-size: 22px;
