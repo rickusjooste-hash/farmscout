@@ -113,6 +113,8 @@ async function refreshTokenIfNeeded(): Promise<string> {
 
 // ── Pull reference data ───────────────────────────────────────────────────
 
+const REF_CACHE_MS = 30 * 60 * 1000 // 30 minutes
+
 export async function pullQcReferenceData(accessToken?: string): Promise<{ success: boolean; error?: any }> {
   try {
     const token = accessToken || await refreshTokenIfNeeded() || getToken()
@@ -125,41 +127,52 @@ export async function pullQcReferenceData(accessToken?: string): Promise<{ succe
       'Content-Type': 'application/json',
     }
 
-    const res = await fetch(`${SUPABASE_REST}/rpc/get_qc_reference_data`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ p_farm_ids: farmIds }),
-    })
+    // Only fetch heavy reference data (167 KB) if cache is stale (>30 min)
+    const lastPull = parseInt(localStorage.getItem('qcapp_ref_last_pull') || '0', 10)
+    const cacheStale = Date.now() - lastPull > REF_CACHE_MS
 
-    if (!res.ok) {
-      const text = await res.text()
-      throw new Error(`get_qc_reference_data failed: ${res.status} ${text}`)
-    }
+    if (cacheStale) {
+      const res = await fetch(`${SUPABASE_REST}/rpc/get_qc_reference_data`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ p_farm_ids: farmIds }),
+      })
 
-    const data = await res.json()
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(`get_qc_reference_data failed: ${res.status} ${text}`)
+      }
 
-    if (data.employees?.length) {
-      await qcPutMany('employees', data.employees)
-      console.log(`[QcSync] Pulled ${data.employees.length} employees`)
-    }
-    if (data.size_bins?.length) {
-      await qcPutMany('size_bins', data.size_bins)
-      console.log(`[QcSync] Pulled ${data.size_bins.length} size bins`)
-    }
-    if (data.qc_issues?.length) {
-      await qcPutMany('qc_issues', data.qc_issues)
-      console.log(`[QcSync] Pulled ${data.qc_issues.length} QC issues`)
-    }
-    if (data.orchards?.length) {
-      // Parse boundary GeoJSON strings into objects if needed
-      const orchards = data.orchards.map((o: any) => ({
-        ...o,
-        boundary: o.boundary && typeof o.boundary === 'string'
-          ? JSON.parse(o.boundary)
-          : o.boundary,
-      }))
-      await qcPutMany('orchards', orchards)
-      console.log(`[QcSync] Pulled ${orchards.length} orchards`)
+      const data = await res.json()
+
+      if (data.employees?.length) {
+        await qcPutMany('employees', data.employees)
+        console.log(`[QcSync] Pulled ${data.employees.length} employees`)
+      }
+      if (data.size_bins?.length) {
+        await qcPutMany('size_bins', data.size_bins)
+        console.log(`[QcSync] Pulled ${data.size_bins.length} size bins`)
+      }
+      if (data.qc_issues?.length) {
+        await qcPutMany('qc_issues', data.qc_issues)
+        console.log(`[QcSync] Pulled ${data.qc_issues.length} QC issues`)
+      }
+      if (data.orchards?.length) {
+        // Parse boundary GeoJSON strings into objects if needed
+        const orchards = data.orchards.map((o: any) => ({
+          ...o,
+          boundary: o.boundary && typeof o.boundary === 'string'
+            ? JSON.parse(o.boundary)
+            : o.boundary,
+        }))
+        await qcPutMany('orchards', orchards)
+        console.log(`[QcSync] Pulled ${orchards.length} orchards`)
+      }
+
+      localStorage.setItem('qcapp_ref_last_pull', String(Date.now()))
+      console.log('[QcSync] Reference data cached (30 min TTL)')
+    } else {
+      console.log('[QcSync] Reference data cache still fresh, skipping RPC')
     }
 
     // Refresh runner assignments (so manager changes take effect mid-day)
@@ -215,7 +228,7 @@ async function pullTodaySessions(headers: Record<string, string>, farmIds: strin
     }
 
     // Pull collected bags from today
-    const url = `${SUPABASE_REST}/qc_bag_sessions?${scopeFilter}&status=eq.collected&collected_at=gte.${today}&select=*`
+    const url = `${SUPABASE_REST}/qc_bag_sessions?${scopeFilter}&status=eq.collected&collected_at=gte.${today}&select=id,bag_seq,farm_id,orchard_id,employee_id,runner_id,status,collected_at,organisation_id`
     console.log(`[QcSync] Pulling today sessions: ${url}`)
     const res = await fetch(url, { headers })
     if (!res.ok) {

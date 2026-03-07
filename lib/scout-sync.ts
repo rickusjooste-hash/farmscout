@@ -6,8 +6,20 @@ const SUPABASE_REST = `${SUPABASE_URL}/rest/v1`
 // ── Pull reference data down from Supabase ────────────────────────────────
 // This downloads orchards and pests onto the phone so they're available offline
 
+const SCOUT_REF_CACHE_MS = 30 * 60 * 1000 // 30 minutes
+
 export async function pullReferenceData(supabaseKey: string, accessToken?: string) {
   try {
+    // Skip if reference data was pulled recently (< 30 min)
+    const lastPull = parseInt(
+      typeof window !== 'undefined' ? localStorage.getItem('farmscout_ref_last_pull') || '0' : '0',
+      10
+    )
+    if (Date.now() - lastPull < SCOUT_REF_CACHE_MS) {
+      console.log('[Sync] Reference data cache still fresh, skipping pull')
+      return { success: true }
+    }
+
     const headers = {
       apikey: supabaseKey,
       Authorization: `Bearer ${accessToken || supabaseKey}`,
@@ -184,6 +196,11 @@ export async function pullReferenceData(supabaseKey: string, accessToken?: strin
           console.log(`[Sync] Restored ${trees.length} inspection trees`)
         }
       }
+    }
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('farmscout_ref_last_pull', String(Date.now()))
+      console.log('[Sync] Reference data cached (30 min TTL)')
     }
 
     return { success: true }

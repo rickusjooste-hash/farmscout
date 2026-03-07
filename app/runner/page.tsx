@@ -104,7 +104,7 @@ export default function RunnerPage() {
     loadData()
     loadPendingCount()
     window.addEventListener('online', handleSync)
-    const pollInterval = setInterval(() => handleSync(), 30000)
+    const pollInterval = setInterval(() => handleSync(), 300000)
     return () => {
       window.removeEventListener('online', handleSync)
       clearInterval(pollInterval)
