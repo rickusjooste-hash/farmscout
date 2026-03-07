@@ -168,12 +168,16 @@ async function pullTodaySessions(headers: Record<string, string>, farmIds: strin
       : `farm_id=in.(${farmIds.join(',')})`
 
     // Pull collected bags from today
-    const res = await fetch(
-      `${SUPABASE_REST}/qc_bag_sessions?${farmFilter}&status=eq.collected&collected_at=gte.${today}&select=*`,
-      { headers }
-    )
-    if (!res.ok) return
+    const url = `${SUPABASE_REST}/qc_bag_sessions?${farmFilter}&status=eq.collected&collected_at=gte.${today}&select=*`
+    console.log(`[QcSync] Pulling today sessions: ${url}`)
+    const res = await fetch(url, { headers })
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '')
+      console.warn(`[QcSync] pullTodaySessions failed (${res.status}):`, errText)
+      return
+    }
     const sessions: QcBagSession[] = await res.json()
+    console.log(`[QcSync] Found ${sessions.length} collected sessions from Supabase for today (${today}), farmFilter: ${farmFilter}`)
 
     // Also check which of these sessions already have fruit records (already sampled but status not updated)
     const sessionIds = sessions.map(s => s.id)
