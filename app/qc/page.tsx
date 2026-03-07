@@ -136,7 +136,11 @@ export default function QcHome() {
       await loadPendingCount()
       const bags = await getPendingBagSessions()
       const farmIds = JSON.parse(localStorage.getItem('qcapp_farm_ids') || '[]')
-      setSyncStatus(`Synced OK · ${bags.length} bags · ${farmIds.length} farms`)
+      const runnerIds = JSON.parse(localStorage.getItem('qcapp_assigned_runner_ids') || '[]')
+      const scopeLabel = runnerIds.length > 0
+        ? `${runnerIds.length} runner${runnerIds.length > 1 ? 's' : ''}`
+        : `${farmIds.length} farm${farmIds.length > 1 ? 's' : ''}`
+      setSyncStatus(`Synced OK · ${bags.length} bags · ${scopeLabel}`)
     } catch (err: any) {
       setSyncStatus(`Sync failed: ${err.message}`)
     }

@@ -51,6 +51,7 @@ export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], 
           <a href="/qc/settings/size-bins" className={cls('/qc/settings/size-bins')}><span>📏</span> Size Bins</a>
           <a href="/qc/labels" className={cls('/qc/labels')}><span>🏷️</span> Print Labels</a>
           <a href="/qc/settings/users" className={cls('/qc/settings/users')}><span>👤</span> App Users</a>
+          <a href="/qc/settings/assignments" className={cls('/qc/settings/assignments')}><span>🔗</span> Assignments</a>
         </>
       )}
 

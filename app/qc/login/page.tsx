@@ -77,7 +77,24 @@ export default function QcLogin() {
       localStorage.setItem('qcapp_farm_ids', JSON.stringify(farmIds))
       localStorage.setItem('qcapp_org_id', orgId)
 
-      // 4. Pull all QC reference data into IndexedDB
+      // 4. Fetch assigned runner IDs for QC workers
+      if (role === 'qc_worker') {
+        try {
+          const assignRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_assigned_runner_ids`, {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ p_qc_worker_id: userId }),
+          })
+          if (assignRes.ok) {
+            const runnerIds: string[] = await assignRes.json()
+            localStorage.setItem('qcapp_assigned_runner_ids', JSON.stringify(runnerIds))
+          }
+        } catch (err) {
+          console.warn('[QcLogin] Could not fetch runner assignments:', err)
+        }
+      }
+
+      // 5. Pull all QC reference data into IndexedDB
       const { pullQcReferenceData } = await import('@/lib/qc-sync')
       const syncResult = await pullQcReferenceData(accessToken)
       if (!syncResult.success) {
@@ -85,7 +102,7 @@ export default function QcLogin() {
         // Non-fatal — allow login even if sync fails (offline mode)
       }
 
-      // 5. Go to QC home
+      // 6. Go to QC home
       window.location.href = '/qc'
     } catch (err: any) {
       setError(err.message || 'Login failed. Please try again.')

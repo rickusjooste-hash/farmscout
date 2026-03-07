@@ -44,6 +44,18 @@ function getOrgId(): string {
     : ''
 }
 
+function getAssignedRunnerIds(): string[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const stored = localStorage.getItem('qcapp_assigned_runner_ids')
+    if (stored) {
+      const ids = JSON.parse(stored)
+      return Array.isArray(ids) && ids.length > 0 ? ids : []
+    }
+  } catch {}
+  return []
+}
+
 function getAnonKey(): string {
   return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 }
@@ -150,6 +162,9 @@ export async function pullQcReferenceData(accessToken?: string): Promise<{ succe
       console.log(`[QcSync] Pulled ${orchards.length} orchards`)
     }
 
+    // Refresh runner assignments (so manager changes take effect mid-day)
+    await refreshAssignments(headers)
+
     // Pull today's sessions (status=collected) for QC worker queue
     await pullTodaySessions(headers, farmIds)
 
@@ -160,15 +175,47 @@ export async function pullQcReferenceData(accessToken?: string): Promise<{ succe
   }
 }
 
+async function refreshAssignments(headers: Record<string, string>) {
+  try {
+    const workerId = typeof window !== 'undefined'
+      ? localStorage.getItem('qcapp_worker_id') || ''
+      : ''
+    if (!workerId) return
+
+    const res = await fetch(`${SUPABASE_REST}/rpc/get_assigned_runner_ids`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_qc_worker_id: workerId }),
+    })
+    if (res.ok) {
+      const runnerIds: string[] = await res.json()
+      localStorage.setItem('qcapp_assigned_runner_ids', JSON.stringify(runnerIds))
+      console.log(`[QcSync] Refreshed runner assignments: ${runnerIds.length} runner(s)`)
+    }
+  } catch (err) {
+    console.warn('[QcSync] Could not refresh runner assignments:', err)
+  }
+}
+
 async function pullTodaySessions(headers: Record<string, string>, farmIds: string[]) {
   try {
     const today = new Date().toISOString().slice(0, 10)
-    const farmFilter = farmIds.length === 1
-      ? `farm_id=eq.${farmIds[0]}`
-      : `farm_id=in.(${farmIds.join(',')})`
+    const runnerIds = getAssignedRunnerIds()
+
+    // If QC worker has assigned runners, filter by runner_id; otherwise fall back to farm_id
+    let scopeFilter: string
+    if (runnerIds.length > 0) {
+      scopeFilter = runnerIds.length === 1
+        ? `runner_id=eq.${runnerIds[0]}`
+        : `runner_id=in.(${runnerIds.join(',')})`
+    } else {
+      scopeFilter = farmIds.length === 1
+        ? `farm_id=eq.${farmIds[0]}`
+        : `farm_id=in.(${farmIds.join(',')})`
+    }
 
     // Pull collected bags from today
-    const url = `${SUPABASE_REST}/qc_bag_sessions?${farmFilter}&status=eq.collected&collected_at=gte.${today}&select=*`
+    const url = `${SUPABASE_REST}/qc_bag_sessions?${scopeFilter}&status=eq.collected&collected_at=gte.${today}&select=*`
     console.log(`[QcSync] Pulling today sessions: ${url}`)
     const res = await fetch(url, { headers })
     if (!res.ok) {
@@ -177,7 +224,7 @@ async function pullTodaySessions(headers: Record<string, string>, farmIds: strin
       return
     }
     const sessions: QcBagSession[] = await res.json()
-    console.log(`[QcSync] Found ${sessions.length} collected sessions from Supabase for today (${today}), farmFilter: ${farmFilter}`)
+    console.log(`[QcSync] Found ${sessions.length} collected sessions from Supabase for today (${today}), filter: ${scopeFilter}`)
 
     // Also check which of these sessions already have fruit records (already sampled but status not updated)
     const sessionIds = sessions.map(s => s.id)
@@ -296,19 +343,29 @@ export async function qcSaveAndQueue(
     Object.entries(record as any).filter(([k]) => !k.startsWith('_'))
   )
 
+  // For bag_sessions updates (status change to sampled), use PATCH instead of POST
+  // POST upsert can fail when the row was created by another user (runner)
+  const isSessionUpdate = restTable === 'qc_bag_sessions' && (record as any).status === 'sampled'
+  const recordId = (record as any).id
+
+  const method = isSessionUpdate ? 'PATCH' : 'POST'
+  const url = isSessionUpdate
+    ? `${SUPABASE_REST}/${restTable}?id=eq.${recordId}`
+    : `${SUPABASE_REST}/${restTable}`
+
   // Queue for upload
   await qcAddToQueue({
     tableName: restTable,
-    method: 'POST',
-    url: `${SUPABASE_REST}/${restTable}`,
+    method,
+    url,
     headers: {
       apikey: anonKey,
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
-      Prefer: 'resolution=merge-duplicates',
+      ...(isSessionUpdate ? {} : { Prefer: 'resolution=merge-duplicates' }),
     },
     body: JSON.stringify(remoteRecord),
-    localId: (record as any).id,
+    localId: recordId,
     synced: false,
     retries: 0,
     createdAt: new Date().toISOString(),
