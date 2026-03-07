@@ -291,6 +291,17 @@ export async function getNextBagSeq(accessToken?: string): Promise<number> {
   const farmId = getFarmId()
   if (!farmId) return 1
 
+  // Reset local counter at the start of each day
+  const todayStr = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+  const seqDate = await qcGetMeta('daily_bag_seq_date')
+  let localSeq = (await qcGetMeta('daily_bag_seq')) ?? 0
+  if (seqDate !== todayStr) {
+    localSeq = 0
+    await qcSetMeta('daily_bag_seq_date', todayStr)
+  }
+
+  let nextSeq = localSeq + 1
+
   try {
     const token = accessToken || getToken()
     const res = await fetch(`${SUPABASE_REST}/rpc/get_daily_bag_seq`, {
@@ -305,20 +316,17 @@ export async function getNextBagSeq(accessToken?: string): Promise<number> {
 
     if (res.ok) {
       const seq = await res.json()
-      const n = typeof seq === 'number' ? seq : 1
-      // Update local counter so offline fallback is in sync
-      await qcSetMeta('daily_bag_seq', n)
-      return n
+      const dbNext = typeof seq === 'number' ? seq : 1
+      // Take the higher of DB and local — handles unsynced bags
+      nextSeq = Math.max(nextSeq, dbNext)
     }
   } catch {
-    // Fall through to offline fallback
+    // Offline — use local counter
   }
 
-  // Offline fallback: increment local counter
-  const localSeq = (await qcGetMeta('daily_bag_seq')) ?? 0
-  const next = localSeq + 1
-  await qcSetMeta('daily_bag_seq', next)
-  return next
+  // Always persist so next call increments from here
+  await qcSetMeta('daily_bag_seq', nextSeq)
+  return nextSeq
 }
 
 // ── Save a record locally and queue for upload ────────────────────────────
