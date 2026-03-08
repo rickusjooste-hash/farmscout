@@ -385,7 +385,21 @@ export default function ProductionPage() {
             p_orchard_id: selectedOrchardId || null,
           }),
         ])
-        setSizeBins((sizeRes.data || []) as SizeBin[])
+        if (sizeRes.error) console.error('Size dist RPC error:', sizeRes.error)
+        if (issueRes.error) console.error('Issue breakdown RPC error:', issueRes.error)
+        // Merge duplicate labels (same label can appear for different commodities with different display_order)
+        const rawBins = (sizeRes.data || []) as SizeBin[]
+        const mergedMap: Record<string, SizeBin> = {}
+        rawBins.forEach(b => {
+          if (mergedMap[b.bin_label]) {
+            mergedMap[b.bin_label].fruit_count += b.fruit_count
+            // Keep the lowest display_order
+            if (b.display_order < mergedMap[b.bin_label].display_order) mergedMap[b.bin_label].display_order = b.display_order
+          } else {
+            mergedMap[b.bin_label] = { ...b }
+          }
+        })
+        setSizeBins(Object.values(mergedMap).sort((a, b) => a.display_order - b.display_order))
         setIssueRows((issueRes.data || []) as IssueRow[])
       } catch (err) {
         console.error('QC data fetch error:', err)
@@ -849,8 +863,8 @@ export default function ProductionPage() {
                     {qcLoading ? (
                       <div style={s.loading}>Loading QC data...</div>
                     ) : sizePctData.length > 0 ? (() => {
-                      const sorted = [...sizePctData].sort((a, b) => b.pct - a.pct)
-                      const top3 = sorted.slice(0, 3)
+                      const byOrder = [...sizePctData].sort((a, b) => a.display_order - b.display_order)
+                      const top3 = [...sizePctData].sort((a, b) => b.pct - a.pct).slice(0, 3)
                       const kpiCards = (
                         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(top3.length, 3)}, 1fr)`, gap: 10, marginBottom: 16 }}>
                           {top3.map((item, i) => (
@@ -864,8 +878,8 @@ export default function ProductionPage() {
                       )
 
                       if (sizeView === 'bars') {
-                        const maxPct = sorted[0]?.pct || 1
-                        return (<>{kpiCards}<div>{sorted.map((item, i) => (
+                        const maxPct = Math.max(...byOrder.map(b => b.pct), 1)
+                        return (<>{kpiCards}<div>{byOrder.map((item, i) => (
                           <div key={item.bin_label} style={{ display: 'grid', gridTemplateColumns: '90px 1fr 48px', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                             <span style={{ textAlign: 'right', fontSize: 11, fontWeight: i < 3 ? 700 : 400, color: i < 3 ? '#1c3a2a' : '#5a6a60', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.bin_label}</span>
                             <div style={{ position: 'relative', height: 20, background: '#f0ede6', borderRadius: 3 }}>
@@ -877,9 +891,9 @@ export default function ProductionPage() {
                       }
 
                       if (sizeView === 'bubbles') {
-                        const maxPct = sorted[0]?.pct || 1
+                        const maxPct = Math.max(...byOrder.map(b => b.pct), 1)
                         const MAX_R = 70, MIN_R = 14
-                        const bubbles = sorted.map((item, i) => ({
+                        const bubbles = byOrder.map((item, i) => ({
                           ...item, r: Math.max(MIN_R, Math.sqrt(item.pct / maxPct) * MAX_R),
                           color: SIZE_PALETTE[i % SIZE_PALETTE.length],
                         }))
@@ -904,7 +918,7 @@ export default function ProductionPage() {
                       const cells = 100
                       const grid: (null | { idx: number; label: string })[] = []
                       let ci = 0
-                      sorted.forEach((item, i) => {
+                      byOrder.forEach((item, i) => {
                         const count = Math.max(1, Math.round(item.pct))
                         for (let j = 0; j < count && ci < cells; j++) grid[ci++] = { idx: i, label: item.bin_label }
                       })
@@ -919,7 +933,7 @@ export default function ProductionPage() {
                           <p style={{ fontSize: 9, color: '#9aaa9f', fontFamily: 'monospace', margin: '6px 0 0' }}>Each square ≈ 1%</p>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {sorted.map((item, i) => (
+                          {byOrder.map((item, i) => (
                             <div key={item.bin_label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               <div style={{ width: 10, height: 10, borderRadius: 2, background: SIZE_PALETTE[i % SIZE_PALETTE.length], flexShrink: 0 }} />
                               <span style={{ fontSize: 11, color: '#3a4a40' }}>{item.bin_label}</span>
