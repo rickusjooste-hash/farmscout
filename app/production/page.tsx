@@ -689,6 +689,8 @@ export default function ProductionPage() {
       geoLayerRef.current = layer
       map.invalidateSize()
       if (layer.getBounds().isValid() && !selectedOrchardId) map.fitBounds(layer.getBounds(), { padding: [16, 16] })
+      // Extra invalidateSize after layout settles
+      setTimeout(() => { map.invalidateSize(); if (layer.getBounds().isValid() && !selectedOrchardId) map.fitBounds(layer.getBounds(), { padding: [16, 16] }) }, 400)
     })()
   }, [mapReady, allOrchards, orchardAgg, selectedOrchardId])
 
@@ -817,11 +819,11 @@ export default function ProductionPage() {
               return (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24, alignItems: 'stretch' }}>
               {/* Map */}
-              <div style={s.card}>
+              <div style={{ ...s.card, display: 'flex', flexDirection: 'column' }}>
                 <div style={s.cardHeader}><span style={s.cardTitle}>Orchard Map — Ton/Ha</span></div>
                 <div
                   ref={mapContainerRef}
-                  style={{ height: 500 }}
+                  style={{ flex: 1, minHeight: 500, width: '100%' }}
                 />
                 <div style={{ padding: '8px 16px', display: 'flex', gap: 12, fontSize: 11, color: '#9aaa9f' }}>
                   {[
