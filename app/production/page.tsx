@@ -15,7 +15,7 @@ import MobileNav from '@/app/components/MobileNav'
 
 interface Farm { id: string; code: string; name: string }
 interface Commodity { id: string; name: string; code: string }
-interface OrchardRef { id: string; name: string; variety: string | null; ha: number | null; commodity_id: string; farm_id: string }
+interface OrchardRef { id: string; name: string; variety: string | null; variety_group: string | null; ha: number | null; commodity_id: string; farm_id: string }
 
 interface BinRow {
   orchard_id: string | null
@@ -268,6 +268,7 @@ export default function ProductionPage() {
   const [sortKey, setSortKey] = useState<SortKey>('total')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [selectedOrchardId, setSelectedOrchardId] = useState<string | null>(null)
+  const [selectedVarietyGroup, setSelectedVarietyGroup] = useState<string | null>(null)
 
   // QC data
   const [sizeBins, setSizeBins] = useState<SizeBin[]>([])
@@ -335,7 +336,7 @@ export default function ProductionPage() {
           fetchAllRows(bruisingQ),
           supabase
             .from('orchards')
-            .select('id, name, variety, ha, commodity_id, farm_id')
+            .select('id, name, variety, variety_group, ha, commodity_id, farm_id')
             .in('farm_id', effectiveFarmIds)
             .eq('is_active', true),
           orgId
@@ -412,31 +413,33 @@ export default function ProductionPage() {
     return map
   }, [allOrchards])
 
-  // Filter bins by commodity + selected orchard
+  // Filter bins by commodity + variety group + selected orchard
   const filteredBins = useMemo(() => {
     return binRows.filter(b => {
       if (selectedOrchardId && b.orchard_id !== selectedOrchardId) return false
-      if (selectedCommodityId) {
+      if (selectedCommodityId || selectedVarietyGroup) {
         if (!b.orchard_id) return false
         const o = orchardLookup[b.orchard_id]
-        if (o?.commodity_id !== selectedCommodityId) return false
+        if (selectedCommodityId && o?.commodity_id !== selectedCommodityId) return false
+        if (selectedVarietyGroup && o?.variety_group !== selectedVarietyGroup) return false
       }
       return true
     })
-  }, [binRows, selectedCommodityId, selectedOrchardId, orchardLookup])
+  }, [binRows, selectedCommodityId, selectedVarietyGroup, selectedOrchardId, orchardLookup])
 
-  // Filter bruising by commodity + selected orchard
+  // Filter bruising by commodity + variety group + selected orchard
   const filteredBruising = useMemo(() => {
     return bruisingRows.filter(b => {
       if (selectedOrchardId && b.orchard_id !== selectedOrchardId) return false
-      if (selectedCommodityId) {
+      if (selectedCommodityId || selectedVarietyGroup) {
         if (!b.orchard_id) return false
         const o = orchardLookup[b.orchard_id]
-        if (o?.commodity_id !== selectedCommodityId) return false
+        if (selectedCommodityId && o?.commodity_id !== selectedCommodityId) return false
+        if (selectedVarietyGroup && o?.variety_group !== selectedVarietyGroup) return false
       }
       return true
     })
-  }, [bruisingRows, selectedCommodityId, selectedOrchardId, orchardLookup])
+  }, [bruisingRows, selectedCommodityId, selectedVarietyGroup, selectedOrchardId, orchardLookup])
 
   // Bin weight cascade lookup
   const getBinWeight = useCallback((orchardId: string | null, variety: string | null) => {
@@ -725,9 +728,9 @@ export default function ProductionPage() {
           </div>
           <div style={s.divider} />
           <div style={s.filterGroup}>
-            <button style={!selectedCommodityId ? s.pillActive : s.pill} onClick={() => setSelectedCommodityId(null)}>All</button>
+            <button style={!selectedCommodityId ? s.pillActive : s.pill} onClick={() => { setSelectedCommodityId(null); setSelectedVarietyGroup(null); setSelectedOrchardId(null) }}>All</button>
             {commodities.map(c => (
-              <button key={c.id} style={selectedCommodityId === c.id ? s.pillActive : s.pill} onClick={() => setSelectedCommodityId(c.id)}>{c.name}</button>
+              <button key={c.id} style={selectedCommodityId === c.id ? s.pillActive : s.pill} onClick={() => { setSelectedCommodityId(c.id); setSelectedVarietyGroup(null); setSelectedOrchardId(null) }}>{c.name}</button>
             ))}
           </div>
           <div style={s.divider} />
@@ -741,19 +744,39 @@ export default function ProductionPage() {
               style={{ ...s.pill, ...(dateFilter === 'custom' ? { borderColor: '#2a6e45', background: '#e8f5ee', color: '#2a6e45' } : {}), width: 130 }}
             />
           </div>
-          {selectedOrchardId && orchardLookup[selectedOrchardId] && (
-            <>
-              <div style={s.divider} />
-              <button
-                style={{ padding: '6px 14px', borderRadius: 20, border: '1px solid #2a6e45', background: '#e8f5ee', color: '#2a6e45', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}
-                onClick={() => setSelectedOrchardId(null)}
-              >
-                {orchardLookup[selectedOrchardId].name}
-                <span style={{ fontSize: 16, lineHeight: 1 }}>&times;</span>
-              </button>
-            </>
-          )}
         </div>
+
+        {/* Drill-down pills: Variety Group (after commodity) → Orchard (after variety group) */}
+        {selectedCommodityId && (() => {
+          const groups = [...new Set(allOrchards.filter(o => o.commodity_id === selectedCommodityId && o.variety_group).map(o => o.variety_group!))].sort()
+          if (groups.length === 0) return null
+          const orchardChoices = selectedVarietyGroup
+            ? allOrchards.filter(o => o.commodity_id === selectedCommodityId && o.variety_group === selectedVarietyGroup).sort((a, b) => a.name.localeCompare(b.name))
+            : []
+          return (
+            <div style={{ ...s.controls, marginTop: -8 }}>
+              <div style={s.filterGroup}>
+                <span style={{ fontSize: 11, color: '#9aaa9f', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Group</span>
+                <button style={!selectedVarietyGroup ? s.pillActive : s.pill} onClick={() => { setSelectedVarietyGroup(null); setSelectedOrchardId(null) }}>All</button>
+                {groups.map(g => (
+                  <button key={g} style={selectedVarietyGroup === g ? s.pillActive : s.pill} onClick={() => { setSelectedVarietyGroup(g); setSelectedOrchardId(null) }}>{g}</button>
+                ))}
+              </div>
+              {orchardChoices.length > 0 && (
+                <>
+                  <div style={s.divider} />
+                  <div style={s.filterGroup}>
+                    <span style={{ fontSize: 11, color: '#9aaa9f', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Orchard</span>
+                    <button style={!selectedOrchardId ? s.pillActive : s.pill} onClick={() => setSelectedOrchardId(null)}>All</button>
+                    {orchardChoices.map(o => (
+                      <button key={o.id} style={selectedOrchardId === o.id ? s.pillActive : s.pill} onClick={() => setSelectedOrchardId(o.id)}>{o.name}</button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )
+        })()}
 
         {loading && <div style={{ textAlign: 'center', padding: '8px 0', fontSize: 13, color: '#9aaa9f' }}>Loading production data...</div>}
           <>
