@@ -16,6 +16,7 @@ interface ManagerSidebarProps {
 export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], onLogout }: ManagerSidebarProps) {
   const pathname = usePathname()
   const hasQc = modules.includes('qc')
+  const hasProduction = modules.includes('production')
 
   function cls(href: string) {
     const active = href === '/' ? pathname === '/' : pathname.startsWith(href)
@@ -52,6 +53,15 @@ export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], 
           <a href="/qc/labels" className={cls('/qc/labels')}><span>🏷️</span> Print Labels</a>
           <a href="/qc/settings/users" className={cls('/qc/settings/users')}><span>👤</span> App Users</a>
           <a href="/qc/settings/assignments" className={cls('/qc/settings/assignments')}><span>🔗</span> Assignments</a>
+        </>
+      )}
+
+      {/* Production section — only when org subscribes to production module */}
+      {hasProduction && (
+        <>
+          <div className="ms-section-label">Production</div>
+          <a href="/production" className={cls('/production')}><span>📦</span> Production</a>
+          <a href="/production/settings" className={cls('/production/settings')} style={{ paddingLeft: 28, fontSize: 13 }}><span>⚖️</span> Bin Weights</a>
         </>
       )}
 

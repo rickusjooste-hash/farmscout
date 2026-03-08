@@ -40,6 +40,7 @@ export default function MobileNav({ isSuperAdmin, modules = ['farmscout'] }: Mob
   }, [pathname])
 
   const hasQc = modules.includes('qc')
+  const hasProduction = modules.includes('production')
 
   async function handleLogout() {
     const supabase = createClient()
@@ -207,6 +208,15 @@ export default function MobileNav({ isSuperAdmin, modules = ['farmscout'] }: Mob
             </a>
             <a href="/qc/heatmap" className={`mnav-sheet-item${isActive('/qc/heatmap') ? ' active' : ''}`}>
               <span className="mnav-sheet-icon">{'\u{1F321}\uFE0F'}</span> QC Heat Map
+            </a>
+          </>
+        )}
+
+        {hasProduction && (
+          <>
+            <div className="mnav-sheet-section">Production</div>
+            <a href="/production" className={`mnav-sheet-item${isActive('/production') ? ' active' : ''}`}>
+              <span className="mnav-sheet-icon">{'\u{1F4E6}'}</span> Production
             </a>
           </>
         )}

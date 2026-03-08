@@ -1,0 +1,1014 @@
+'use client'
+
+import { createClient } from '@/lib/supabase-auth'
+import { useUserContext } from '@/lib/useUserContext'
+import { useOrgModules } from '@/lib/useOrgModules'
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import {
+  BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, Cell, LabelList, Legend,
+} from 'recharts'
+import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
+import MobileNav from '@/app/components/MobileNav'
+
+// ── Types ──────────────────────────────────────────────────────────────────
+
+interface Farm { id: string; code: string; name: string }
+interface Commodity { id: string; name: string; code: string }
+interface OrchardRef { id: string; name: string; variety: string | null; ha: number | null; commodity_id: string; farm_id: string }
+
+interface BinRow {
+  orchard_id: string | null
+  orchard_name: string
+  variety: string | null
+  farm_id: string
+  bins: number
+  juice: number
+  total: number
+  week_num: number | null
+  received_date: string
+}
+
+interface BruisingRow {
+  orchard_id: string | null
+  orchard_name: string
+  variety: string | null
+  bruising_pct: number | null
+  stem_pct: number | null
+  injury_pct: number | null
+  bin_weight_kg: number | null
+}
+
+interface BinWeight {
+  commodity_id: string
+  variety: string | null
+  default_weight_kg: number
+}
+
+interface OrchardAgg {
+  orchard_id: string | null
+  name: string
+  variety: string | null
+  ha: number | null
+  bins: number
+  juice: number
+  total: number
+  binWeight: number
+  tons: number
+  tonHa: number | null
+}
+
+interface WeekAgg {
+  week: number
+  label: string
+  bins: number
+  juice: number
+  total: number
+}
+
+interface BruisingAgg {
+  orchard_id: string | null
+  name: string
+  variety: string | null
+  samples: number
+  bruising: number
+  stem: number
+  injury: number
+  avgWeight: number | null
+}
+
+interface SizeBin {
+  bin_label: string
+  display_order: number
+  fruit_count: number
+}
+
+interface IssueRow {
+  pest_id: string
+  pest_name: string
+  pest_name_af: string
+  category: string
+  total_count: number
+  bags_affected: number
+}
+
+type SortKey = 'name' | 'variety' | 'ha' | 'bins' | 'juice' | 'total' | 'tons' | 'tonHa' | 'binWeight'
+
+// ── Season helpers ──────────────────────────────────────────────────────────
+
+function getCurrentSeason(): string {
+  const now = new Date()
+  const yr = now.getFullYear()
+  const mo = now.getMonth() + 1
+  const startYr = mo < 8 ? yr - 1 : yr
+  return `${startYr}/${String(startYr + 1).slice(-2)}`
+}
+
+function buildSeasonOptions(fromYear: number): string[] {
+  const current = getCurrentSeason()
+  const currentStartYr = parseInt(current.split('/')[0])
+  const seasons: string[] = []
+  for (let yr = fromYear; yr <= currentStartYr; yr++) {
+    seasons.push(`${yr}/${String(yr + 1).slice(-2)}`)
+  }
+  return seasons.reverse()
+}
+
+function seasonDateRange(season: string): { from: string; to: string } {
+  const startYr = parseInt(season.split('/')[0])
+  return {
+    from: `${startYr}-08-01T00:00:00Z`,
+    to: `${startYr + 1}-07-31T23:59:59Z`,
+  }
+}
+
+// ── Colour helpers ──────────────────────────────────────────────────────────
+
+function tonHaColor(tonHa: number | null): string {
+  if (tonHa == null) return '#aaa'
+  if (tonHa >= 50) return '#2a6e45'
+  if (tonHa >= 30) return '#4caf72'
+  if (tonHa >= 15) return '#f5c842'
+  return '#e85a4a'
+}
+
+function qualityColor(pct: number): string {
+  if (pct < 5) return '#4caf72'
+  if (pct < 10) return '#f5c842'
+  return '#e85a4a'
+}
+
+// ── Inline styles ───────────────────────────────────────────────────────────
+
+const s: Record<string, React.CSSProperties> = {
+  page:        { display: 'flex', minHeight: '100vh', background: '#f4f1eb', fontFamily: 'Inter, system-ui, sans-serif', color: '#1c3a2a' },
+  main:        { flex: 1, padding: 40, overflowY: 'auto', minWidth: 0, paddingBottom: 100 },
+  pageHeader:  { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap' as const, gap: 16 },
+  pageTitle:   { fontSize: 32, fontWeight: 700, color: '#1c3a2a', letterSpacing: '-0.5px', lineHeight: 1 },
+  pageSub:     { fontSize: 14, color: '#9aaa9f', marginTop: 6 },
+  controls:    { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' as const, marginBottom: 28 },
+  filterGroup: { display: 'flex', gap: 6 },
+  pill:        { padding: '6px 14px', borderRadius: 20, border: '1px solid #d4cfca', background: '#fff', color: '#5a6a60', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
+  pillActive:  { padding: '6px 14px', borderRadius: 20, border: '1px solid #2a6e45', background: '#2a6e45', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
+  divider:     { width: 1, height: 24, background: '#d4cfca' },
+  select:      { padding: '6px 12px', borderRadius: 8, border: '1px solid #d4cfca', background: '#fff', fontSize: 13, fontFamily: 'inherit', color: '#1c3a2a', cursor: 'pointer' },
+  // KPI strip
+  kpiStrip:    { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 28 },
+  kpiCard:     { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '20px 24px', position: 'relative' as const, overflow: 'hidden' },
+  kpiAccent:   { position: 'absolute' as const, top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #2a6e45, #a8d5a2)' },
+  kpiLabel:    { fontSize: 12, color: '#9aaa9f', textTransform: 'uppercase' as const, letterSpacing: '0.06em', fontWeight: 600, marginBottom: 8 },
+  kpiValue:    { fontSize: 32, fontWeight: 700, color: '#1c3a2a', lineHeight: 1 },
+  kpiSub:      { fontSize: 12, color: '#9aaa9f', marginTop: 6 },
+  // Card
+  card:        { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 24 },
+  cardHeader:  { padding: '20px 24px 16px', borderBottom: '1px solid #f0ede6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  cardTitle:   { fontSize: 17, fontWeight: 600, color: '#1c3a2a' },
+  cardBody:    { padding: '20px 24px' },
+  // Loading
+  loading:     { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200, color: '#9aaa9f', fontSize: 14 },
+}
+
+function CustomTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null
+  return (
+    <div style={{ background: '#1c3a2a', color: '#e8f0e0', padding: '10px 14px', borderRadius: 8, fontSize: 13 }}>
+      <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
+      {payload.map((p: any, i: number) => (
+        <div key={i}>{p.name}: <strong>{typeof p.value === 'number' ? p.value.toLocaleString('en-ZA', { maximumFractionDigits: 1 }) : p.value}</strong></div>
+      ))}
+    </div>
+  )
+}
+
+// ── Paginated fetch (Supabase caps at 1000 rows per request) ────────────────
+
+async function fetchAllRows(query: any): Promise<any[]> {
+  const PAGE = 1000
+  let all: any[] = []
+  let offset = 0
+  while (true) {
+    const { data, error } = await query.range(offset, offset + PAGE - 1)
+    if (error) { console.error('fetchAll error:', error.message); break }
+    if (!data || data.length === 0) break
+    all = all.concat(data)
+    if (data.length < PAGE) break
+    offset += PAGE
+  }
+  return all
+}
+
+// ── Page ────────────────────────────────────────────────────────────────────
+
+export default function ProductionPage() {
+  const supabase = createClient()
+  const { farmIds, isSuperAdmin, contextLoaded, orgId } = useUserContext()
+  const modules = useOrgModules()
+
+  const [allFarms, setAllFarms] = useState<Farm[]>([])
+  const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null)
+  const [commodities, setCommodities] = useState<Commodity[]>([])
+  const [selectedCommodityId, setSelectedCommodityId] = useState<string | null>(null)
+  const [season, setSeason] = useState(getCurrentSeason())
+  const seasons = useMemo(() => buildSeasonOptions(2020), [])
+
+  // Date filter: 'today' | 'all' | 'custom'
+  const [dateFilter, setDateFilter] = useState<'today' | 'all' | 'custom'>('today')
+  const [customDate, setCustomDate] = useState(() => new Date().toISOString().slice(0, 10))
+
+  const [allOrchards, setAllOrchards] = useState<OrchardRef[]>([])
+  const [binRows, setBinRows] = useState<BinRow[]>([])
+  const [bruisingRows, setBruisingRows] = useState<BruisingRow[]>([])
+  const [binWeights, setBinWeights] = useState<BinWeight[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const [sortKey, setSortKey] = useState<SortKey>('total')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const [selectedOrchardId, setSelectedOrchardId] = useState<string | null>(null)
+
+  // QC data
+  const [sizeBins, setSizeBins] = useState<SizeBin[]>([])
+  const [issueRows, setIssueRows] = useState<IssueRow[]>([])
+  const [qcLoading, setQcLoading] = useState(false)
+
+  // Map refs
+  const mapContainerRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<any>(null)
+  const leafletRef = useRef<any>(null)
+  const geoLayerRef = useRef<any>(null)
+  const [mapReady, setMapReady] = useState(false)
+
+  const filterDate = useMemo(() => {
+    if (dateFilter === 'today') return new Date().toISOString().slice(0, 10)
+    if (dateFilter === 'custom') return customDate
+    return null // 'all' = full season
+  }, [dateFilter, customDate])
+
+  const effectiveFarmIds = useMemo(() => {
+    if (selectedFarmId) return [selectedFarmId]
+    return allFarms.map(f => f.id)
+  }, [allFarms, selectedFarmId])
+
+  // Load farms + commodities on mount
+  useEffect(() => {
+    if (!contextLoaded) return
+    async function init() {
+      const farmQ = supabase.from('farms').select('id, code, full_name').eq('is_active', true).order('full_name')
+      const { data: farmsData } = isSuperAdmin ? await farmQ : await farmQ.in('id', farmIds)
+      const farms = (farmsData || []).map((f: any) => ({ id: f.id, code: f.code, name: f.full_name }))
+      setAllFarms(farms)
+
+      const { data: commData } = await supabase.from('commodities').select('id, name, code').order('name')
+      setCommodities((commData || []) as Commodity[])
+    }
+    init()
+  }, [contextLoaded])
+
+  // Load production data when filters change
+  useEffect(() => {
+    if (!contextLoaded || effectiveFarmIds.length === 0) return
+    async function fetchData() {
+      setLoading(true)
+      try {
+        let binsQ = supabase
+          .from('production_bins')
+          .select('orchard_id, orchard_name, variety, farm_id, bins, juice, total, week_num, received_date')
+          .eq('season', season)
+          .in('farm_id', effectiveFarmIds)
+          .order('received_date', { ascending: false })
+        if (filterDate) binsQ = binsQ.eq('received_date', filterDate)
+
+        let bruisingQ = supabase
+          .from('production_bruising')
+          .select('orchard_id, orchard_name, variety, bruising_pct, stem_pct, injury_pct, bin_weight_kg, received_date')
+          .eq('season', season)
+          .in('farm_id', effectiveFarmIds)
+        if (filterDate) bruisingQ = bruisingQ.eq('received_date', filterDate)
+
+        const [binsData, bruisingData, orchardsRes, weightsRes] = await Promise.all([
+          fetchAllRows(binsQ),
+          fetchAllRows(bruisingQ),
+          supabase
+            .from('orchards')
+            .select('id, name, variety, ha, commodity_id, farm_id')
+            .in('farm_id', effectiveFarmIds)
+            .eq('is_active', true),
+          orgId
+            ? supabase.from('production_bin_weights').select('commodity_id, variety, default_weight_kg').eq('organisation_id', orgId)
+            : Promise.resolve({ data: [] }),
+        ])
+
+        setBinRows(binsData as BinRow[])
+        setBruisingRows(bruisingData as BruisingRow[])
+        setAllOrchards((orchardsRes.data || []) as OrchardRef[])
+        setBinWeights((weightsRes.data || []) as BinWeight[])
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [contextLoaded, effectiveFarmIds, season, orgId, filterDate])
+
+  // Load QC data (size distribution + issues) when filters change
+  useEffect(() => {
+    if (!contextLoaded || effectiveFarmIds.length === 0) return
+    async function fetchQc() {
+      setQcLoading(true)
+      try {
+        const qcFrom = filterDate ? `${filterDate}T00:00:00Z` : seasonDateRange(season).from
+        const qcTo = filterDate ? `${filterDate}T23:59:59Z` : seasonDateRange(season).to
+        const [sizeRes, issueRes] = await Promise.all([
+          supabase.rpc('get_qc_size_distribution', {
+            p_farm_ids: effectiveFarmIds,
+            p_from: qcFrom,
+            p_to: qcTo,
+            p_commodity_id: selectedCommodityId || null,
+            p_orchard_id: selectedOrchardId || null,
+          }),
+          supabase.rpc('get_qc_issue_breakdown', {
+            p_farm_ids: effectiveFarmIds,
+            p_from: qcFrom,
+            p_to: qcTo,
+            p_commodity_id: selectedCommodityId || null,
+            p_orchard_id: selectedOrchardId || null,
+          }),
+        ])
+        setSizeBins((sizeRes.data || []) as SizeBin[])
+        setIssueRows((issueRes.data || []) as IssueRow[])
+      } catch (err) {
+        console.error('QC data fetch error:', err)
+      } finally {
+        setQcLoading(false)
+      }
+    }
+    fetchQc()
+  }, [contextLoaded, effectiveFarmIds, season, selectedCommodityId, selectedOrchardId, filterDate])
+
+  // ── Aggregation ─────────────────────────────────────────────────────────
+
+  // Build orchard lookup
+  const orchardLookup = useMemo(() => {
+    const map: Record<string, OrchardRef> = {}
+    allOrchards.forEach(o => { map[o.id] = o })
+    return map
+  }, [allOrchards])
+
+  // Filter bins by commodity + selected orchard
+  const filteredBins = useMemo(() => {
+    return binRows.filter(b => {
+      if (selectedOrchardId && b.orchard_id !== selectedOrchardId) return false
+      if (selectedCommodityId) {
+        if (!b.orchard_id) return false
+        const o = orchardLookup[b.orchard_id]
+        if (o?.commodity_id !== selectedCommodityId) return false
+      }
+      return true
+    })
+  }, [binRows, selectedCommodityId, selectedOrchardId, orchardLookup])
+
+  // Filter bruising by commodity + selected orchard
+  const filteredBruising = useMemo(() => {
+    return bruisingRows.filter(b => {
+      if (selectedOrchardId && b.orchard_id !== selectedOrchardId) return false
+      if (selectedCommodityId) {
+        if (!b.orchard_id) return false
+        const o = orchardLookup[b.orchard_id]
+        if (o?.commodity_id !== selectedCommodityId) return false
+      }
+      return true
+    })
+  }, [bruisingRows, selectedCommodityId, selectedOrchardId, orchardLookup])
+
+  // Bin weight cascade lookup
+  const getBinWeight = useCallback((orchardId: string | null, variety: string | null) => {
+    // 1. Actual avg from bruising
+    if (orchardId) {
+      const orchardBruising = filteredBruising.filter(b => b.orchard_id === orchardId && b.bin_weight_kg && b.bin_weight_kg > 0)
+      if (orchardBruising.length > 0) {
+        return orchardBruising.reduce((sum, b) => sum + (b.bin_weight_kg || 0), 0) / orchardBruising.length
+      }
+    }
+    // 2. Configured fallback (commodity + variety)
+    if (orchardId) {
+      const o = orchardLookup[orchardId]
+      if (o) {
+        const match = binWeights.find(w => w.commodity_id === o.commodity_id && w.variety === variety)
+        if (match) return match.default_weight_kg
+        // 3. Commodity-only fallback
+        const commMatch = binWeights.find(w => w.commodity_id === o.commodity_id && !w.variety)
+        if (commMatch) return commMatch.default_weight_kg
+      }
+    }
+    // 4. Default
+    return 400
+  }, [filteredBruising, orchardLookup, binWeights])
+
+  // Orchard summary aggregation
+  const orchardAgg = useMemo(() => {
+    const map: Record<string, { bins: number; juice: number; total: number; name: string; variety: string | null; orchardId: string | null }> = {}
+
+    filteredBins.forEach(row => {
+      const key = row.orchard_id || `_${row.orchard_name}`
+      if (!map[key]) {
+        map[key] = { bins: 0, juice: 0, total: 0, name: row.orchard_name, variety: row.variety, orchardId: row.orchard_id }
+      }
+      map[key].bins += row.bins
+      map[key].juice += row.juice
+      map[key].total += row.total
+    })
+
+    const results: OrchardAgg[] = Object.entries(map).map(([key, val]) => {
+      const o = val.orchardId ? orchardLookup[val.orchardId] : null
+      const ha = o?.ha || null
+      const binWeight = getBinWeight(val.orchardId, val.variety)
+      const tons = val.total * binWeight / 1000
+      const tonHa = ha && ha > 0 ? tons / ha : null
+      return {
+        orchard_id: val.orchardId,
+        name: o?.name || val.name,
+        variety: o?.variety || val.variety,
+        ha,
+        bins: val.bins,
+        juice: val.juice,
+        total: val.total,
+        binWeight: Math.round(binWeight),
+        tons: Math.round(tons * 10) / 10,
+        tonHa: tonHa != null ? Math.round(tonHa * 10) / 10 : null,
+      }
+    })
+
+    return results
+  }, [filteredBins, orchardLookup, getBinWeight])
+
+  // Sort
+  const sortedOrchards = useMemo(() => {
+    const copy = [...orchardAgg]
+    copy.sort((a, b) => {
+      let av = a[sortKey] ?? -Infinity
+      let bv = b[sortKey] ?? -Infinity
+      if (typeof av === 'string') av = av.toLowerCase()
+      if (typeof bv === 'string') bv = bv.toLowerCase()
+      if (av < bv) return sortDir === 'asc' ? -1 : 1
+      if (av > bv) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+    return copy
+  }, [orchardAgg, sortKey, sortDir])
+
+  // KPIs
+  const kpis = useMemo(() => {
+    const totalBins = orchardAgg.reduce((s, o) => s + o.bins, 0)
+    const totalJuice = orchardAgg.reduce((s, o) => s + o.juice, 0)
+    const totalTons = orchardAgg.reduce((s, o) => s + o.tons, 0)
+    const withHa = orchardAgg.filter(o => o.tonHa != null && o.ha && o.ha > 0)
+    const totalHa = withHa.reduce((s, o) => s + (o.ha || 0), 0)
+    const avgTonHa = totalHa > 0 ? totalTons / totalHa : null
+    const avgBinWeight = orchardAgg.length > 0 ? orchardAgg.reduce((s, o) => s + o.binWeight, 0) / orchardAgg.length : 0
+    return {
+      totalBins: Math.round(totalBins * 10) / 10,
+      totalTons: Math.round(totalTons * 10) / 10,
+      avgTonHa: avgTonHa != null ? Math.round(avgTonHa * 10) / 10 : null,
+      totalJuice: Math.round(totalJuice * 10) / 10,
+      avgBinWeight: Math.round(avgBinWeight),
+      orchards: orchardAgg.length,
+    }
+  }, [orchardAgg])
+
+  // Weekly trend grouped by commodity
+  const { weeklyTrend, weekCommodities } = useMemo(() => {
+    // Build commodity name lookup per orchard
+    const commNameById: Record<string, string> = {}
+    commodities.forEach(c => { commNameById[c.id] = c.name })
+    const orchardComm: Record<string, string> = {}
+    allOrchards.forEach(o => { orchardComm[o.id] = commNameById[o.commodity_id] || 'Other' })
+
+    const map: Record<number, Record<string, number>> = {}
+    const commSet = new Set<string>()
+
+    filteredBins.forEach(row => {
+      const wk = row.week_num
+      if (wk == null) return
+      const comm = row.orchard_id ? (orchardComm[row.orchard_id] || 'Other') : 'Other'
+      commSet.add(comm)
+      if (!map[wk]) map[wk] = {}
+      map[wk][comm] = (map[wk][comm] || 0) + row.total
+    })
+
+    const comms = [...commSet].sort()
+    // Sort in season order: W31–W52, then W1–W30
+    const seasonSort = (wk: number) => wk >= 31 ? wk - 31 : wk + 21
+
+    const data = Object.entries(map)
+      .map(([wk, vals]) => {
+        const row: Record<string, any> = { week: Number(wk), label: `W${wk}` }
+        comms.forEach(c => { row[c] = vals[c] || 0 })
+        return row
+      })
+      .sort((a, b) => seasonSort(a.week) - seasonSort(b.week))
+
+    return { weeklyTrend: data, weekCommodities: comms }
+  }, [filteredBins, allOrchards, commodities])
+
+  // Ton/Ha bar chart data (top 30 orchards with ha)
+  const tonHaData = useMemo(() => {
+    return orchardAgg
+      .filter(o => o.tonHa != null)
+      .sort((a, b) => (b.tonHa || 0) - (a.tonHa || 0))
+      .slice(0, 30)
+      .map(o => ({ name: o.name, tonHa: o.tonHa }))
+  }, [orchardAgg])
+
+  // Bruising summary
+  const bruisingSummary = useMemo(() => {
+    const map: Record<string, { bruisingSum: number; stemSum: number; injurySum: number; weightSum: number; weightCount: number; count: number; name: string; variety: string | null; orchardId: string | null }> = {}
+    filteredBruising.forEach(row => {
+      const key = row.orchard_id || `_${row.orchard_name}`
+      if (!map[key]) {
+        map[key] = { bruisingSum: 0, stemSum: 0, injurySum: 0, weightSum: 0, weightCount: 0, count: 0, name: row.orchard_name, variety: row.variety, orchardId: row.orchard_id }
+      }
+      map[key].count++
+      map[key].bruisingSum += row.bruising_pct || 0
+      map[key].stemSum += row.stem_pct || 0
+      map[key].injurySum += row.injury_pct || 0
+      if (row.bin_weight_kg && row.bin_weight_kg > 0) {
+        map[key].weightSum += row.bin_weight_kg
+        map[key].weightCount++
+      }
+    })
+
+    return Object.entries(map)
+      .map(([, val]) => {
+        const o = val.orchardId ? orchardLookup[val.orchardId] : null
+        return {
+          orchard_id: val.orchardId,
+          name: o?.name || val.name,
+          variety: o?.variety || val.variety,
+          samples: val.count,
+          bruising: Math.round((val.bruisingSum / val.count) * 100) / 100,
+          stem: Math.round((val.stemSum / val.count) * 100) / 100,
+          injury: Math.round((val.injurySum / val.count) * 100) / 100,
+          avgWeight: val.weightCount > 0 ? Math.round(val.weightSum / val.weightCount) : null,
+        } as BruisingAgg
+      })
+      .sort((a, b) => b.bruising - a.bruising)
+  }, [filteredBruising, orchardLookup])
+
+  // ── Init Leaflet map ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (mapReady || loading || !mapContainerRef.current) return
+    ;(async () => {
+      const L = (await import('leaflet')).default
+      leafletRef.current = L
+      // Inject Leaflet CSS if not already present
+      if (!document.querySelector('link[href*="leaflet"]')) {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+        document.head.appendChild(link)
+      }
+      if (!(mapContainerRef.current as any)._leaflet_id) {
+        const map = L.map(mapContainerRef.current!, { zoomControl: true, attributionControl: false, scrollWheelZoom: true, maxZoom: 19 })
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, maxNativeZoom: 18 }).addTo(map)
+        mapRef.current = map
+        setTimeout(() => map.invalidateSize(), 200)
+        setMapReady(true)
+      }
+    })()
+  }, [loading])
+
+  // ── Draw polygons ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!mapReady || orchardAgg.length === 0) return
+    ;(async () => {
+      const L = leafletRef.current
+      const map = mapRef.current
+      if (geoLayerRef.current) geoLayerRef.current.remove()
+
+      const { data: boundaryData } = await supabase.rpc('get_orchard_boundaries')
+      if (!boundaryData?.length) return
+
+      // Build lookup of ton/ha for colouring
+      const aggLookup: Record<string, OrchardAgg> = {}
+      orchardAgg.forEach(o => { if (o.orchard_id) aggLookup[o.orchard_id] = o })
+
+      // Filter to orchards we have access to
+      const myBoundaries = boundaryData.filter((o: any) => orchardLookup[o.id])
+      if (!myBoundaries.length) return
+
+      const layer = L.geoJSON(
+        { type: 'FeatureCollection', features: myBoundaries.map((o: any) => ({ type: 'Feature', properties: { id: o.id, name: o.name }, geometry: o.boundary })) },
+        {
+          style: (f: any) => {
+            const agg = aggLookup[f.properties.id]
+            const color = agg ? tonHaColor(agg.tonHa) : '#666'
+            const sel = f.properties.id === selectedOrchardId
+            return { fillColor: color, fillOpacity: sel ? 0.95 : (agg ? 0.7 : 0.25), color: '#fff', weight: sel ? 3 : 1.5 }
+          },
+          onEachFeature: (f: any, lyr: any) => {
+            const id = f.properties.id
+            const agg = aggLookup[id]
+            const tip = agg ? `${f.properties.name}: ${agg.tonHa ?? '–'} t/ha` : f.properties.name
+            lyr.bindTooltip(tip, { permanent: false, className: 'prod-tooltip' })
+            lyr.on('mouseover', () => { if (id !== selectedOrchardId) lyr.setStyle({ fillOpacity: 0.88 }) })
+            lyr.on('mouseout',  () => { if (id !== selectedOrchardId) lyr.setStyle({ fillOpacity: agg ? 0.7 : 0.25 }) })
+            lyr.on('click', () => {
+              setSelectedOrchardId(prev => prev === id ? null : id)
+              map.fitBounds(lyr.getBounds(), { padding: [60, 60], maxZoom: 17 })
+            })
+          },
+        }
+      ).addTo(map)
+      geoLayerRef.current = layer
+      map.invalidateSize()
+      if (layer.getBounds().isValid() && !selectedOrchardId) map.fitBounds(layer.getBounds(), { padding: [16, 16] })
+    })()
+  }, [mapReady, orchardAgg, selectedOrchardId])
+
+  // Sort handler
+  function handleSort(key: SortKey) {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('desc') }
+  }
+
+  const sortIcon = (key: SortKey) => sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''
+
+  // ── Render ──────────────────────────────────────────────────────────────
+
+  return (
+    <div style={s.page}>
+      <ManagerSidebarStyles />
+      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} />
+      <MobileNav isSuperAdmin={isSuperAdmin} modules={modules} />
+
+      <main style={s.main}>
+        {/* Header */}
+        <div style={s.pageHeader}>
+          <div>
+            <div style={s.pageTitle}>Production</div>
+            <div style={s.pageSub}>Bin receiving, tonnage & quality</div>
+          </div>
+          <select style={s.select} value={season} onChange={e => setSeason(e.target.value)}>
+            {seasons.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+
+        {/* Filter pills */}
+        <div style={s.controls}>
+          <div style={s.filterGroup}>
+            <button style={!selectedFarmId ? s.pillActive : s.pill} onClick={() => setSelectedFarmId(null)}>All Farms</button>
+            {allFarms.map(f => (
+              <button key={f.id} style={selectedFarmId === f.id ? s.pillActive : s.pill} onClick={() => setSelectedFarmId(f.id)}>{f.code}</button>
+            ))}
+          </div>
+          <div style={s.divider} />
+          <div style={s.filterGroup}>
+            <button style={!selectedCommodityId ? s.pillActive : s.pill} onClick={() => setSelectedCommodityId(null)}>All</button>
+            {commodities.map(c => (
+              <button key={c.id} style={selectedCommodityId === c.id ? s.pillActive : s.pill} onClick={() => setSelectedCommodityId(c.id)}>{c.name}</button>
+            ))}
+          </div>
+          <div style={s.divider} />
+          <div style={s.filterGroup}>
+            <button style={dateFilter === 'today' ? s.pillActive : s.pill} onClick={() => setDateFilter('today')}>Today</button>
+            <button style={dateFilter === 'all' ? s.pillActive : s.pill} onClick={() => setDateFilter('all')}>All</button>
+            <input
+              type="date"
+              value={dateFilter === 'custom' ? customDate : ''}
+              onChange={e => { setCustomDate(e.target.value); setDateFilter('custom') }}
+              style={{ ...s.pill, ...(dateFilter === 'custom' ? { borderColor: '#2a6e45', background: '#e8f5ee', color: '#2a6e45' } : {}), width: 130 }}
+            />
+          </div>
+          {selectedOrchardId && orchardLookup[selectedOrchardId] && (
+            <>
+              <div style={s.divider} />
+              <button
+                style={{ padding: '6px 14px', borderRadius: 20, border: '1px solid #2a6e45', background: '#e8f5ee', color: '#2a6e45', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}
+                onClick={() => setSelectedOrchardId(null)}
+              >
+                {orchardLookup[selectedOrchardId].name}
+                <span style={{ fontSize: 16, lineHeight: 1 }}>&times;</span>
+              </button>
+            </>
+          )}
+        </div>
+
+        {loading ? (
+          <div style={s.loading}>Loading production data...</div>
+        ) : (
+          <>
+            {/* KPI Strip */}
+            <div style={s.kpiStrip}>
+              {[
+                { label: 'Total Bins', value: kpis.totalBins.toLocaleString('en-ZA'), sub: `${kpis.orchards} orchards` },
+                { label: 'Total Tons', value: kpis.totalTons.toLocaleString('en-ZA', { maximumFractionDigits: 1 }), sub: null },
+                { label: 'Avg Ton/Ha', value: kpis.avgTonHa != null ? kpis.avgTonHa.toFixed(1) : '–', sub: null },
+                { label: 'Total Juice', value: kpis.totalJuice.toLocaleString('en-ZA'), sub: null },
+                { label: 'Avg Bin Weight', value: `${kpis.avgBinWeight} kg`, sub: null },
+                { label: 'Orchards', value: String(kpis.orchards), sub: 'harvested' },
+                (() => {
+                  const totalFruit = sizeBins.reduce((sum, b) => sum + b.fruit_count, 0)
+                  const qcDefects = issueRows.filter(r => r.category === 'qc_issue').reduce((sum, r) => sum + r.total_count, 0)
+                  // First bin (lowest display_order) = oversize, last real bin = undersize, "Out of spec" = unmatched
+                  const realBins = sizeBins.filter(b => b.bin_label !== 'Out of spec')
+                  const outOfSpec = sizeBins.filter(b => b.bin_label === 'Out of spec').reduce((s, b) => s + b.fruit_count, 0)
+                  const oversizeCount = realBins.length > 0 ? realBins[0].fruit_count : 0
+                  const undersizeCount = realBins.length > 1 ? realBins[realBins.length - 1].fruit_count : 0
+                  const packable = totalFruit - oversizeCount - undersizeCount - outOfSpec
+                  const class1 = packable > 0 ? Math.round((packable - qcDefects) / packable * 1000) / 10 : null
+                  return { label: 'Class 1 %', value: class1 != null ? `${class1}%` : '–', sub: packable > 0 ? `${packable.toLocaleString('en-ZA')} packable` : null }
+                })(),
+              ].map((kpi, i) => (
+                <div key={i} style={s.kpiCard}>
+                  <div style={s.kpiAccent as any} />
+                  <div style={s.kpiLabel}>{kpi.label}</div>
+                  <div style={s.kpiValue}>{kpi.value}</div>
+                  {kpi.sub && <div style={s.kpiSub}>{kpi.sub}</div>}
+                </div>
+              ))}
+            </div>
+
+            {/* Map + QC panels row */}
+            {(() => {
+              const totalFruit = sizeBins.reduce((sum, b) => sum + b.fruit_count, 0)
+              const sizePctData = sizeBins.map(b => ({
+                ...b,
+                pct: totalFruit > 0 ? Math.round((b.fruit_count / totalFruit) * 1000) / 10 : 0,
+              }))
+              const issuePctData = issueRows
+                .filter(r => r.category !== 'picking_issue')
+                .map(r => ({
+                  ...r,
+                  pct: totalFruit > 0 ? Math.round((r.total_count / totalFruit) * 1000) / 10 : 0,
+                }))
+              return (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24, alignItems: 'stretch' }}>
+              {/* Map */}
+              <div style={{ ...s.card, display: 'flex', flexDirection: 'column' }}>
+                <div style={s.cardHeader}><span style={s.cardTitle}>Orchard Map — Ton/Ha</span></div>
+                <div
+                  ref={mapContainerRef}
+                  style={{ flex: 1, minHeight: 300 }}
+                />
+                <div style={{ padding: '8px 16px', display: 'flex', gap: 12, fontSize: 11, color: '#9aaa9f' }}>
+                  {[
+                    { color: '#2a6e45', label: '50+ t/ha' },
+                    { color: '#4caf72', label: '30–50' },
+                    { color: '#f5c842', label: '15–30' },
+                    { color: '#e85a4a', label: '<15' },
+                    { color: '#666', label: 'No data' },
+                  ].map(l => (
+                    <span key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 3, background: l.color, display: 'inline-block' }} />
+                      {l.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* QC panels stacked */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                {/* Size Distribution */}
+                <div style={s.card}>
+                  <div style={s.cardHeader}><span style={s.cardTitle}>QC Size Distribution</span></div>
+                  <div style={{ ...s.cardBody, height: 220 }}>
+                    {qcLoading ? (
+                      <div style={s.loading}>Loading QC data...</div>
+                    ) : sizePctData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={sizePctData} margin={{ left: 10, right: 10, top: 10, bottom: 30 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e8e4dc" vertical={false} />
+                          <XAxis dataKey="bin_label" tick={{ fontSize: 9, fill: '#3a4a40' }} angle={-45} textAnchor="end" interval={0} height={55} />
+                          <YAxis tick={{ fontSize: 10, fill: '#9aaa9f' }} tickFormatter={(v: number) => `${v}%`} />
+                          <Tooltip content={({ active, payload, label }: any) => {
+                            if (!active || !payload?.length) return null
+                            const d = payload[0].payload
+                            return (
+                              <div style={{ background: '#1c3a2a', color: '#e8f0e0', padding: '10px 14px', borderRadius: 8, fontSize: 13 }}>
+                                <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
+                                <div>{d.pct}% ({d.fruit_count.toLocaleString('en-ZA')} fruit)</div>
+                              </div>
+                            )
+                          }} />
+                          <Bar dataKey="pct" name="%" radius={[4, 4, 0, 0]} maxBarSize={28}>
+                            {sizePctData.map((d, i) => {
+                              const color = d.pct >= 15 ? '#2a6e45' : d.pct >= 8 ? '#4caf72' : d.pct >= 3 ? '#6b9e80' : '#b8cfc0'
+                              return <Cell key={i} fill={color} />
+                            })}
+                            <LabelList dataKey="pct" position="top" style={{ fontSize: 8, fill: '#6a7a70' }} formatter={(v: any) => v > 0 ? `${v}%` : ''} />
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div style={s.loading}>No QC size data for this season</div>
+                    )}
+                  </div>
+                  {sizePctData.length > 0 && !qcLoading && (
+                    <div style={{ padding: '2px 24px 12px', fontSize: 11, color: '#9aaa9f' }}>
+                      {totalFruit.toLocaleString('en-ZA')} fruit sampled
+                    </div>
+                  )}
+                </div>
+
+                {/* Quality Issues */}
+                <div style={{ ...s.card, flex: 1 }}>
+                  <div style={s.cardHeader}><span style={s.cardTitle}>QC Issues Breakdown</span></div>
+                  <div style={{ ...s.cardBody, height: issuePctData.length > 0 ? Math.max(160, issuePctData.length * 26 + 20) : 160 }}>
+                    {qcLoading ? (
+                      <div style={s.loading}>Loading QC data...</div>
+                    ) : issuePctData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={issuePctData} layout="vertical" margin={{ left: 110, right: 45, top: 5, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e8e4dc" horizontal={false} />
+                          <XAxis type="number" tick={{ fontSize: 10, fill: '#9aaa9f' }} tickFormatter={(v: number) => `${v}%`} />
+                          <YAxis type="category" dataKey="pest_name" tick={{ fontSize: 10, fill: '#3a4a40' }} width={105} />
+                          <Tooltip content={({ active, payload }: any) => {
+                            if (!active || !payload?.length) return null
+                            const d = payload[0].payload
+                            return (
+                              <div style={{ background: '#1c3a2a', color: '#e8f0e0', padding: '10px 14px', borderRadius: 8, fontSize: 13 }}>
+                                <div style={{ fontWeight: 600, marginBottom: 4 }}>{d.pest_name}</div>
+                                <div>{d.pct}% of fruit ({d.total_count.toLocaleString('en-ZA')} count)</div>
+                                <div style={{ fontSize: 11, color: '#a8c0a0', marginTop: 2 }}>{d.bags_affected} bags affected</div>
+                              </div>
+                            )
+                          }} />
+                          <Bar dataKey="pct" name="% of fruit" radius={[0, 4, 4, 0]} maxBarSize={16}>
+                            {issuePctData.map((_, i) => (
+                              <Cell key={i} fill="#e85a4a" />
+                            ))}
+                            <LabelList dataKey="pct" position="right" style={{ fontSize: 9, fill: '#6a7a70' }} formatter={(v: any) => v > 0 ? `${v}%` : ''} />
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div style={s.loading}>No QC issue data for this season</div>
+                    )}
+                  </div>
+                  {issuePctData.length > 0 && !qcLoading && (
+                    <div style={{ padding: '2px 24px 12px', fontSize: 11, color: '#9aaa9f' }}>
+                      % of total fruit sampled
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+              )
+            })()}
+
+            {/* Orchard summary table */}
+            <div style={{ ...s.card, marginBottom: 24 }}>
+              <div style={s.cardHeader}><span style={s.cardTitle}>Orchard Summary</span></div>
+              <div style={{ overflowX: 'auto', maxHeight: 460, overflowY: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: '#f7f5f0', position: 'sticky' as const, top: 0, zIndex: 1 }}>
+                      {([
+                        ['name', 'Orchard'], ['variety', 'Variety'], ['ha', 'Ha'],
+                        ['bins', 'Bins'], ['juice', 'Juice'], ['total', 'Total'],
+                        ['tons', 'Tons'], ['tonHa', 'T/Ha'], ['binWeight', 'Wt (kg)'],
+                      ] as [SortKey, string][]).map(([key, label]) => (
+                        <th key={key} onClick={() => handleSort(key)} style={{ padding: '10px 8px', textAlign: key === 'name' || key === 'variety' ? 'left' : 'right', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid #e8e4dc', whiteSpace: 'nowrap', userSelect: 'none' }}>
+                          {label}{sortIcon(key)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedOrchards.map((o, i) => (
+                      <tr
+                        key={o.orchard_id || i}
+                        onClick={() => setSelectedOrchardId(o.orchard_id)}
+                        style={{ borderBottom: '1px solid #f0ede6', cursor: 'pointer', background: selectedOrchardId === o.orchard_id ? '#f0f7f2' : 'transparent' }}
+                        onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = selectedOrchardId === o.orchard_id ? '#f0f7f2' : '#fafaf6' }}
+                        onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = selectedOrchardId === o.orchard_id ? '#f0f7f2' : 'transparent' }}
+                      >
+                        <td style={{ padding: '9px 8px', fontWeight: 500 }}>{o.name}</td>
+                        <td style={{ padding: '9px 8px', color: '#6a7a70' }}>{o.variety || '–'}</td>
+                        <td style={{ padding: '9px 8px', textAlign: 'right', color: '#6a7a70' }}>{o.ha?.toFixed(1) ?? '–'}</td>
+                        <td style={{ padding: '9px 8px', textAlign: 'right' }}>{o.bins}</td>
+                        <td style={{ padding: '9px 8px', textAlign: 'right', color: '#b58a00' }}>{o.juice || '–'}</td>
+                        <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 600 }}>{o.total}</td>
+                        <td style={{ padding: '9px 8px', textAlign: 'right' }}>{o.tons}</td>
+                        <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 600, color: tonHaColor(o.tonHa) }}>{o.tonHa?.toFixed(1) ?? '–'}</td>
+                        <td style={{ padding: '9px 8px', textAlign: 'right', color: '#6a7a70' }}>{o.binWeight}</td>
+                      </tr>
+                    ))}
+                    {sortedOrchards.length === 0 && (
+                      <tr><td colSpan={9} style={{ padding: 24, textAlign: 'center', color: '#9aaa9f' }}>No data for this season</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Charts row */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
+              {/* Ton/Ha Bar Chart */}
+              <div style={s.card}>
+                <div style={s.cardHeader}><span style={s.cardTitle}>Ton/Ha by Orchard</span></div>
+                <div style={{ ...s.cardBody, height: Math.max(300, tonHaData.length * 28 + 40) }}>
+                  {tonHaData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={tonHaData} layout="vertical" margin={{ left: 100, right: 30, top: 10, bottom: 10 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e8e4dc" horizontal={false} />
+                        <XAxis type="number" tick={{ fontSize: 11, fill: '#9aaa9f' }} />
+                        <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: '#3a4a40' }} width={90} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar dataKey="tonHa" name="Ton/Ha" radius={[0, 4, 4, 0]} maxBarSize={20}>
+                          {tonHaData.map((d, i) => (
+                            <Cell key={i} fill={tonHaColor(d.tonHa)} />
+                          ))}
+                          <LabelList dataKey="tonHa" position="right" style={{ fontSize: 10, fill: '#6a7a70' }} formatter={(v: any) => v != null ? Number(v).toFixed(1) : ''} />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div style={s.loading}>No orchards with hectare data</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Weekly Production Trend */}
+              <div style={s.card}>
+                <div style={s.cardHeader}><span style={s.cardTitle}>Weekly Production</span></div>
+                <div style={{ ...s.cardBody, height: 340 }}>
+                  {weeklyTrend.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={weeklyTrend} margin={{ left: 10, right: 30, top: 10, bottom: 10 }} stackOffset="none">
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e8e4dc" />
+                        <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#9aaa9f' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#9aaa9f' }} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Legend iconType="square" iconSize={10} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                        {weekCommodities.map((comm, i) => {
+                          const colors = ['#2a6e45', '#e8924a', '#6b7fa8', '#e8c44a', '#9b6bb5', '#c4744a', '#4a9e6b', '#e85a4a']
+                          const color = colors[i % colors.length]
+                          return <Area key={comm} type="monotone" dataKey={comm} name={comm} stroke={color} fill={color} fillOpacity={0.25} stackId="1" />
+                        })}
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div style={s.loading}>No weekly data available</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Quality Summary */}
+            {bruisingSummary.length > 0 && (
+              <div style={s.card}>
+                <div style={s.cardHeader}><span style={s.cardTitle}>Quality Summary (Bruising)</span></div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: '#f7f5f0' }}>
+                        {['Orchard', 'Variety', 'Samples', 'Bruising %', 'Stem %', 'Injury %', 'Avg Weight'].map(h => (
+                          <th key={h} style={{ padding: '10px 8px', textAlign: h === 'Orchard' || h === 'Variety' ? 'left' : 'right', fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid #e8e4dc' }}>
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bruisingSummary.map((b, i) => (
+                        <tr key={b.orchard_id || i} style={{ borderBottom: '1px solid #f0ede6' }}>
+                          <td style={{ padding: '9px 8px', fontWeight: 500 }}>{b.name}</td>
+                          <td style={{ padding: '9px 8px', color: '#6a7a70' }}>{b.variety || '–'}</td>
+                          <td style={{ padding: '9px 8px', textAlign: 'right' }}>{b.samples}</td>
+                          <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 600, color: qualityColor(b.bruising) }}>{b.bruising.toFixed(1)}%</td>
+                          <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 600, color: qualityColor(b.stem) }}>{b.stem.toFixed(1)}%</td>
+                          <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 600, color: qualityColor(b.injury) }}>{b.injury.toFixed(1)}%</td>
+                          <td style={{ padding: '9px 8px', textAlign: 'right', color: '#6a7a70' }}>{b.avgWeight ? `${b.avgWeight} kg` : '–'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </main>
+
+      <style>{`
+        .prod-tooltip {
+          background: #1c3a2a !important;
+          color: #e8f0e0 !important;
+          border: none !important;
+          border-radius: 6px !important;
+          padding: 6px 10px !important;
+          font-size: 12px !important;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+        }
+        .prod-tooltip::before { display: none !important; }
+        @media (max-width: 768px) {
+          .prod-kpi-strip { grid-template-columns: repeat(3, 1fr) !important; }
+        }
+        @media (max-width: 1024px) {
+          main > div[style*="grid-template-columns: 1fr 1fr"] {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+    </div>
+  )
+}
