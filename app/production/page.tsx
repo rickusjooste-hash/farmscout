@@ -138,6 +138,18 @@ function qualityColor(pct: number): string {
   return '#e85a4a'
 }
 
+const SIZE_PALETTE = [
+  '#2a6e45', '#4caf72', '#6b9e80', '#8cc49a', '#a8d5a2',
+  '#c4e6c0', '#dff0da', '#f5c842', '#e8924a', '#d35400',
+  '#c0392b', '#e85a4a', '#6b7fa8', '#9aaa9f', '#c8c4bb',
+]
+const ISSUE_PALETTE = [
+  '#c0392b', '#e74c3c', '#e8604c', '#f0876a',
+  '#f5a58a', '#f9c3ab', '#fddecf',
+  '#d35400', '#e67e22', '#f39c12', '#f1c40f', '#a8d8a8',
+  '#6b7fa8', '#9aaa9f', '#c8c4bb',
+]
+
 // ── Inline styles ───────────────────────────────────────────────────────────
 
 const s: Record<string, React.CSSProperties> = {
@@ -166,6 +178,37 @@ const s: Record<string, React.CSSProperties> = {
   cardBody:    { padding: '20px 24px' },
   // Loading
   loading:     { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200, color: '#9aaa9f', fontSize: 14 },
+}
+
+function circlePack(items: { r: number }[], W: number, H: number, GAP = 4) {
+  const placed: { cx: number; cy: number; r: number }[] = []
+  return items.map((b, idx) => {
+    if (idx === 0) {
+      placed.push({ cx: W / 2, cy: H / 2, r: b.r })
+      return { cx: W / 2, cy: H / 2 }
+    }
+    let bestX = W / 2, bestY = H / 2, bestDist = Infinity
+    for (const p of placed) {
+      const targetDist = p.r + b.r + GAP
+      for (let a = 0; a < 36; a++) {
+        const angle = (a / 36) * Math.PI * 2
+        const cx = p.cx + Math.cos(angle) * targetDist
+        const cy = p.cy + Math.sin(angle) * targetDist
+        if (cx - b.r < 2 || cx + b.r > W - 2 || cy - b.r < 2 || cy + b.r > H - 2) continue
+        let overlap = false
+        for (const q of placed) {
+          const dx = cx - q.cx, dy = cy - q.cy
+          if (Math.sqrt(dx * dx + dy * dy) < b.r + q.r + GAP) { overlap = true; break }
+        }
+        if (!overlap) {
+          const d = Math.sqrt((cx - W / 2) ** 2 + (cy - H / 2) ** 2)
+          if (d < bestDist) { bestX = cx; bestY = cy; bestDist = d }
+        }
+      }
+    }
+    placed.push({ cx: bestX, cy: bestY, r: b.r })
+    return { cx: bestX, cy: bestY }
+  })
 }
 
 function CustomTooltip({ active, payload, label }: any) {
@@ -229,6 +272,8 @@ export default function ProductionPage() {
   const [sizeBins, setSizeBins] = useState<SizeBin[]>([])
   const [issueRows, setIssueRows] = useState<IssueRow[]>([])
   const [qcLoading, setQcLoading] = useState(false)
+  const [sizeView, setSizeView] = useState<'bars' | 'bubbles' | 'waffle'>('bars')
+  const [issueView, setIssueView] = useState<'bars' | 'bubbles' | 'waffle'>('bars')
 
   // Map refs
   const mapContainerRef = useRef<HTMLDivElement>(null)
@@ -268,6 +313,13 @@ export default function ProductionPage() {
     if (!contextLoaded || effectiveFarmIds.length === 0) return
     async function fetchData() {
       setLoading(true)
+      // Destroy existing map — container will be unmounted during loading
+      if (mapRef.current) {
+        mapRef.current.remove()
+        mapRef.current = null
+        geoLayerRef.current = null
+        setMapReady(false)
+      }
       try {
         let binsQ = supabase
           .from('production_bins')
@@ -742,11 +794,11 @@ export default function ProductionPage() {
               return (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24, alignItems: 'stretch' }}>
               {/* Map */}
-              <div style={{ ...s.card, display: 'flex', flexDirection: 'column' }}>
+              <div style={s.card}>
                 <div style={s.cardHeader}><span style={s.cardTitle}>Orchard Map — Ton/Ha</span></div>
                 <div
                   ref={mapContainerRef}
-                  style={{ flex: 1, minHeight: 300 }}
+                  style={{ height: 500 }}
                 />
                 <div style={{ padding: '8px 16px', display: 'flex', gap: 12, fontSize: 11, color: '#9aaa9f' }}>
                   {[
@@ -768,37 +820,107 @@ export default function ProductionPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                 {/* Size Distribution */}
                 <div style={s.card}>
-                  <div style={s.cardHeader}><span style={s.cardTitle}>QC Size Distribution</span></div>
-                  <div style={{ ...s.cardBody, height: 220 }}>
+                  <div style={s.cardHeader}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={s.cardTitle}>Size Distribution</span>
+                      <span style={{ fontSize: 10, background: '#4caf72', color: 'white', padding: '2px 8px', borderRadius: 20, fontFamily: 'monospace', fontWeight: 700, letterSpacing: 0.5 }}>QC</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {([['bars', 'Ranked Bars'], ['bubbles', 'Bubble Map'], ['waffle', 'Waffle']] as const).map(([key, label]) => (
+                        <button key={key} onClick={() => setSizeView(key)} style={{
+                          padding: '4px 12px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                          fontSize: 11, fontWeight: 600,
+                          background: sizeView === key ? '#1c3a2a' : '#f0ede6',
+                          color: sizeView === key ? 'white' : '#6a7a70',
+                        }}>{label}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={s.cardBody}>
                     {qcLoading ? (
                       <div style={s.loading}>Loading QC data...</div>
-                    ) : sizePctData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={sizePctData} margin={{ left: 10, right: 10, top: 10, bottom: 30 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e8e4dc" vertical={false} />
-                          <XAxis dataKey="bin_label" tick={{ fontSize: 9, fill: '#3a4a40' }} angle={-45} textAnchor="end" interval={0} height={55} />
-                          <YAxis tick={{ fontSize: 10, fill: '#9aaa9f' }} tickFormatter={(v: number) => `${v}%`} />
-                          <Tooltip content={({ active, payload, label }: any) => {
-                            if (!active || !payload?.length) return null
-                            const d = payload[0].payload
-                            return (
-                              <div style={{ background: '#1c3a2a', color: '#e8f0e0', padding: '10px 14px', borderRadius: 8, fontSize: 13 }}>
-                                <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
-                                <div>{d.pct}% ({d.fruit_count.toLocaleString('en-ZA')} fruit)</div>
-                              </div>
-                            )
-                          }} />
-                          <Bar dataKey="pct" name="%" radius={[4, 4, 0, 0]} maxBarSize={28}>
-                            {sizePctData.map((d, i) => {
-                              const color = d.pct >= 15 ? '#2a6e45' : d.pct >= 8 ? '#4caf72' : d.pct >= 3 ? '#6b9e80' : '#b8cfc0'
-                              return <Cell key={i} fill={color} />
-                            })}
-                            <LabelList dataKey="pct" position="top" style={{ fontSize: 8, fill: '#6a7a70' }} formatter={(v: any) => v > 0 ? `${v}%` : ''} />
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div style={s.loading}>No QC size data for this season</div>
+                    ) : sizePctData.length > 0 ? (() => {
+                      const sorted = [...sizePctData].sort((a, b) => b.pct - a.pct)
+                      const top3 = sorted.slice(0, 3)
+                      const kpiCards = (
+                        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(top3.length, 3)}, 1fr)`, gap: 10, marginBottom: 16 }}>
+                          {top3.map((item, i) => (
+                            <div key={item.bin_label} style={{ background: '#f7faf5', borderRadius: 8, padding: '10px 14px', borderLeft: `3px solid ${SIZE_PALETTE[i]}` }}>
+                              <div style={{ fontSize: 9, color: '#9aaa9f', fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase' }}>#{i + 1}</div>
+                              <div style={{ fontSize: 18, fontWeight: 700, color: SIZE_PALETTE[i], fontFamily: 'monospace', margin: '2px 0' }}>{item.pct}%</div>
+                              <div style={{ fontSize: 12, color: '#1c3a2a', fontWeight: 600 }}>{item.bin_label}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )
+
+                      if (sizeView === 'bars') {
+                        const maxPct = sorted[0]?.pct || 1
+                        return (<>{kpiCards}<div>{sorted.map((item, i) => (
+                          <div key={item.bin_label} style={{ display: 'grid', gridTemplateColumns: '90px 1fr 48px', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                            <span style={{ textAlign: 'right', fontSize: 11, fontWeight: i < 3 ? 700 : 400, color: i < 3 ? '#1c3a2a' : '#5a6a60', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.bin_label}</span>
+                            <div style={{ position: 'relative', height: 20, background: '#f0ede6', borderRadius: 3 }}>
+                              <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${(item.pct / maxPct) * 100}%`, background: `linear-gradient(90deg, ${SIZE_PALETTE[i % SIZE_PALETTE.length]}dd, ${SIZE_PALETTE[i % SIZE_PALETTE.length]})`, borderRadius: 3, transition: 'width 0.5s ease' }} />
+                            </div>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: SIZE_PALETTE[i % SIZE_PALETTE.length], fontFamily: 'monospace', textAlign: 'right' }}>{item.pct}%</span>
+                          </div>
+                        ))}</div></>)
+                      }
+
+                      if (sizeView === 'bubbles') {
+                        const maxPct = sorted[0]?.pct || 1
+                        const MAX_R = 70, MIN_R = 14
+                        const bubbles = sorted.map((item, i) => ({
+                          ...item, r: Math.max(MIN_R, Math.sqrt(item.pct / maxPct) * MAX_R),
+                          color: SIZE_PALETTE[i % SIZE_PALETTE.length],
+                        }))
+                        const W = 500, H = 300
+                        const positions = circlePack(bubbles, W, H)
+                        return (<>{kpiCards}<div style={{ width: '100%', maxWidth: W, margin: '0 auto' }}>
+                          <svg width="100%" viewBox={`0 0 ${W} ${H}`}>
+                            {bubbles.map((b, i) => (
+                              <g key={b.bin_label}>
+                                <circle cx={positions[i].cx} cy={positions[i].cy} r={b.r} fill={b.color} opacity={0.88} />
+                                {b.r > 22 && (<>
+                                  <text x={positions[i].cx} y={positions[i].cy - 3} textAnchor="middle" fill="white" fontSize={b.r > 40 ? 10 : 8} fontWeight="700" style={{ pointerEvents: 'none' }}>{b.bin_label}</text>
+                                  <text x={positions[i].cx} y={positions[i].cy + 10} textAnchor="middle" fill="white" fontSize={b.r > 40 ? 11 : 8} fontFamily="monospace" opacity={0.9} style={{ pointerEvents: 'none' }}>{b.pct}%</text>
+                                </>)}
+                              </g>
+                            ))}
+                          </svg>
+                        </div></>)
+                      }
+
+                      // waffle
+                      const cells = 100
+                      const grid: (null | { idx: number; label: string })[] = []
+                      let ci = 0
+                      sorted.forEach((item, i) => {
+                        const count = Math.max(1, Math.round(item.pct))
+                        for (let j = 0; j < count && ci < cells; j++) grid[ci++] = { idx: i, label: item.bin_label }
+                      })
+                      while (grid.length < cells) grid.push(null)
+                      return (<>{kpiCards}<div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                        <div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 2 }}>
+                            {grid.map((cell, i) => (
+                              <div key={i} style={{ width: 24, height: 24, borderRadius: 3, background: cell ? SIZE_PALETTE[cell.idx % SIZE_PALETTE.length] + 'cc' : '#f0ede6' }} />
+                            ))}
+                          </div>
+                          <p style={{ fontSize: 9, color: '#9aaa9f', fontFamily: 'monospace', margin: '6px 0 0' }}>Each square ≈ 1%</p>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {sorted.map((item, i) => (
+                            <div key={item.bin_label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <div style={{ width: 10, height: 10, borderRadius: 2, background: SIZE_PALETTE[i % SIZE_PALETTE.length], flexShrink: 0 }} />
+                              <span style={{ fontSize: 11, color: '#3a4a40' }}>{item.bin_label}</span>
+                              <span style={{ fontSize: 10, color: '#9aaa9f', fontFamily: 'monospace', marginLeft: 'auto' }}>{item.pct}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div></>)
+                    })() : (
+                      <div style={s.loading}>No QC size data</div>
                     )}
                   </div>
                   {sizePctData.length > 0 && !qcLoading && (
@@ -809,45 +931,113 @@ export default function ProductionPage() {
                 </div>
 
                 {/* Quality Issues */}
-                <div style={{ ...s.card, flex: 1 }}>
-                  <div style={s.cardHeader}><span style={s.cardTitle}>QC Issues Breakdown</span></div>
-                  <div style={{ ...s.cardBody, height: issuePctData.length > 0 ? Math.max(160, issuePctData.length * 26 + 20) : 160 }}>
+                <div style={s.card}>
+                  <div style={s.cardHeader}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={s.cardTitle}>QC Issues</span>
+                      <span style={{ fontSize: 10, background: '#e85a4a', color: 'white', padding: '2px 8px', borderRadius: 20, fontFamily: 'monospace', fontWeight: 700, letterSpacing: 0.5 }}>DEFECTS</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {([['bars', 'Ranked Bars'], ['bubbles', 'Bubble Map'], ['waffle', 'Waffle']] as const).map(([key, label]) => (
+                        <button key={key} onClick={() => setIssueView(key)} style={{
+                          padding: '4px 12px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                          fontSize: 11, fontWeight: 600,
+                          background: issueView === key ? '#1c3a2a' : '#f0ede6',
+                          color: issueView === key ? 'white' : '#6a7a70',
+                        }}>{label}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={s.cardBody}>
                     {qcLoading ? (
                       <div style={s.loading}>Loading QC data...</div>
-                    ) : issuePctData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={issuePctData} layout="vertical" margin={{ left: 110, right: 45, top: 5, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e8e4dc" horizontal={false} />
-                          <XAxis type="number" tick={{ fontSize: 10, fill: '#9aaa9f' }} tickFormatter={(v: number) => `${v}%`} />
-                          <YAxis type="category" dataKey="pest_name" tick={{ fontSize: 10, fill: '#3a4a40' }} width={105} />
-                          <Tooltip content={({ active, payload }: any) => {
-                            if (!active || !payload?.length) return null
-                            const d = payload[0].payload
-                            return (
-                              <div style={{ background: '#1c3a2a', color: '#e8f0e0', padding: '10px 14px', borderRadius: 8, fontSize: 13 }}>
-                                <div style={{ fontWeight: 600, marginBottom: 4 }}>{d.pest_name}</div>
-                                <div>{d.pct}% of fruit ({d.total_count.toLocaleString('en-ZA')} count)</div>
-                                <div style={{ fontSize: 11, color: '#a8c0a0', marginTop: 2 }}>{d.bags_affected} bags affected</div>
-                              </div>
-                            )
-                          }} />
-                          <Bar dataKey="pct" name="% of fruit" radius={[0, 4, 4, 0]} maxBarSize={16}>
-                            {issuePctData.map((_, i) => (
-                              <Cell key={i} fill="#e85a4a" />
+                    ) : issuePctData.length > 0 ? (() => {
+                      const sorted = [...issuePctData].sort((a, b) => b.pct - a.pct)
+                      const top3 = sorted.slice(0, 3)
+                      const kpiCards = (
+                        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(top3.length, 3)}, 1fr)`, gap: 10, marginBottom: 16 }}>
+                          {top3.map((item, i) => (
+                            <div key={item.pest_id} style={{ background: '#fdf8f3', borderRadius: 8, padding: '10px 14px', borderLeft: `3px solid ${ISSUE_PALETTE[i]}` }}>
+                              <div style={{ fontSize: 9, color: '#9aaa9f', fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase' }}>#{i + 1} Top Issue</div>
+                              <div style={{ fontSize: 18, fontWeight: 700, color: ISSUE_PALETTE[i], fontFamily: 'monospace', margin: '2px 0' }}>{item.pct}%</div>
+                              <div style={{ fontSize: 12, color: '#1c3a2a', fontWeight: 600 }}>{item.pest_name}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )
+
+                      if (issueView === 'bars') {
+                        const maxPct = sorted[0]?.pct || 1
+                        return (<>{kpiCards}<div>{sorted.map((item, i) => (
+                          <div key={item.pest_id} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 48px', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                            <span style={{ textAlign: 'right', fontSize: 11, fontWeight: i < 3 ? 700 : 400, color: i < 3 ? '#1c3a2a' : '#5a6a60', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.pest_name}</span>
+                            <div style={{ position: 'relative', height: 20, background: '#f0ede6', borderRadius: 3 }}>
+                              <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${(item.pct / maxPct) * 100}%`, background: `linear-gradient(90deg, ${ISSUE_PALETTE[i % ISSUE_PALETTE.length]}dd, ${ISSUE_PALETTE[i % ISSUE_PALETTE.length]})`, borderRadius: 3, transition: 'width 0.5s ease' }} />
+                              {i === 0 && (item.pct / maxPct) * 100 < 85 && (
+                                <span style={{ position: 'absolute', left: `${(item.pct / maxPct) * 100 + 1.5}%`, top: '50%', transform: 'translateY(-50%)', fontSize: 8, color: ISSUE_PALETTE[0], fontWeight: 700, whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{'\u2190'} TOP</span>
+                              )}
+                            </div>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: ISSUE_PALETTE[i % ISSUE_PALETTE.length], fontFamily: 'monospace', textAlign: 'right' }}>{item.pct}%</span>
+                          </div>
+                        ))}</div></>)
+                      }
+
+                      if (issueView === 'bubbles') {
+                        const maxPct = sorted[0]?.pct || 1
+                        const MAX_R = 70, MIN_R = 14
+                        const bubbles = sorted.map((item, i) => ({
+                          ...item, r: Math.max(MIN_R, Math.sqrt(item.pct / maxPct) * MAX_R),
+                          color: ISSUE_PALETTE[i % ISSUE_PALETTE.length],
+                        }))
+                        const W = 500, H = 300
+                        const positions = circlePack(bubbles, W, H)
+                        return (<>{kpiCards}<div style={{ width: '100%', maxWidth: W, margin: '0 auto' }}>
+                          <svg width="100%" viewBox={`0 0 ${W} ${H}`}>
+                            {bubbles.map((b, i) => (
+                              <g key={b.pest_id}>
+                                <circle cx={positions[i].cx} cy={positions[i].cy} r={b.r} fill={b.color} opacity={0.88} />
+                                {b.r > 22 && (<>
+                                  <text x={positions[i].cx} y={positions[i].cy - 3} textAnchor="middle" fill="white" fontSize={b.r > 40 ? 10 : 8} fontWeight="700" style={{ pointerEvents: 'none' }}>{b.pest_name}</text>
+                                  <text x={positions[i].cx} y={positions[i].cy + 10} textAnchor="middle" fill="white" fontSize={b.r > 40 ? 11 : 8} fontFamily="monospace" opacity={0.9} style={{ pointerEvents: 'none' }}>{b.pct}%</text>
+                                </>)}
+                              </g>
                             ))}
-                            <LabelList dataKey="pct" position="right" style={{ fontSize: 9, fill: '#6a7a70' }} formatter={(v: any) => v > 0 ? `${v}%` : ''} />
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div style={s.loading}>No QC issue data for this season</div>
+                          </svg>
+                        </div></>)
+                      }
+
+                      // waffle
+                      const cells = 100
+                      const grid: (null | { idx: number; name: string })[] = []
+                      let ci = 0
+                      sorted.forEach((item, i) => {
+                        const count = Math.max(1, Math.round(item.pct))
+                        for (let j = 0; j < count && ci < cells; j++) grid[ci++] = { idx: i, name: item.pest_name }
+                      })
+                      while (grid.length < cells) grid.push(null)
+                      return (<>{kpiCards}<div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                        <div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 2 }}>
+                            {grid.map((cell, i) => (
+                              <div key={i} style={{ width: 24, height: 24, borderRadius: 3, background: cell ? ISSUE_PALETTE[cell.idx % ISSUE_PALETTE.length] + 'cc' : '#f0ede6' }} />
+                            ))}
+                          </div>
+                          <p style={{ fontSize: 9, color: '#9aaa9f', fontFamily: 'monospace', margin: '6px 0 0' }}>Each square ≈ 1% of fruit</p>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {sorted.map((item, i) => (
+                            <div key={item.pest_id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <div style={{ width: 10, height: 10, borderRadius: 2, background: ISSUE_PALETTE[i % ISSUE_PALETTE.length], flexShrink: 0 }} />
+                              <span style={{ fontSize: 11, color: '#3a4a40' }}>{item.pest_name}</span>
+                              <span style={{ fontSize: 10, color: '#9aaa9f', fontFamily: 'monospace', marginLeft: 'auto' }}>{item.pct}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div></>)
+                    })() : (
+                      <div style={s.loading}>No QC issue data</div>
                     )}
                   </div>
-                  {issuePctData.length > 0 && !qcLoading && (
-                    <div style={{ padding: '2px 24px 12px', fontSize: 11, color: '#9aaa9f' }}>
-                      % of total fruit sampled
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
