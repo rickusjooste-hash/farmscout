@@ -90,6 +90,7 @@ interface IssueRow {
   category: string
   total_count: number
   bags_affected: number
+  pct_of_fruit: number
 }
 
 type SortKey = 'name' | 'variety' | 'ha' | 'bins' | 'juice' | 'total' | 'tons' | 'tonHa' | 'binWeight'
@@ -619,9 +620,11 @@ export default function ProductionPage() {
       }
       if (!(mapContainerRef.current as any)._leaflet_id) {
         const map = L.map(mapContainerRef.current!, { zoomControl: true, attributionControl: false, scrollWheelZoom: true, maxZoom: 19 })
+        map.setView([-33.8, 19.1], 13) // Default: Western Cape
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, maxNativeZoom: 18 }).addTo(map)
         mapRef.current = map
-        setTimeout(() => map.invalidateSize(), 200)
+        setTimeout(() => { map.invalidateSize(); }, 200)
+        setTimeout(() => { map.invalidateSize(); }, 600)
         setMapReady(true)
       }
     })()
@@ -629,7 +632,7 @@ export default function ProductionPage() {
 
   // ── Draw polygons ─────────────────────────────────────────────────────
   useEffect(() => {
-    if (!mapReady || orchardAgg.length === 0) return
+    if (!mapReady || allOrchards.length === 0) return
     ;(async () => {
       const L = leafletRef.current
       const map = mapRef.current
@@ -673,7 +676,7 @@ export default function ProductionPage() {
       map.invalidateSize()
       if (layer.getBounds().isValid() && !selectedOrchardId) map.fitBounds(layer.getBounds(), { padding: [16, 16] })
     })()
-  }, [mapReady, orchardAgg, selectedOrchardId])
+  }, [mapReady, allOrchards, orchardAgg, selectedOrchardId])
 
   // Sort handler
   function handleSort(key: SortKey) {
@@ -785,11 +788,17 @@ export default function ProductionPage() {
                 ...b,
                 pct: totalFruit > 0 ? Math.round((b.fruit_count / totalFruit) * 1000) / 10 : 0,
               }))
-              const issuePctData = issueRows
-                .filter(r => r.category !== 'picking_issue')
+              const filteredIssues = issueRows.filter(r => r.category !== 'picking_issue')
+              const totalIssues = filteredIssues.reduce((s, r) => s + r.total_count, 0)
+              const issuePctData = filteredIssues
                 .map(r => ({
                   ...r,
-                  pct: totalFruit > 0 ? Math.round((r.total_count / totalFruit) * 1000) / 10 : 0,
+                  // Use pct_of_fruit from RPC when available, otherwise compute relative % among issues
+                  pct: r.pct_of_fruit > 0
+                    ? Math.round(r.pct_of_fruit * 10) / 10
+                    : totalIssues > 0
+                      ? Math.round((r.total_count / totalIssues) * 1000) / 10
+                      : 0,
                 }))
               return (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24, alignItems: 'stretch' }}>
