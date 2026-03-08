@@ -755,9 +755,7 @@ export default function ProductionPage() {
           )}
         </div>
 
-        {loading ? (
-          <div style={s.loading}>Loading production data...</div>
-        ) : (
+        {loading && <div style={{ textAlign: 'center', padding: '8px 0', fontSize: 13, color: '#9aaa9f' }}>Loading production data...</div>}
           <>
             {/* KPI Strip */}
             <div style={s.kpiStrip}>
@@ -811,8 +809,27 @@ export default function ProductionPage() {
                 }))
               return (
             <>
-            {/* QC panels side by side */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24, alignItems: 'start' }}>
+            {/* Map + QC panels — three columns */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24, marginBottom: 24, alignItems: 'start' }}>
+                {/* Orchard Map */}
+                <div style={{ ...s.card, display: 'flex', flexDirection: 'column' }}>
+                  <div style={s.cardHeader}><span style={s.cardTitle}>Orchard Map — Ton/Ha</span></div>
+                  <div ref={mapContainerRef} style={{ flex: 1, minHeight: 420, width: '100%' }} />
+                  <div style={{ padding: '6px 12px', display: 'flex', gap: 10, fontSize: 10, color: '#9aaa9f', flexWrap: 'wrap' }}>
+                    {[
+                      { color: '#2a6e45', label: '50+ t/ha' },
+                      { color: '#4caf72', label: '30–50' },
+                      { color: '#f5c842', label: '15–30' },
+                      { color: '#e85a4a', label: '<15' },
+                      { color: '#666', label: 'No data' },
+                    ].map(l => (
+                      <span key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: 2, background: l.color, display: 'inline-block' }} />
+                        {l.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
                 {/* Size Distribution */}
                 <div style={s.card}>
                   <div style={s.cardHeader}>
@@ -1172,30 +1189,7 @@ export default function ProductionPage() {
               </div>
             )}
           </>
-        )}
 
-        {/* Orchard Map — always rendered, not inside loading conditional */}
-        <div style={{ ...s.card, display: 'flex', flexDirection: 'column', marginBottom: 24 }}>
-          <div style={s.cardHeader}><span style={s.cardTitle}>Orchard Map — Ton/Ha</span></div>
-          <div
-            ref={mapContainerRef}
-            style={{ flex: 1, minHeight: 500, width: '100%' }}
-          />
-          <div style={{ padding: '8px 16px', display: 'flex', gap: 12, fontSize: 11, color: '#9aaa9f' }}>
-            {[
-              { color: '#2a6e45', label: '50+ t/ha' },
-              { color: '#4caf72', label: '30–50' },
-              { color: '#f5c842', label: '15–30' },
-              { color: '#e85a4a', label: '<15' },
-              { color: '#666', label: 'No data' },
-            ].map(l => (
-              <span key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ width: 10, height: 10, borderRadius: 3, background: l.color, display: 'inline-block' }} />
-                {l.label}
-              </span>
-            ))}
-          </div>
-        </div>
       </main>
 
       <style>{`
