@@ -314,13 +314,6 @@ export default function ProductionPage() {
     if (!contextLoaded || effectiveFarmIds.length === 0) return
     async function fetchData() {
       setLoading(true)
-      // Destroy existing map — container will be unmounted during loading
-      if (mapRef.current) {
-        mapRef.current.remove()
-        mapRef.current = null
-        geoLayerRef.current = null
-        setMapReady(false)
-      }
       try {
         let binsQ = supabase
           .from('production_bins')
@@ -619,13 +612,12 @@ export default function ProductionPage() {
       .sort((a, b) => b.bruising - a.bruising)
   }, [filteredBruising, orchardLookup])
 
-  // ── Init Leaflet map ────────────────────────────────────────────────────
+  // ── Init Leaflet map (container is always in DOM, init once) ────────────
   useEffect(() => {
-    if (mapReady || loading || !mapContainerRef.current) return
+    if (mapReady || !mapContainerRef.current) return
     ;(async () => {
       const L = (await import('leaflet')).default
       leafletRef.current = L
-      // Inject Leaflet CSS if not already present
       if (!document.querySelector('link[href*="leaflet"]')) {
         const link = document.createElement('link')
         link.rel = 'stylesheet'
@@ -634,7 +626,7 @@ export default function ProductionPage() {
       }
       if (!(mapContainerRef.current as any)._leaflet_id) {
         const map = L.map(mapContainerRef.current!, { zoomControl: true, attributionControl: false, scrollWheelZoom: true, maxZoom: 19 })
-        map.setView([-33.8, 19.1], 13) // Default: Western Cape
+        map.setView([-33.8, 19.1], 13)
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, maxNativeZoom: 18 }).addTo(map)
         mapRef.current = map
         setTimeout(() => { map.invalidateSize(); }, 200)
@@ -642,7 +634,7 @@ export default function ProductionPage() {
         setMapReady(true)
       }
     })()
-  }, [loading])
+  }, [])
 
   // ── Draw polygons ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -650,6 +642,7 @@ export default function ProductionPage() {
     ;(async () => {
       const L = leafletRef.current
       const map = mapRef.current
+      if (!L || !map) return
       if (geoLayerRef.current) geoLayerRef.current.remove()
 
       const { data: boundaryData } = await supabase.rpc('get_orchard_boundaries')
@@ -817,32 +810,9 @@ export default function ProductionPage() {
                       : 0,
                 }))
               return (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24, alignItems: 'stretch' }}>
-              {/* Map */}
-              <div style={{ ...s.card, display: 'flex', flexDirection: 'column' }}>
-                <div style={s.cardHeader}><span style={s.cardTitle}>Orchard Map — Ton/Ha</span></div>
-                <div
-                  ref={mapContainerRef}
-                  style={{ flex: 1, minHeight: 500, width: '100%' }}
-                />
-                <div style={{ padding: '8px 16px', display: 'flex', gap: 12, fontSize: 11, color: '#9aaa9f' }}>
-                  {[
-                    { color: '#2a6e45', label: '50+ t/ha' },
-                    { color: '#4caf72', label: '30–50' },
-                    { color: '#f5c842', label: '15–30' },
-                    { color: '#e85a4a', label: '<15' },
-                    { color: '#666', label: 'No data' },
-                  ].map(l => (
-                    <span key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span style={{ width: 10, height: 10, borderRadius: 3, background: l.color, display: 'inline-block' }} />
-                      {l.label}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* QC panels stacked */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <>
+            {/* QC panels side by side */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24, alignItems: 'start' }}>
                 {/* Size Distribution */}
                 <div style={s.card}>
                   <div style={s.cardHeader}>
@@ -1064,8 +1034,9 @@ export default function ProductionPage() {
                     )}
                   </div>
                 </div>
-              </div>
             </div>
+
+            </>
               )
             })()}
 
@@ -1202,6 +1173,29 @@ export default function ProductionPage() {
             )}
           </>
         )}
+
+        {/* Orchard Map — always rendered, not inside loading conditional */}
+        <div style={{ ...s.card, display: 'flex', flexDirection: 'column', marginBottom: 24 }}>
+          <div style={s.cardHeader}><span style={s.cardTitle}>Orchard Map — Ton/Ha</span></div>
+          <div
+            ref={mapContainerRef}
+            style={{ flex: 1, minHeight: 500, width: '100%' }}
+          />
+          <div style={{ padding: '8px 16px', display: 'flex', gap: 12, fontSize: 11, color: '#9aaa9f' }}>
+            {[
+              { color: '#2a6e45', label: '50+ t/ha' },
+              { color: '#4caf72', label: '30–50' },
+              { color: '#f5c842', label: '15–30' },
+              { color: '#e85a4a', label: '<15' },
+              { color: '#666', label: 'No data' },
+            ].map(l => (
+              <span key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 10, height: 10, borderRadius: 3, background: l.color, display: 'inline-block' }} />
+                {l.label}
+              </span>
+            ))}
+          </div>
+        </div>
       </main>
 
       <style>{`
