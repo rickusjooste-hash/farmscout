@@ -2,13 +2,20 @@
 /**
  * Sync BinsRecieving.xlsx into Supabase production tables.
  *
+ * Two modes for reading the Excel file:
+ *   1. Microsoft Graph API (default) — fetches directly from OneDrive, no local file needed
+ *      Requires: GRAPH_TENANT_ID, GRAPH_CLIENT_ID, GRAPH_CLIENT_SECRET, GRAPH_USER_EMAIL in .env.local
+ *   2. Local file (--local flag or --file <path>) — reads from disk (requires OneDrive sync)
+ *
  * Usage:
- *   node scripts/sync-bins-receiving.mjs [--dry-run] [--sheet BinsRec|Bruising|Packing] [--watch] [--file <path>]
+ *   node scripts/sync-bins-receiving.mjs [--dry-run] [--sheet BinsRec|Bruising|Packing] [--watch] [--local] [--file <path>]
+ *   node scripts/sync-bins-receiving.mjs --watch              # Graph API, poll every 60s
+ *   node scripts/sync-bins-receiving.mjs --watch --local      # Local file, watch for changes
  *
  * Requires: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local
  */
 
-import { readFileSync, watchFile } from 'fs'
+import { readFileSync, watchFile, existsSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import XLSX from 'xlsx'
@@ -39,6 +46,7 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
 // ── CLI flags ───────────────────────────────────────────────────────────────
 const DRY_RUN    = process.argv.includes('--dry-run')
 const WATCH_MODE = process.argv.includes('--watch')
+const FORCE_LOCAL = process.argv.includes('--local')
 const ONLY_SHEET = (() => {
   const idx = process.argv.indexOf('--sheet')
   return idx >= 0 ? process.argv[idx + 1] : null
@@ -48,8 +56,89 @@ const FILE_PATH = (() => {
   return idx >= 0 ? process.argv[idx + 1]
     : 'C:\\Users\\rickus.MOUTONSVALLEY\\OneDrive - Moutons Valley Trust\\Attachments\\BinsRecieving.xlsx'
 })()
+const POLL_INTERVAL_MS = (() => {
+  const idx = process.argv.indexOf('--interval')
+  return idx >= 0 ? parseInt(process.argv[idx + 1]) * 1000 : 60_000 // default 60s
+})()
+
+// ── Microsoft Graph API config ──────────────────────────────────────────────
+const GRAPH_TENANT_ID    = process.env.GRAPH_TENANT_ID
+const GRAPH_CLIENT_ID    = process.env.GRAPH_CLIENT_ID
+const GRAPH_CLIENT_SECRET = process.env.GRAPH_CLIENT_SECRET
+const GRAPH_USER_EMAIL   = process.env.GRAPH_USER_EMAIL
+const GRAPH_FILE_PATH    = process.env.GRAPH_FILE_PATH || '/Attachments/BinsRecieving.xlsx'
+
+const USE_GRAPH = !FORCE_LOCAL && GRAPH_TENANT_ID && GRAPH_CLIENT_ID && GRAPH_CLIENT_SECRET && GRAPH_USER_EMAIL
 
 const ORG_ID = '93d1760e-a484-4379-95fb-6cad294e2191'
+
+// ── Graph API helpers ───────────────────────────────────────────────────────
+
+let graphTokenCache = { token: null, expiresAt: 0 }
+
+async function getGraphAccessToken() {
+  // Reuse cached token if still valid (with 5min buffer)
+  if (graphTokenCache.token && Date.now() < graphTokenCache.expiresAt - 300_000) {
+    return graphTokenCache.token
+  }
+
+  const resp = await fetch(
+    `https://login.microsoftonline.com/${GRAPH_TENANT_ID}/oauth2/v2.0/token`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: GRAPH_CLIENT_ID,
+        client_secret: GRAPH_CLIENT_SECRET,
+        scope: 'https://graph.microsoft.com/.default',
+      }),
+    }
+  )
+
+  const data = await resp.json()
+  if (!data.access_token) {
+    throw new Error(`Graph auth failed: ${data.error_description || data.error || JSON.stringify(data)}`)
+  }
+
+  graphTokenCache = {
+    token: data.access_token,
+    expiresAt: Date.now() + (data.expires_in || 3600) * 1000,
+  }
+  return data.access_token
+}
+
+async function downloadWorkbookFromGraph() {
+  const token = await getGraphAccessToken()
+
+  // URL-encode the file path (spaces, special chars)
+  const encodedPath = GRAPH_FILE_PATH.split('/').map(encodeURIComponent).join('/')
+  const url = `https://graph.microsoft.com/v1.0/users/${GRAPH_USER_EMAIL}/drive/root:${encodedPath}:/content`
+
+  console.log(`  Downloading from Graph API: ${GRAPH_FILE_PATH}`)
+  const resp = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => '')
+    throw new Error(`Graph download failed: ${resp.status} ${resp.statusText} — ${body.slice(0, 200)}`)
+  }
+
+  const buffer = Buffer.from(await resp.arrayBuffer())
+  console.log(`  Downloaded ${(buffer.length / 1024).toFixed(0)} KB`)
+  return XLSX.read(buffer, { type: 'buffer' })
+}
+
+// ── Workbook loader (Graph or local) ────────────────────────────────────────
+
+async function loadWorkbook() {
+  if (USE_GRAPH) {
+    return await downloadWorkbookFromGraph()
+  }
+  console.log(`  Reading local file: ${FILE_PATH}`)
+  return XLSX.readFile(FILE_PATH)
+}
 
 // ── Reference data caches ───────────────────────────────────────────────────
 let orchardsByLegacy = {} // legacy_id → { id, farm_id }
@@ -81,8 +170,9 @@ async function loadReferenceData() {
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function excelDateToJS(serial) {
-  const epoch = new Date(1899, 11, 30)
-  return new Date(epoch.getTime() + serial * 86400000)
+  // Use UTC to avoid timezone offset shifting the date by -1 day
+  const epoch = Date.UTC(1899, 11, 30)
+  return new Date(epoch + serial * 86400000)
 }
 
 function parseDate(serial) {
@@ -404,7 +494,7 @@ async function runSync(recentOnly = false) {
   console.log(`\n[${ts()}] Starting sync${recentOnly ? ' (recent rows only)' : ' (full)'}...`)
 
   try {
-    const wb = XLSX.readFile(FILE_PATH)
+    const wb = await loadWorkbook()
     console.log(`  Sheets: ${wb.SheetNames.join(', ')}`)
 
     const sheets = ONLY_SHEET ? [ONLY_SHEET] : ['BinsRec', 'Bruising', 'Packing']
@@ -426,7 +516,7 @@ async function runSync(recentOnly = false) {
 
 async function main() {
   console.log('BinsRecieving.xlsx → Supabase Sync')
-  console.log(`  File: ${FILE_PATH}`)
+  console.log(`  Source: ${USE_GRAPH ? `Graph API (${GRAPH_USER_EMAIL} → ${GRAPH_FILE_PATH})` : `Local file (${FILE_PATH})`}`)
   console.log(`  Dry run: ${DRY_RUN}`)
   if (ONLY_SHEET) console.log(`  Only sheet: ${ONLY_SHEET}`)
   if (WATCH_MODE) console.log(`  Watch mode: enabled`)
@@ -436,16 +526,14 @@ async function main() {
   // Initial sync — full on manual run, recent-only if starting in watch mode
   await runSync(WATCH_MODE)
 
-  // Watch mode — monitor file for changes, sync only recent rows
+  // Watch mode
   if (WATCH_MODE) {
-    console.log(`\nWatching ${FILE_PATH} for changes (polling every 5s, 10s debounce, last 2 days only)...`)
-    let debounceTimer = null
+    if (USE_GRAPH) {
+      // Graph API mode: poll on interval (no file system to watch)
+      console.log(`\nPolling Graph API every ${POLL_INTERVAL_MS / 1000}s for changes (last 2 days only)...`)
+      console.log(`  Tip: use --interval <seconds> to change poll frequency`)
 
-    watchFile(FILE_PATH, { interval: 5000 }, () => {
-      console.log(`[${ts()}] File change detected, waiting for debounce...`)
-      if (debounceTimer) clearTimeout(debounceTimer)
-      debounceTimer = setTimeout(async () => {
-        debounceTimer = null
+      setInterval(async () => {
         try {
           // Reload reference data in case orchards were added
           orchardsByLegacy = {}
@@ -453,10 +541,31 @@ async function main() {
           await loadReferenceData()
           await runSync(true) // recent rows only
         } catch (err) {
-          console.error(`[${ts()}] Watch sync error:`, err.message)
+          console.error(`[${ts()}] Poll sync error:`, err.message)
         }
-      }, 10000)
-    })
+      }, POLL_INTERVAL_MS)
+    } else {
+      // Local file mode: watch for file system changes
+      console.log(`\nWatching ${FILE_PATH} for changes (polling every 5s, 10s debounce, last 2 days only)...`)
+      let debounceTimer = null
+
+      watchFile(FILE_PATH, { interval: 5000 }, () => {
+        console.log(`[${ts()}] File change detected, waiting for debounce...`)
+        if (debounceTimer) clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(async () => {
+          debounceTimer = null
+          try {
+            // Reload reference data in case orchards were added
+            orchardsByLegacy = {}
+            farmsByCode = {}
+            await loadReferenceData()
+            await runSync(true) // recent rows only
+          } catch (err) {
+            console.error(`[${ts()}] Watch sync error:`, err.message)
+          }
+        }, 10000)
+      })
+    }
   }
 }
 

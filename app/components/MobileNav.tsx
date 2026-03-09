@@ -194,6 +194,9 @@ export default function MobileNav({ isSuperAdmin, modules = ['farmscout'] }: Mob
         <Link href="/orchards" className={`mnav-sheet-item${isActive('/orchards') ? ' active' : ''}`}>
           <span className="mnav-sheet-icon">{'\u{1F3E1}'}</span> Orchards
         </Link>
+        <Link href="/orchards/analysis" className={`mnav-sheet-item${isActive('/orchards/analysis') ? ' active' : ''}`}>
+          <span className="mnav-sheet-icon">{'\u{1F4C8}'}</span> Analysis
+        </Link>
         <Link href="/pests" className={`mnav-sheet-item${isActive('/pests') ? ' active' : ''}`}>
           <span className="mnav-sheet-icon">{'\u{1F41B}'}</span> Pests
         </Link>

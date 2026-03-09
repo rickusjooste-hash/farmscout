@@ -30,6 +30,7 @@ export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], 
       {/* FarmScout section */}
       <a href="/" className={cls('/')}><span className="ms-nav-icon">📊</span> Dashboard</a>
       <a href="/orchards" className={cls('/orchards')}><span className="ms-nav-icon">🏡</span> Orchards</a>
+      <a href="/orchards/analysis" className={cls('/orchards/analysis')} style={{ paddingLeft: 28, fontSize: 13 }}><span>📈</span> Analysis</a>
       <a href="/pests" className={cls('/pests')}><span className="ms-nav-icon">🐛</span> Pests</a>
       <a href="/trap-inspections" className={cls('/trap-inspections')}><span className="ms-nav-icon">🪤</span> Trap Inspections</a>
       <a href="/inspections" className={cls('/inspections')}><span className="ms-nav-icon">🔍</span> Inspections</a>
