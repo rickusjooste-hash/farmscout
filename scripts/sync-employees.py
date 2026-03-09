@@ -42,9 +42,10 @@ ORG_ID       = '93d1760e-a484-4379-95fb-6cad294e2191'
 DSN          = 'fcs_db2'
 
 # FCS COMPANYNAME → Supabase farm_id mapping
+# FCS LEVEL1NAME → Supabase farm_id mapping
 COMPANY_FARM_MAP = {
-    "STAWELKLIP":      "10b61388-8abf-4ff3-86de-bacaac7c004d",
-    "MOUTON'S VALLEY": "1a52f7f3-aeab-475c-a6e9-53a5e302fddb",
+    "STAWELKLIP (PTY) LTD": "10b61388-8abf-4ff3-86de-bacaac7c004d",
+    "MOUTONS VALLEY":       "1a52f7f3-aeab-475c-a6e9-53a5e302fddb",
 }
 
 # Read service key from .env.local
@@ -90,9 +91,9 @@ def sync():
                     SURNAME,
                     LEVEL3NAME,
                     TAGNUMBER,
-                    COMPANYNAME
+                    LEVEL1NAME
                 FROM VW_X_EMP_DETAILED
-                WHERE ENDDATE IS NULL
+                WHERE TERMINATIONREASON = 'Active'
             """)
             rows = cursor.fetchall()
     except pyodbc.Error as exc:
@@ -133,6 +134,16 @@ def sync():
             'is_active':       True,
             'synced_at':       synced_at,
         }
+
+    # Deduplicate rfid_tags — set to None if multiple employees share the same tag
+    tag_counts = {}
+    for rec in seen.values():
+        t = rec['rfid_tag']
+        if t:
+            tag_counts[t] = tag_counts.get(t, 0) + 1
+    for rec in seen.values():
+        if rec['rfid_tag'] and tag_counts.get(rec['rfid_tag'], 0) > 1:
+            rec['rfid_tag'] = None
 
     if skipped_companies:
         log.warning("Skipped companies not in mapping: %s", skipped_companies)
