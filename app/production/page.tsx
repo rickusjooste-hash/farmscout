@@ -37,6 +37,8 @@ interface BruisingRow {
   stem_pct: number | null
   injury_pct: number | null
   bin_weight_kg: number | null
+  team: string | null
+  team_name: string | null
 }
 
 interface BinWeight {
@@ -70,6 +72,8 @@ interface BruisingAgg {
   orchard_id: string | null
   name: string
   variety: string | null
+  team: string | null
+  teamName: string | null
   samples: number
   bruising: number
   stem: number
@@ -326,7 +330,7 @@ export default function ProductionPage() {
 
         let bruisingQ = supabase
           .from('production_bruising')
-          .select('orchard_id, orchard_name, variety, bruising_pct, stem_pct, injury_pct, bin_weight_kg, received_date')
+          .select('orchard_id, orchard_name, variety, bruising_pct, stem_pct, injury_pct, bin_weight_kg, received_date, team, team_name')
           .eq('season', season)
           .in('farm_id', effectiveFarmIds)
         if (filterDate) bruisingQ = bruisingQ.eq('received_date', filterDate)
@@ -580,13 +584,15 @@ export default function ProductionPage() {
       .map(o => ({ name: o.name, tonHa: o.tonHa }))
   }, [orchardAgg])
 
-  // Bruising summary
+  // Bruising summary — grouped by orchard + team
   const bruisingSummary = useMemo(() => {
-    const map: Record<string, { bruisingSum: number; stemSum: number; injurySum: number; weightSum: number; weightCount: number; count: number; name: string; variety: string | null; orchardId: string | null }> = {}
+    const map: Record<string, { bruisingSum: number; stemSum: number; injurySum: number; weightSum: number; weightCount: number; count: number; name: string; variety: string | null; orchardId: string | null; team: string | null; teamName: string | null }> = {}
     filteredBruising.forEach(row => {
-      const key = row.orchard_id || `_${row.orchard_name}`
+      const orchardKey = row.orchard_id || `_${row.orchard_name}`
+      const teamKey = row.team || '_none'
+      const key = `${orchardKey}::${teamKey}`
       if (!map[key]) {
-        map[key] = { bruisingSum: 0, stemSum: 0, injurySum: 0, weightSum: 0, weightCount: 0, count: 0, name: row.orchard_name, variety: row.variety, orchardId: row.orchard_id }
+        map[key] = { bruisingSum: 0, stemSum: 0, injurySum: 0, weightSum: 0, weightCount: 0, count: 0, name: row.orchard_name, variety: row.variety, orchardId: row.orchard_id, team: row.team, teamName: row.team_name }
       }
       map[key].count++
       map[key].bruisingSum += row.bruising_pct || 0
@@ -605,6 +611,8 @@ export default function ProductionPage() {
           orchard_id: val.orchardId,
           name: o?.name || val.name,
           variety: o?.variety || val.variety,
+          team: val.team,
+          teamName: val.teamName,
           samples: val.count,
           bruising: Math.round((val.bruisingSum / val.count) * 100) / 100,
           stem: Math.round((val.stemSum / val.count) * 100) / 100,
@@ -788,6 +796,13 @@ export default function ProductionPage() {
                 { label: 'Avg Ton/Ha', value: kpis.avgTonHa != null ? kpis.avgTonHa.toFixed(1) : '–', sub: null },
                 { label: 'Total Juice', value: kpis.totalJuice.toLocaleString('en-ZA'), sub: null },
                 { label: 'Avg Bin Weight', value: `${kpis.avgBinWeight} kg`, sub: null },
+                (() => {
+                  const withBruising = filteredBruising.filter(b => b.bruising_pct != null)
+                  const avg = withBruising.length > 0
+                    ? withBruising.reduce((s, b) => s + (b.bruising_pct || 0), 0) / withBruising.length
+                    : null
+                  return { label: 'Avg Bruising', value: avg != null ? `${avg.toFixed(1)}%` : '–', sub: withBruising.length > 0 ? `${withBruising.length} samples` : null, color: avg != null ? qualityColor(avg) : undefined }
+                })(),
                 { label: 'Orchards', value: String(kpis.orchards), sub: 'harvested' },
                 (() => {
                   const totalFruit = sizeBins.reduce((sum, b) => sum + b.fruit_count, 0)
@@ -801,11 +816,11 @@ export default function ProductionPage() {
                   const class1 = packable > 0 ? Math.round((packable - qcDefects) / packable * 1000) / 10 : null
                   return { label: 'Class 1 %', value: class1 != null ? `${class1}%` : '–', sub: packable > 0 ? `${packable.toLocaleString('en-ZA')} packable` : null }
                 })(),
-              ].map((kpi, i) => (
+              ].map((kpi: any, i: number) => (
                 <div key={i} style={s.kpiCard}>
                   <div style={s.kpiAccent as any} />
                   <div style={s.kpiLabel}>{kpi.label}</div>
-                  <div style={s.kpiValue}>{kpi.value}</div>
+                  <div style={{ ...s.kpiValue, ...(kpi.color ? { color: kpi.color } : {}) }}>{kpi.value}</div>
                   {kpi.sub && <div style={s.kpiSub}>{kpi.sub}</div>}
                 </div>
               ))}
@@ -1126,6 +1141,40 @@ export default function ProductionPage() {
               </div>
             </div>
 
+            {/* Quality Summary (Bruising) — per team */}
+            {bruisingSummary.length > 0 && (
+              <div style={s.card}>
+                <div style={s.cardHeader}><span style={s.cardTitle}>Quality Summary (Bruising)</span></div>
+                <div style={{ overflowX: 'auto', maxHeight: 460, overflowY: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: '#f7f5f0', position: 'sticky' as const, top: 0, zIndex: 1 }}>
+                        {['Orchard', 'Variety', 'Team', 'Samples', 'Bruising %', 'Stem %', 'Injury %', 'Avg Weight'].map(h => (
+                          <th key={h} style={{ padding: '10px 8px', textAlign: h === 'Orchard' || h === 'Variety' || h === 'Team' ? 'left' : 'right', fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid #e8e4dc' }}>
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bruisingSummary.map((b, i) => (
+                        <tr key={`${b.orchard_id || ''}-${b.team || ''}-${i}`} style={{ borderBottom: '1px solid #f0ede6' }}>
+                          <td style={{ padding: '9px 8px', fontWeight: 500 }}>{b.name}</td>
+                          <td style={{ padding: '9px 8px', color: '#6a7a70' }}>{b.variety || '–'}</td>
+                          <td style={{ padding: '9px 8px', color: '#6a7a70' }}>{b.teamName || b.team || '–'}</td>
+                          <td style={{ padding: '9px 8px', textAlign: 'right' }}>{b.samples}</td>
+                          <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 600, color: qualityColor(b.bruising) }}>{b.bruising.toFixed(1)}%</td>
+                          <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 600, color: qualityColor(b.stem) }}>{b.stem.toFixed(1)}%</td>
+                          <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 600, color: qualityColor(b.injury) }}>{b.injury.toFixed(1)}%</td>
+                          <td style={{ padding: '9px 8px', textAlign: 'right', color: '#6a7a70' }}>{b.avgWeight ? `${b.avgWeight} kg` : '–'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {/* Charts row */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
               {/* Ton/Ha Bar Chart */}
@@ -1178,39 +1227,6 @@ export default function ProductionPage() {
                 </div>
               </div>
             </div>
-
-            {/* Quality Summary */}
-            {bruisingSummary.length > 0 && (
-              <div style={s.card}>
-                <div style={s.cardHeader}><span style={s.cardTitle}>Quality Summary (Bruising)</span></div>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                    <thead>
-                      <tr style={{ background: '#f7f5f0' }}>
-                        {['Orchard', 'Variety', 'Samples', 'Bruising %', 'Stem %', 'Injury %', 'Avg Weight'].map(h => (
-                          <th key={h} style={{ padding: '10px 8px', textAlign: h === 'Orchard' || h === 'Variety' ? 'left' : 'right', fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid #e8e4dc' }}>
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {bruisingSummary.map((b, i) => (
-                        <tr key={b.orchard_id || i} style={{ borderBottom: '1px solid #f0ede6' }}>
-                          <td style={{ padding: '9px 8px', fontWeight: 500 }}>{b.name}</td>
-                          <td style={{ padding: '9px 8px', color: '#6a7a70' }}>{b.variety || '–'}</td>
-                          <td style={{ padding: '9px 8px', textAlign: 'right' }}>{b.samples}</td>
-                          <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 600, color: qualityColor(b.bruising) }}>{b.bruising.toFixed(1)}%</td>
-                          <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 600, color: qualityColor(b.stem) }}>{b.stem.toFixed(1)}%</td>
-                          <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 600, color: qualityColor(b.injury) }}>{b.injury.toFixed(1)}%</td>
-                          <td style={{ padding: '9px 8px', textAlign: 'right', color: '#6a7a70' }}>{b.avgWeight ? `${b.avgWeight} kg` : '–'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
           </>
 
       </main>
