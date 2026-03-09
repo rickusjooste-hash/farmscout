@@ -154,7 +154,7 @@ function ScatterTooltip({ active, payload }: any) {
       <div>Ha: <strong>{d.ha?.toFixed(1) || '—'}</strong></div>
       {d.bandMedian > 0 && d.tonHa != null && d.tonHa > 0 && (
         <div style={{ marginTop: 4, fontSize: 11, color: d.tonHa >= d.bandMedian ? '#a8d5a2' : '#f5c842' }}>
-          Band median: {d.bandMedian.toFixed(1)} t/ha
+          {d.avgYears || 1}yr avg median: {d.bandMedian.toFixed(1)} t/ha
           ({d.tonHa >= d.bandMedian ? 'above' : `${Math.round((1 - d.tonHa / d.bandMedian) * 100)}% below`})
         </div>
       )}
@@ -216,13 +216,34 @@ export default function OrchardAgeAnalysis({
     return stats
   }, [withAge])
 
+  // ── Multi-year average median per band (for dashed lines) ────────────
+  const avgBandMedians = useMemo(() => {
+    const result: Record<string, number> = {}
+    if (!historicalMedians || historicalMedians.length === 0) {
+      // Fallback to current season only
+      AGE_BANDS.forEach(b => { result[b.key] = bandStats[b.key]?.medianTonHa || 0 })
+      return result
+    }
+    AGE_BANDS.forEach(b => {
+      const values = historicalMedians
+        .map(h => h.bands[b.key])
+        .filter((v): v is number => v != null && v > 0)
+      result[b.key] = values.length > 0
+        ? Math.round(values.reduce((s, v) => s + v, 0) / values.length * 10) / 10
+        : bandStats[b.key]?.medianTonHa || 0
+    })
+    return result
+  }, [historicalMedians, bandStats])
+
+  const avgYears = historicalMedians?.length || 1
+
   // ── Scatter data ──────────────────────────────────────────────────────
   const scatterData = useMemo(() =>
     withAge
       .filter(o => o.age > 0)
       .map(o => {
         const band = getBand(o.age)
-        const bm = bandStats[band.key]?.medianTonHa || 0
+        const bm = avgBandMedians[band.key] || 0
         return {
           age: o.age,
           tonHa: o.tonHa ?? 0,
@@ -234,16 +255,19 @@ export default function OrchardAgeAnalysis({
           bandKey: band.key,
           bandColor: band.color,
           bandMedian: bm,
+          avgYears,
           isProblem: o.tonHa != null && bm > 0 && o.tonHa < bm * 0.6 && o.age > 4,
         }
       }),
-    [withAge, bandStats]
+    [withAge, avgBandMedians]
   )
 
   // ── Problems ──────────────────────────────────────────────────────────
   const problems = useMemo(
-    () => detectProblems(withAge, bandStats),
-    [withAge, bandStats]
+    () => detectProblems(withAge, Object.fromEntries(
+      AGE_BANDS.map(b => [b.key, { medianTonHa: avgBandMedians[b.key] || 0 }])
+    )),
+    [withAge, avgBandMedians]
   )
 
   // ── Distribution bar widths ───────────────────────────────────────────
@@ -330,7 +354,7 @@ export default function OrchardAgeAnalysis({
           <div style={{ fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
             Productivity by Age
             <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 8 }}>
-              — dots sized by hectares
+              — dots sized by hectares, dashed lines = {avgYears}-season avg median
             </span>
           </div>
           <ResponsiveContainer width="100%" height={280}>
@@ -367,16 +391,16 @@ export default function OrchardAgeAnalysis({
                   )
                 })}
               </Scatter>
-              {/* Band median reference lines */}
-              {AGE_BANDS.filter(b => bandStats[b.key]?.medianTonHa > 0 && bandStats[b.key]?.count >= 2).map(b => {
-                const s = bandStats[b.key]
+              {/* Band average median reference lines (multi-year) */}
+              {AGE_BANDS.filter(b => avgBandMedians[b.key] > 0).map(b => {
+                const avg = avgBandMedians[b.key]
                 const midAge = b.key === 'aging' ? Math.min(b.min + 10, 45) : (b.min + b.max) / 2
                 return (
                   <Scatter
                     key={`ref-${b.key}`}
                     data={[
-                      { age: b.min, tonHa: s.medianTonHa, ha: 0 },
-                      { age: b.key === 'aging' ? midAge * 2 : b.max, tonHa: s.medianTonHa, ha: 0 },
+                      { age: b.min, tonHa: avg, ha: 0 },
+                      { age: b.key === 'aging' ? midAge * 2 : b.max, tonHa: avg, ha: 0 },
                     ]}
                     line={{ stroke: b.color, strokeDasharray: '4 3', strokeWidth: 1.5, strokeOpacity: 0.5 }}
                     shape={() => null}

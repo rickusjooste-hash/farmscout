@@ -184,23 +184,17 @@ export default function OrchardAnalysisPage() {
     async function fetchData() {
       setLoading(true)
       try {
-        const prevSeason = previousSeason(season)
-        const prev2Season = previousSeason(prevSeason)
-        const [orchRes, boundRes, prodRes, prevProdRes, prev2ProdRes, bruRes, weekRes] = await Promise.all([
+        // Build 5 seasons for historical comparison
+        const histSeasons: string[] = [season]
+        for (let i = 0; i < 4; i++) histSeasons.push(previousSeason(histSeasons[histSeasons.length - 1]))
+        const prevSeason = histSeasons[1]
+
+        const [orchRes, boundRes, bruRes, weekRes, ...histProdResults] = await Promise.all([
           supabase.from('orchards')
             .select('id, name, variety, variety_group, rootstock, ha, year_planted, nr_of_trees, commodity_id, farm_id, commodities(name, code)')
             .in('farm_id', effectiveFarmIds)
             .eq('is_active', true),
           supabase.rpc('get_orchard_boundaries'),
-          hasProduction
-            ? supabase.rpc('get_production_summary', { p_farm_ids: effectiveFarmIds, p_season: season })
-            : Promise.resolve({ data: [] }),
-          hasProduction
-            ? supabase.rpc('get_production_summary', { p_farm_ids: effectiveFarmIds, p_season: prevSeason })
-            : Promise.resolve({ data: [] }),
-          hasProduction
-            ? supabase.rpc('get_production_summary', { p_farm_ids: effectiveFarmIds, p_season: prev2Season })
-            : Promise.resolve({ data: [] }),
           hasProduction
             ? supabase.rpc('get_production_bruising_summary', { p_farm_ids: effectiveFarmIds, p_season: season })
             : Promise.resolve({ data: [] }),
@@ -212,6 +206,12 @@ export default function OrchardAnalysisPage() {
                 .not('week_num', 'is', null)
                 .order('week_num')
             : Promise.resolve({ data: [] }),
+          // Fetch all 5 seasons of production data in parallel
+          ...histSeasons.map(s =>
+            hasProduction
+              ? supabase.rpc('get_production_summary', { p_farm_ids: effectiveFarmIds, p_season: s })
+              : Promise.resolve({ data: [] })
+          ),
         ])
 
         const rawOrchards = (orchRes.data || []) as unknown as OrchardRaw[]
@@ -219,13 +219,13 @@ export default function OrchardAnalysisPage() {
         // Filter boundaries to user's orchards
         const orchardIds = new Set(rawOrchards.map(o => o.id))
         setBoundaries((boundRes.data || []).filter((b: any) => orchardIds.has(b.id)))
-        setProduction((prodRes.data || []) as ProductionRow[])
-        setPrevProduction((prevProdRes.data || []) as ProductionRow[])
-        setHistoricalProduction({
-          [season]: (prodRes.data || []) as ProductionRow[],
-          [prevSeason]: (prevProdRes.data || []) as ProductionRow[],
-          [prev2Season]: (prev2ProdRes.data || []) as ProductionRow[],
+        const histProdMap: Record<string, ProductionRow[]> = {}
+        histSeasons.forEach((s, i) => {
+          histProdMap[s] = ((histProdResults[i] as any)?.data || []) as ProductionRow[]
         })
+        setProduction(histProdMap[season] || [])
+        setPrevProduction(histProdMap[prevSeason] || [])
+        setHistoricalProduction(histProdMap)
         setBruising((bruRes.data || []) as BruisingRow[])
 
         // Group weekly bins by orchard (for sparklines)
