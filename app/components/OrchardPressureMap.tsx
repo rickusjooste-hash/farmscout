@@ -403,13 +403,21 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
           padding: 4px 10px !important; font-family: 'Inter', sans-serif !important;
         }
         .opm-tooltip::before { display: none !important; }
+        @keyframes opm-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
         @media (max-width: 768px) {
-          .opm-body { flex-direction: column !important; height: auto !important; }
-          .opm-map { flex: none !important; height: 280px !important; width: 100% !important; }
-          .opm-table-panel { flex: none !important; width: 100% !important; border-left: none !important; border-top: 1px solid #e8e4dc; max-height: 300px; }
+          .opm-body { flex-direction: column-reverse !important; height: auto !important; }
+          .opm-map { flex: none !important; height: 50vh !important; width: 100% !important; margin: 0 !important; padding: 0 !important; border-radius: 0 !important; }
+          .opm-table-panel { flex: none !important; width: 100% !important; border-left: none !important; border-top: none !important; border-bottom: 1px solid #e8e4dc; max-height: 300px; }
           .opm-header { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
           .opm-pills { margin-left: 0 !important; overflow-x: auto; flex-wrap: nowrap !important; -webkit-overflow-scrolling: touch; }
           .opm-chart-container { height: 180px; }
+          .opm-summary-table thead { display: none !important; }
+          .opm-summary-table tr {
+            display: flex !important; flex-wrap: wrap !important;
+            padding: 12px 16px !important; border-bottom: 1px solid #f0ede6 !important;
+            gap: 4px 12px !important;
+          }
+          .opm-summary-table td { border-bottom: none !important; padding: 0 !important; }
         }
         .opm-th {
           position: sticky; top: 0; background: #f9f7f3; text-align: left;
@@ -508,11 +516,15 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {selectedOrchardId ? (
                 loadingDetail ? (
-                  <div style={{ padding: 32, textAlign: 'center', color: '#9aaa9f', fontSize: 13 }}>Loading…</div>
+                  <div style={{ padding: 16 }}>
+                    {[0, 1, 2].map(i => (
+                      <div key={i} style={{ height: 40, background: '#f4f1eb', borderRadius: 8, marginBottom: 8, animation: 'opm-pulse 1.5s ease infinite' }} />
+                    ))}
+                  </div>
                 ) : trapDetail.length === 0 ? (
                   <div style={{ padding: 32, textAlign: 'center', color: '#9aaa9f', fontSize: 13 }}>No trap data this week.</div>
                 ) : (
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <table className="opm-summary-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead><tr>
                       <th className="opm-th">Trap</th>
                       <th className="opm-th">Count</th>
@@ -538,7 +550,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
                 orchardsSorted.length === 0 ? (
                   <div style={{ padding: 32, textAlign: 'center', color: '#9aaa9f', fontSize: 13 }}>No trap data for this week.</div>
                 ) : (
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <table className="opm-summary-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead><tr>
                       <th className="opm-th">Orchard</th>
                       <th className="opm-th">Count</th>
@@ -587,8 +599,8 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
               Season Trap Counts by Week{selectedPest ? ` · ${selectedPest.name}` : ''}
             </div>
             {chartLoading ? (
-              <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9aaa9f', fontSize: 13 }}>
-                Loading chart…
+              <div style={{ padding: 16 }}>
+                <div style={{ height: 180, background: '#f4f1eb', borderRadius: 8, animation: 'opm-pulse 1.5s ease infinite' }} />
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={220}>

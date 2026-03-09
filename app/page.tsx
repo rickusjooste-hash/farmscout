@@ -581,21 +581,59 @@ export default function DashboardPage() {
           color: #1c3a2a;
           background: #f4f1eb;
         }
+
+        /* ===== Dashboard mobile responsive (dash- prefix) ===== */
+
+        /* General mobile — tablets + phones */
+        @media (max-width: 768px) {
+          .dash-main {
+            padding: 16px 12px 80px 12px !important;
+          }
+          .dash-page-header {
+            padding-top: env(safe-area-inset-top, 0px);
+          }
+          .dash-mobile-reorder {
+            display: flex;
+            flex-direction: column;
+          }
+          .dash-section-alerts { order: 1; }
+          .dash-section-weeks  { order: 2; }
+          .dash-section-map    { order: 3; }
+          .dash-section-tree   { order: 4; }
+          .dash-section-trend  { order: 5; }
+          .dash-section-rebait { order: 6; }
+
+          .dash-expand-btn {
+            min-height: 44px !important;
+            min-width: 44px !important;
+            justify-content: center !important;
+          }
+        }
+
+        /* Phone-specific (390px-class screens) */
+        @media (max-width: 480px) {
+          .page-title {
+            font-size: 22px !important;
+          }
+          .page-subtitle {
+            font-size: 13px !important;
+          }
+        }
       `}</style>
 
       {loading ? (
-        <div className="loading">Loading FarmScout…</div>
+        <div className="loading">Loading FarmScout...</div>
       ) : (
         <div className="app">
           <ManagerSidebarStyles />
           <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} onLogout={handleLogout} />
 
           {/* Main */}
-          <main className="main">
-            <div className="page-header">
+          <main className="main dash-main">
+            <div className="page-header dash-page-header">
               <div>
                 <div className="page-title">Farm Overview</div>
-                <div className="page-subtitle">All farms · Season 2024/25</div>
+                <div className="page-subtitle">All farms &middot; Season 2024/25</div>
               </div>
               <div className="live-badge">
                 <div className="live-dot" />
@@ -603,10 +641,19 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            <div className="dash-mobile-reorder">
+
+            {/* Pest Alerts */}
+            <div className="dash-section-alerts">
+              <PestAlertSummary farmIds={effectiveFarmIds} onPestSelect={handlePestSelect} />
+            </div>
+
+            {/* Week Cards */}
+            <div className="dash-section-weeks">
             {/* This Week's Scouting */}
             <div className="week-card">
               <div className="week-card-header">
-                <div className="week-card-title">This Week's Scouting</div>
+                <div className="week-card-title">This Week&apos;s Scouting</div>
                 <div className="week-card-meta">Week of {weekLabel}</div>
               </div>
               <div className="week-progress-row">
@@ -617,6 +664,7 @@ export default function DashboardPage() {
                   {weekSessions.length} of {totalOrchards} orchards ({weekPct}%)
                 </div>
                 <button
+                  className="dash-expand-btn"
                   onClick={() => setWeekExpanded(e => !e)}
                   style={{
                     marginLeft: 12, background: 'none', border: '1px solid #e0ddd5',
@@ -626,7 +674,7 @@ export default function DashboardPage() {
                   }}
                   title={weekExpanded ? 'Hide orchards' : 'Show orchards'}
                 >
-                  <span style={{ display: 'inline-block', transition: 'transform 0.2s', transform: weekExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+                  <span style={{ display: 'inline-block', transition: 'transform 0.2s', transform: weekExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>&#x25BC;</span>
                 </button>
               </div>
               {weekExpanded && (
@@ -659,7 +707,7 @@ export default function DashboardPage() {
                               <span style={{
                                 fontSize: 11, color: '#7a8a80', transition: 'transform 0.2s',
                                 display: 'inline-block', transform: isScoutExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                              }}>▼</span>
+                              }}>&#x25BC;</span>
                             </div>
                             {isScoutExpanded && (
                               <div className="orchard-pills" style={{ paddingLeft: 12, marginBottom: 8 }}>
@@ -667,7 +715,7 @@ export default function DashboardPage() {
                                   const done = orchardIds.includes(o.id)
                                   return (
                                     <div key={o.id} className={`orchard-pill ${done ? 'done' : 'pending'}`}>
-                                      {done ? '✓ ' : ''}{o.name}
+                                      {done ? '\u2713 ' : ''}{o.name}
                                     </div>
                                   )
                                 })}
@@ -684,7 +732,7 @@ export default function DashboardPage() {
             {/* This Week's Trap Inspections */}
             <div className="week-card trap-card">
               <div className="week-card-header">
-                <div className="week-card-title">This Week's Trap Inspections</div>
+                <div className="week-card-title">This Week&apos;s Trap Inspections</div>
                 <div className="week-card-meta">Week of {weekLabel}</div>
               </div>
               <div className="week-progress-row">
@@ -701,6 +749,7 @@ export default function DashboardPage() {
                   {trapWeekData.inspectedTraps} of {trapWeekData.totalTraps} traps ({trapPct}%)
                 </div>
                 <button
+                  className="dash-expand-btn"
                   onClick={() => setTrapWeekExpanded(e => !e)}
                   style={{
                     marginLeft: 12, background: 'none', border: '1px solid #e0ddd5',
@@ -710,7 +759,7 @@ export default function DashboardPage() {
                   }}
                   title={trapWeekExpanded ? 'Hide scouts' : 'Show per scout'}
                 >
-                  <span style={{ display: 'inline-block', transition: 'transform 0.2s', transform: trapWeekExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+                  <span style={{ display: 'inline-block', transition: 'transform 0.2s', transform: trapWeekExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>&#x25BC;</span>
                 </button>
               </div>
               {trapWeekExpanded && (
@@ -737,22 +786,31 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+            </div>{/* end dash-section-weeks */}
 
-            {orgId && farms.map(farm => (
-              <RebaitSummaryPanel key={farm.id} orgId={orgId} farmId={farm.id} farmName={farm.full_name} />
-            ))}
-
-            <PestAlertSummary farmIds={effectiveFarmIds} onPestSelect={handlePestSelect} />
-
-
-
-            <div ref={pressureMapRef} id="pressure-map">
+            {/* Orchard Pressure Map */}
+            <div className="dash-section-map" ref={pressureMapRef} id="pressure-map">
               <OrchardPressureMap key={selectedPestId ?? 'default'} initialPestId={selectedPestId} />
             </div>
 
-            <TreeScoutingAlertSummary farmIds={effectiveFarmIds} onPestSelect={() => router.push('/inspections')} />
+            {/* Tree Scouting Alerts */}
+            <div className="dash-section-tree">
+              <TreeScoutingAlertSummary farmIds={effectiveFarmIds} onPestSelect={() => router.push('/inspections')} />
+            </div>
 
-            <PestTrendChart />
+            {/* Pest Trend Chart */}
+            <div className="dash-section-trend">
+              <PestTrendChart />
+            </div>
+
+            {/* Rebait Summary Panels */}
+            <div className="dash-section-rebait">
+              {orgId && farms.map(farm => (
+                <RebaitSummaryPanel key={farm.id} orgId={orgId} farmId={farm.id} farmName={farm.full_name} />
+              ))}
+            </div>
+
+            </div>{/* end dash-mobile-reorder */}
           </main>
 
           <MobileNav isSuperAdmin={isSuperAdmin} modules={modules} />

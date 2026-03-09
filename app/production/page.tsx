@@ -714,11 +714,11 @@ export default function ProductionPage() {
       <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} />
       <MobileNav isSuperAdmin={isSuperAdmin} modules={modules} />
 
-      <main style={s.main}>
+      <main style={s.main} className="prod-main">
         {/* Header */}
-        <div style={s.pageHeader}>
+        <div style={s.pageHeader} className="prod-header">
           <div>
-            <div style={s.pageTitle}>Production</div>
+            <div style={s.pageTitle} className="prod-title">Production</div>
             <div style={s.pageSub}>Bin receiving, tonnage & quality</div>
           </div>
           <select style={s.select} value={season} onChange={e => setSeason(e.target.value)}>
@@ -727,7 +727,7 @@ export default function ProductionPage() {
         </div>
 
         {/* Filter pills */}
-        <div style={s.controls}>
+        <div style={s.controls} className="prod-filters">
           <div style={s.filterGroup}>
             <button style={!selectedFarmId ? s.pillActive : s.pill} onClick={() => setSelectedFarmId(null)}>All Farms</button>
             {allFarms.map(f => (
@@ -762,7 +762,7 @@ export default function ProductionPage() {
             ? allOrchards.filter(o => o.commodity_id === selectedCommodityId && o.variety_group === selectedVarietyGroup).sort((a, b) => a.name.localeCompare(b.name))
             : []
           return (
-            <div style={{ ...s.controls, marginTop: -8 }}>
+            <div style={{ ...s.controls, marginTop: -8 }} className="prod-filters">
               <div style={s.filterGroup}>
                 <span style={{ fontSize: 11, color: '#9aaa9f', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Group</span>
                 <button style={!selectedVarietyGroup ? s.pillActive : s.pill} onClick={() => { setSelectedVarietyGroup(null); setSelectedOrchardId(null) }}>All</button>
@@ -789,7 +789,7 @@ export default function ProductionPage() {
         {loading && <div style={{ textAlign: 'center', padding: '8px 0', fontSize: 13, color: '#9aaa9f' }}>Loading production data...</div>}
           <>
             {/* KPI Strip */}
-            <div style={s.kpiStrip}>
+            <div style={s.kpiStrip} className="prod-kpi-strip">
               {[
                 { label: 'Total Bins', value: kpis.totalBins.toLocaleString('en-ZA'), sub: `${kpis.orchards} orchards` },
                 { label: 'Total Tons', value: kpis.totalTons.toLocaleString('en-ZA', { maximumFractionDigits: 1 }), sub: null },
@@ -848,7 +848,7 @@ export default function ProductionPage() {
               return (
             <>
             {/* Map + QC panels — three columns */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24, marginBottom: 24, alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24, marginBottom: 24, alignItems: 'start' }} className="prod-panels">
                 {/* Orchard Map */}
                 <div style={{ ...s.card, display: 'flex', flexDirection: 'column' }}>
                   <div style={s.cardHeader}><span style={s.cardTitle}>Orchard Map — Ton/Ha</span></div>
@@ -886,7 +886,7 @@ export default function ProductionPage() {
                       ))}
                     </div>
                   </div>
-                  <div style={s.cardBody}>
+                  <div style={s.cardBody} className="prod-card-body">
                     {qcLoading ? (
                       <div style={s.loading}>Loading QC data...</div>
                     ) : sizePctData.length > 0 ? (() => {
@@ -998,7 +998,7 @@ export default function ProductionPage() {
                       ))}
                     </div>
                   </div>
-                  <div style={s.cardBody}>
+                  <div style={s.cardBody} className="prod-card-body">
                     {qcLoading ? (
                       <div style={s.loading}>Loading QC data...</div>
                     ) : issuePctData.length > 0 ? (() => {
@@ -1098,7 +1098,7 @@ export default function ProductionPage() {
             {/* Orchard summary table */}
             <div style={{ ...s.card, marginBottom: 24 }}>
               <div style={s.cardHeader}><span style={s.cardTitle}>Orchard Summary</span></div>
-              <div style={{ overflowX: 'auto', maxHeight: 460, overflowY: 'auto' }}>
+              <div style={{ overflowX: 'auto', maxHeight: 460, overflowY: 'auto' }} className="prod-orchard-table">
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: '#f7f5f0', position: 'sticky' as const, top: 0, zIndex: 1 }}>
@@ -1145,7 +1145,7 @@ export default function ProductionPage() {
             {bruisingSummary.length > 0 && (
               <div style={s.card}>
                 <div style={s.cardHeader}><span style={s.cardTitle}>Quality Summary (Bruising)</span></div>
-                <div style={{ overflowX: 'auto', maxHeight: 460, overflowY: 'auto' }}>
+                <div style={{ overflowX: 'auto', maxHeight: 460, overflowY: 'auto' }} className="prod-bruising-table">
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: '#f7f5f0', position: 'sticky' as const, top: 0, zIndex: 1 }}>
@@ -1176,11 +1176,11 @@ export default function ProductionPage() {
             )}
 
             {/* Charts row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }} className="prod-charts">
               {/* Ton/Ha Bar Chart */}
               <div style={s.card}>
                 <div style={s.cardHeader}><span style={s.cardTitle}>Ton/Ha by Orchard</span></div>
-                <div style={{ ...s.cardBody, height: Math.max(300, tonHaData.length * 28 + 40) }}>
+                <div style={{ ...s.cardBody, height: Math.max(300, tonHaData.length * 28 + 40) }} className="prod-card-body">
                   {tonHaData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={tonHaData} layout="vertical" margin={{ left: 100, right: 30, top: 10, bottom: 10 }}>
@@ -1205,7 +1205,7 @@ export default function ProductionPage() {
               {/* Weekly Production Trend */}
               <div style={s.card}>
                 <div style={s.cardHeader}><span style={s.cardTitle}>Weekly Production</span></div>
-                <div style={{ ...s.cardBody, height: 340 }}>
+                <div style={{ ...s.cardBody, height: 340 }} className="prod-card-body">
                   {weeklyTrend.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={weeklyTrend} margin={{ left: 10, right: 30, top: 10, bottom: 10 }} stackOffset="none">
@@ -1243,7 +1243,38 @@ export default function ProductionPage() {
         }
         .prod-tooltip::before { display: none !important; }
         @media (max-width: 768px) {
-          .prod-kpi-strip { grid-template-columns: repeat(3, 1fr) !important; }
+          .prod-main {
+            padding: 16px 12px 80px 12px !important;
+            padding-top: max(16px, env(safe-area-inset-top, 0px)) !important;
+          }
+          .prod-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 8px !important;
+          }
+          .prod-title { font-size: 22px !important; }
+          .prod-panels { grid-template-columns: 1fr !important; }
+          .prod-charts { grid-template-columns: 1fr !important; }
+          .prod-filters {
+            overflow-x: auto !important;
+            flex-wrap: nowrap !important;
+            -webkit-overflow-scrolling: touch !important;
+          }
+          .prod-filters > * { flex-shrink: 0 !important; }
+          .prod-orchard-table {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+          }
+          .prod-orchard-table table { min-width: 600px !important; }
+          .prod-bruising-table {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+          }
+          .prod-bruising-table table { min-width: 600px !important; }
+          .prod-card-body { padding: 12px 16px !important; }
+        }
+        @media (max-width: 480px) {
+          .prod-kpi-strip { grid-template-columns: repeat(2, 1fr) !important; }
         }
         @media (max-width: 1024px) {
           main > div[style*="grid-template-columns: 1fr 1fr"] {

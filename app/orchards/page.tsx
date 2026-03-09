@@ -2,7 +2,9 @@
 
 import { createClient } from '@/lib/supabase-auth'
 import { useUserContext } from '@/lib/useUserContext'
+import { useOrgModules } from '@/lib/useOrgModules'
 import { useEffect, useState, useRef } from 'react'
+import MobileNav from '@/app/components/MobileNav'
 
 interface Orchard {
   id: string
@@ -54,6 +56,7 @@ function emptyForm() {
 export default function OrchardsPage() {
   const supabase = createClient()
   const { farmIds, isSuperAdmin, contextLoaded } = useUserContext()
+  const modules = useOrgModules()
 
   const mapRef         = useRef<any>(null)
   const leafletRef     = useRef<any>(null)
@@ -586,11 +589,82 @@ export default function OrchardsPage() {
           color: #6a7a70; cursor: pointer; font-family: 'DM Sans', sans-serif;
         }
         .orchard-list-edit:hover { background: #f0f7f2; border-color: #c8e6c9; color: #2a6e45; }
+
+        /* ── Mobile responsive ─────────────────────────────────── */
+        @media (max-width: 768px) {
+          .orch-sidebar { display: none !important; }
+          .orch-app {
+            flex-direction: column !important;
+            height: auto !important;
+            min-height: 100dvh !important;
+            overflow: visible !important;
+            padding-top: env(safe-area-inset-top, 0px);
+          }
+          .orch-main {
+            overflow: visible !important;
+          }
+          .orch-top-bar {
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+            padding: 10px 16px !important;
+          }
+          .orch-top-bar .btn-primary,
+          .orch-top-bar .btn-cancel,
+          .orch-top-bar .farm-select {
+            min-height: 44px !important;
+          }
+          .orch-content {
+            flex-direction: column !important;
+          }
+          .orch-map {
+            width: 100% !important;
+            height: 50dvh !important;
+            min-height: 300px !important;
+          }
+          .orch-map #orchards-map {
+            width: 100% !important;
+            height: 100% !important;
+          }
+          .orch-list-panel {
+            width: 100% !important;
+            max-height: none !important;
+            position: relative !important;
+            border-right: none !important;
+            border-top: 1px solid #e8e4dc !important;
+            padding-bottom: 80px !important;
+          }
+          .orch-info-panel {
+            position: fixed !important;
+            top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+            width: 100% !important;
+            max-width: none !important;
+            z-index: 8000 !important;
+            overflow-y: auto !important;
+            padding-bottom: 80px !important;
+            border-radius: 0 !important;
+          }
+          .orch-form-panel {
+            width: 100% !important;
+            max-width: none !important;
+            padding-bottom: 80px !important;
+          }
+          .orchard-list-item {
+            min-height: 44px !important;
+            padding: 12px 16px !important;
+          }
+          .orchard-list-edit {
+            min-height: 44px !important;
+            padding: 6px 14px !important;
+          }
+          .btn-edit, .btn-save {
+            min-height: 44px !important;
+          }
+        }
       `}</style>
 
-      <div className="app">
+      <div className="app orch-app">
         {/* Sidebar */}
-        <aside className="sidebar">
+        <aside className="sidebar orch-sidebar">
           <div className="logo"><span>Farm</span>Scout</div>
           <a href="/" className="nav-item"><span>📊</span> Dashboard</a>
           <a href="/orchards" className="nav-item active"><span>🏡</span> Orchards</a>
@@ -611,9 +685,9 @@ export default function OrchardsPage() {
           </div>
         </aside>
 
-        <div className="main">
+        <div className="main orch-main">
           {/* Top bar */}
-          <div className="top-bar">
+          <div className="top-bar orch-top-bar">
             {mode !== 'view' && <button className="btn-cancel" onClick={cancelEdit}>← Cancel</button>}
             <div className="page-title">
               {mode === 'add' ? 'Add New Orchard' : mode === 'edit' ? `Edit: ${editTarget?.name}` : 'Orchards'}
@@ -628,10 +702,10 @@ export default function OrchardsPage() {
           </div>
 
           {/* Content */}
-          <div className="content">
+          <div className="content orch-content">
             {/* Orchard list panel (view mode only) */}
             {mode === 'view' && (
-              <div className="orchard-list-panel">
+              <div className="orchard-list-panel orch-list-panel">
                 <div className="orchard-list-header">{orchards.length} Orchards</div>
                 {orchards.map(o => {
                   const hasBoundary = !!boundaryMapRef.current[o.id]
@@ -659,7 +733,7 @@ export default function OrchardsPage() {
 
             {/* Form panel (add / edit mode) */}
             {mode !== 'view' && (
-              <div className="form-panel">
+              <div className="form-panel orch-form-panel">
                 <div className="field-wrap">
                   <div className="field-label">Name <span className="required">*</span></div>
                   <input className="field-input" value={form.name}
@@ -766,7 +840,7 @@ export default function OrchardsPage() {
             )}
 
             {/* Map */}
-            <div className="map-wrap">
+            <div className="map-wrap orch-map">
               <div id="orchards-map" ref={mapRef} />
 
               {mode !== 'view' && boundaryDrawn && (
@@ -774,7 +848,7 @@ export default function OrchardsPage() {
               )}
 
               {mode === 'view' && (
-                <div className="info-panel">
+                <div className="info-panel orch-info-panel">
                   {o ? (
                     <>
                       <div className="info-title">{o.name}</div>
@@ -869,6 +943,8 @@ export default function OrchardsPage() {
           </div>
         </div>
       </div>
+
+      <MobileNav isSuperAdmin={isSuperAdmin} modules={modules} />
     </>
   )
 }

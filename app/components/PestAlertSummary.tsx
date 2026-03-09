@@ -50,7 +50,7 @@ export default function PestAlertSummary({ farmIds, onPestSelect }: Props) {
   const supabase = createClient()
   const [rows, setRows] = useState<PestSummaryRow[]>([])
   const [loading, setLoading] = useState(() => farmIds.length > 0)
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768)
 
   useEffect(() => {
     if (farmIds.length === 0) return
@@ -65,97 +65,115 @@ export default function PestAlertSummary({ farmIds, onPestSelect }: Props) {
 
   if (loading) {
     return (
-      <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '20px 24px', marginBottom: 20 }}>
-        <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a', marginBottom: 12 }}>Pest Alerts</div>
-        <div style={{ color: '#9aaa9f', fontSize: 13 }}>Loading…</div>
-      </div>
+      <>
+        <style>{`
+          @keyframes pas-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+        `}</style>
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '20px 24px', marginBottom: 20 }}>
+          <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a', marginBottom: 12 }}>Pest Alerts</div>
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{ height: 48, background: '#f4f1eb', borderRadius: 8, marginBottom: 8, animation: 'pas-pulse 1.5s ease infinite' }} />
+          ))}
+        </div>
+      </>
     )
   }
 
   if (rows.length === 0) return null
 
   return (
-    <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 20 }}>
-      <div style={{ padding: '16px 20px', borderBottom: expanded ? '1px solid #f0ede6' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => setExpanded(e => !e)}>
-        <div>
-          <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a' }}>Pest Alerts</div>
-          <div style={{ fontSize: 12, color: '#9aaa9f', marginTop: 3 }}>
-            {expanded ? 'This week vs last week — click View to jump to map' : `${rows.length} pest${rows.length !== 1 ? 's' : ''} tracked · ${rows.filter(r => Number(r.red_orchards) > 0).length} with alerts`}
-          </div>
-        </div>
-        <span style={{ fontSize: 13, color: '#7a8a80', transition: 'transform 0.2s', display: 'inline-block', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
-      </div>
-
-      {expanded && <div>
-        {rows.map(row => {
-          const muted = Number(row.red_orchards) === 0 && Number(row.yellow_orchards) === 0
-          const borderColor = rowBorderColor(row)
-
-          return (
-            <div
-              key={row.pest_id}
-              style={{
-                borderLeft: `4px solid ${borderColor}`,
-                padding: '14px 20px',
-                borderBottom: '1px solid #f9f7f3',
-                opacity: muted ? 0.6 : 1,
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 16,
-              }}
-            >
-              {/* Left: name + chips + worst orchard */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: '#1c3a2a' }}>{row.pest_name}</span>
-                  <div style={{ display: 'flex', gap: 5 }}>
-                    {Number(row.red_orchards) > 0 && (
-                      <span style={{ fontSize: 12, background: '#fdecea', color: '#e85a4a', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>
-                        🔴 {row.red_orchards}
-                      </span>
-                    )}
-                    {Number(row.yellow_orchards) > 0 && (
-                      <span style={{ fontSize: 12, background: '#fff8e1', color: '#c49a00', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>
-                        🟡 {row.yellow_orchards}
-                      </span>
-                    )}
-                    {Number(row.green_orchards) > 0 && (
-                      <span style={{ fontSize: 12, background: '#e8f5ee', color: '#2a6e45', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>
-                        🟢 {row.green_orchards}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {Number(row.red_orchards) > 0 && row.worst_orchard_name && (
-                  <div style={{ fontSize: 12, color: '#9aaa9f', marginTop: 4 }}>
-                    Worst: {row.worst_orchard_name} · {Number(row.worst_count).toLocaleString()} catches
-                  </div>
-                )}
-              </div>
-
-              {/* Right: count + trend + button */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a' }}>
-                  {Number(row.this_week_total).toLocaleString()} catches
-                </span>
-                {trendBadge(row.this_week_total, row.last_week_total)}
-                <button
-                  onClick={() => onPestSelect(row.pest_id)}
-                  style={{
-                    padding: '5px 12px', borderRadius: 8,
-                    border: '1.5px solid #e0ddd6',
-                    background: '#f9f7f3', color: '#3a4a40',
-                    fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  View →
-                </button>
-              </div>
+    <>
+      <style>{`
+        @media (max-width: 768px) {
+          .pas-row { flex-direction: column !important; gap: 8px !important; }
+          .pas-right { justify-content: flex-start !important; }
+          .pas-view-btn { min-height: 44px !important; min-width: 44px !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+        }
+      `}</style>
+      <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 20 }}>
+        <div style={{ padding: '16px 20px', borderBottom: expanded ? '1px solid #f0ede6' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => setExpanded(e => !e)}>
+          <div>
+            <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a' }}>Pest Alerts</div>
+            <div style={{ fontSize: 12, color: '#9aaa9f', marginTop: 3 }}>
+              {expanded ? 'This week vs last week — click View to jump to map' : `${rows.length} pest${rows.length !== 1 ? 's' : ''} tracked · ${rows.filter(r => Number(r.red_orchards) > 0).length} with alerts`}
             </div>
-          )
-        })}
-      </div>}
-    </div>
+          </div>
+          <span style={{ fontSize: 13, color: '#7a8a80', transition: 'transform 0.2s', display: 'inline-block', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+        </div>
+
+        {expanded && <div>
+          {rows.map(row => {
+            const muted = Number(row.red_orchards) === 0 && Number(row.yellow_orchards) === 0
+            const borderColor = rowBorderColor(row)
+
+            return (
+              <div
+                key={row.pest_id}
+                className="pas-row"
+                style={{
+                  borderLeft: `4px solid ${borderColor}`,
+                  padding: '14px 20px',
+                  borderBottom: '1px solid #f9f7f3',
+                  opacity: muted ? 0.6 : 1,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 16,
+                }}
+              >
+                {/* Left: name + chips + worst orchard */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#1c3a2a' }}>{row.pest_name}</span>
+                    <div style={{ display: 'flex', gap: 5 }}>
+                      {Number(row.red_orchards) > 0 && (
+                        <span style={{ fontSize: 12, background: '#fdecea', color: '#e85a4a', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>
+                          🔴 {row.red_orchards}
+                        </span>
+                      )}
+                      {Number(row.yellow_orchards) > 0 && (
+                        <span style={{ fontSize: 12, background: '#fff8e1', color: '#c49a00', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>
+                          🟡 {row.yellow_orchards}
+                        </span>
+                      )}
+                      {Number(row.green_orchards) > 0 && (
+                        <span style={{ fontSize: 12, background: '#e8f5ee', color: '#2a6e45', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>
+                          🟢 {row.green_orchards}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {Number(row.red_orchards) > 0 && row.worst_orchard_name && (
+                    <div style={{ fontSize: 12, color: '#9aaa9f', marginTop: 4 }}>
+                      Worst: {row.worst_orchard_name} · {Number(row.worst_count).toLocaleString()} catches
+                    </div>
+                  )}
+                </div>
+
+                {/* Right: count + trend + button */}
+                <div className="pas-right" style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a' }}>
+                    {Number(row.this_week_total).toLocaleString()} catches
+                  </span>
+                  {trendBadge(row.this_week_total, row.last_week_total)}
+                  <button
+                    className="pas-view-btn"
+                    onClick={() => onPestSelect(row.pest_id)}
+                    style={{
+                      padding: '5px 12px', borderRadius: 8,
+                      border: '1.5px solid #e0ddd6',
+                      background: '#f9f7f3', color: '#3a4a40',
+                      fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    View →
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>}
+      </div>
+    </>
   )
 }

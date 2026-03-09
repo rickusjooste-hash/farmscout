@@ -10,10 +10,10 @@ interface MobileNavProps {
 }
 
 const TABS = [
-  { href: '/', icon: '\u{1F4CA}', label: 'Dashboard' },
-  { href: '/trap-inspections', icon: '\u{1FA64}', label: 'Traps' },
-  { href: '/inspections', icon: '\u{1F50D}', label: 'Trees' },
-  { href: '/heatmap', icon: '\u{1F321}\uFE0F', label: 'Heat Map' },
+  { href: '/', icon: '\u{1F4CA}', label: 'Dashboard', module: null },
+  { href: '/trap-inspections', icon: '\u{1FA64}', label: 'Pests', module: null },
+  { href: '/production', icon: '\u{1F4E6}', label: 'Production', module: 'production' as const },
+  { href: '/qc/dashboard', icon: '\u2696\uFE0F', label: 'QC', module: 'qc' as const },
 ]
 
 export default function MobileNav({ isSuperAdmin, modules = ['farmscout'] }: MobileNavProps) {
@@ -22,16 +22,20 @@ export default function MobileNav({ isSuperAdmin, modules = ['farmscout'] }: Mob
   const [showMore, setShowMore] = useState(false)
   const sheetRef = useRef<HTMLDivElement>(null)
 
-  // Close sheet on outside click
+  // Close sheet on outside click/touch
   useEffect(() => {
     if (!showMore) return
-    function handleClick(e: MouseEvent) {
+    function handleClick(e: MouseEvent | TouchEvent) {
       if (sheetRef.current && !sheetRef.current.contains(e.target as Node)) {
         setShowMore(false)
       }
     }
     document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
+    document.addEventListener('touchstart', handleClick)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('touchstart', handleClick)
+    }
   }, [showMore])
 
   // Close sheet on navigation
@@ -83,15 +87,17 @@ export default function MobileNav({ isSuperAdmin, modules = ['farmscout'] }: Mob
           border: none;
           cursor: pointer;
           color: #9aaa9f;
-          font-size: 10px;
+          font-size: 11px;
           font-weight: 500;
           font-family: 'Inter', sans-serif;
           text-decoration: none;
           padding: 6px 0;
           -webkit-tap-highlight-color: transparent;
+          transition: transform 0.1s ease;
         }
+        .mnav-tab:active { transform: scale(0.92); }
         .mnav-tab.active { color: #1c3a2a; }
-        .mnav-tab-icon { font-size: 20px; line-height: 1; }
+        .mnav-tab-icon { font-size: 24px; line-height: 1; }
         .mnav-tab.active .mnav-tab-icon { filter: none; }
         .mnav-sheet-overlay {
           display: none;
@@ -151,7 +157,7 @@ export default function MobileNav({ isSuperAdmin, modules = ['farmscout'] }: Mob
 
       {/* Bottom tab bar */}
       <nav className="mnav-bar">
-        {TABS.map(tab => (
+        {TABS.filter(tab => tab.module === null || modules.includes(tab.module)).map(tab => (
           <a
             key={tab.href}
             href={tab.href}
@@ -178,6 +184,12 @@ export default function MobileNav({ isSuperAdmin, modules = ['farmscout'] }: Mob
       <div ref={sheetRef} className={`mnav-sheet${showMore ? ' open' : ''}`}>
         <div className="mnav-sheet-handle" />
 
+        <a href="/heatmap" className={`mnav-sheet-item${isActive('/heatmap') ? ' active' : ''}`}>
+          <span className="mnav-sheet-icon">{'\u{1F321}\uFE0F'}</span> Heat Map
+        </a>
+        <a href="/inspections" className={`mnav-sheet-item${isActive('/inspections') ? ' active' : ''}`}>
+          <span className="mnav-sheet-icon">{'\u{1F50D}'}</span> Tree Inspections
+        </a>
         <a href="/orchards" className={`mnav-sheet-item${isActive('/orchards') ? ' active' : ''}`}>
           <span className="mnav-sheet-icon">{'\u{1F3E1}'}</span> Orchards
         </a>

@@ -89,8 +89,8 @@ const MAP_COLORS: Record<string, string> = {
 }
 
 const MAP_LEGEND = [
-  { status: 'red', color: '#e85a4a', label: 'High (≥50%)' },
-  { status: 'yellow', color: '#f5c842', label: 'Moderate (≥20%)' },
+  { status: 'red', color: '#e85a4a', label: 'High (>=50%)' },
+  { status: 'yellow', color: '#f5c842', label: 'Moderate (>=20%)' },
   { status: 'green', color: '#4caf72', label: 'Low (<20%)' },
   { status: 'grey', color: '#aaaaaa', label: 'No data' },
 ]
@@ -262,10 +262,17 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
 
   if (loading) {
     return (
-      <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '20px 24px', marginBottom: 20 }}>
-        <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a', marginBottom: 12 }}>Tree Scouting This Week</div>
-        <div style={{ color: '#9aaa9f', fontSize: 13 }}>Loading…</div>
-      </div>
+      <>
+        <style>{`
+          @keyframes tsa-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+        `}</style>
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '20px 24px', marginBottom: 20 }}>
+          <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a', marginBottom: 12 }}>Tree Scouting This Week</div>
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{ height: 48, background: '#f4f1eb', borderRadius: 8, marginBottom: 8, animation: 'tsa-pulse 1.5s ease infinite' }} />
+          ))}
+        </div>
+      </>
     )
   }
 
@@ -284,8 +291,9 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
         .tsa-tooltip::before { display: none !important; }
         @media (max-width: 768px) {
           .tsa-body { flex-direction: column !important; height: auto !important; }
-          .tsa-pest-list { flex: none !important; border-right: none !important; border-bottom: 1px solid #e8e4dc; max-height: 200px; overflow-y: auto; }
-          .tsa-map-panel { flex: none !important; height: 300px !important; }
+          .tsa-pest-list { flex: none !important; width: 100% !important; border-right: none !important; border-bottom: 1px solid #e8e4dc; max-height: 260px; overflow-y: auto; }
+          .tsa-pest-item { min-height: 44px !important; padding: 14px 16px !important; }
+          .tsa-map-panel { flex: none !important; width: 100% !important; height: 300px !important; }
         }
       `}</style>
 
@@ -329,6 +337,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
                 return (
                   <div
                     key={row.pest_id}
+                    className="tsa-pest-item"
                     onClick={() => setSelectedPestId(row.pest_id)}
                     style={{
                       borderLeft: `4px solid ${borderColor}`,
