@@ -357,8 +357,11 @@ export default function TrapInspectionView({ onBack, language = 'en' }: { onBack
 
     const now = new Date().toISOString()
     const inspectionId = crypto.randomUUID()
-    const token = localStorage.getItem('farmscout_access_token')
     const isOnline = navigator.onLine
+
+    // Refresh token before save to prevent 401 mid-route
+    if (isOnline) await refreshAccessToken().catch(() => {})
+    const token = localStorage.getItem('farmscout_access_token')
 
     const locationValue = gpsLocation
       ? `SRID=4326;POINT(${gpsLocation.lng} ${gpsLocation.lat})`
@@ -385,21 +388,30 @@ export default function TrapInspectionView({ onBack, language = 'en' }: { onBack
     }
 
     try {
+      let savedOnline = false
       if (isOnline) {
-        const inspRes = await fetch(`${SUPABASE_URL}/rest/v1/trap_inspections`, {
-          method: 'POST',
-          headers: { apikey: supabaseKey, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-          body: JSON.stringify(inspectionRecord),
-        })
-        if (!inspRes.ok) throw new Error('Failed to save inspection')
+        try {
+          const inspRes = await fetch(`${SUPABASE_URL}/rest/v1/trap_inspections`, {
+            method: 'POST',
+            headers: { apikey: supabaseKey, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+            body: JSON.stringify(inspectionRecord),
+          })
+          if (!inspRes.ok) throw new Error(`inspection ${inspRes.status}`)
 
-        const countRes = await fetch(`${SUPABASE_URL}/rest/v1/trap_counts`, {
-          method: 'POST',
-          headers: { apikey: supabaseKey, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-          body: JSON.stringify(countRecord),
-        })
-        if (!countRes.ok) throw new Error('Failed to save count')
-      } else {
+          const countRes = await fetch(`${SUPABASE_URL}/rest/v1/trap_counts`, {
+            method: 'POST',
+            headers: { apikey: supabaseKey, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+            body: JSON.stringify(countRecord),
+          })
+          if (!countRes.ok) throw new Error(`count ${countRes.status}`)
+          savedOnline = true
+        } catch (onlineErr) {
+          // Online save failed (token expired, flaky connection) — fall back to IndexedDB
+          console.log('Online save failed, falling back to IndexedDB:', onlineErr)
+        }
+      }
+
+      if (!savedOnline) {
         const { saveAndQueue } = await import('@/lib/scout-sync')
         await saveAndQueue('trap_inspections', inspectionRecord, supabaseKey, token || undefined)
         await saveAndQueue('trap_counts', countRecord, supabaseKey, token || undefined)

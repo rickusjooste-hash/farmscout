@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell, ZAxis,
+  BarChart, Bar, Legend,
 } from 'recharts'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -23,6 +24,11 @@ interface OrchardForAge {
   pestCount: number
 }
 
+interface HistoricalMedian {
+  season: string
+  bands: Record<string, number>
+}
+
 interface Props {
   orchards: OrchardForAge[]
   selectedOrchardId: string | null
@@ -30,6 +36,8 @@ interface Props {
   hasProduction: boolean
   selectedAgeBand: string | null
   onAgeBandSelect: (band: string | null) => void
+  historicalMedians?: HistoricalMedian[]
+  currentSeason?: string
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -162,7 +170,7 @@ const STATUS_DOT: Record<string, string> = {
 
 export default function OrchardAgeAnalysis({
   orchards, selectedOrchardId, onOrchardSelect, hasProduction,
-  selectedAgeBand, onAgeBandSelect,
+  selectedAgeBand, onAgeBandSelect, historicalMedians, currentSeason,
 }: Props) {
   const [showAllProblems, setShowAllProblems] = useState(false)
 
@@ -459,6 +467,93 @@ export default function OrchardAgeAnalysis({
           </tbody>
         </table>
       </div>
+
+      {/* Season Trend: Median T/Ha by Age Band */}
+      {hasProduction && historicalMedians && historicalMedians.length > 1 && (() => {
+        // Build chart data: one row per age band, columns per season
+        const hasData = historicalMedians.some(h => Object.keys(h.bands).length > 0)
+        if (!hasData) return null
+
+        const chartData = AGE_BANDS
+          .filter(b => b.key !== 'establishing') // skip — no meaningful T/Ha
+          .map(b => {
+            const row: Record<string, string | number> = { band: b.label }
+            historicalMedians.forEach(h => {
+              row[h.season] = h.bands[b.key] != null ? Math.round(h.bands[b.key] * 10) / 10 : 0
+            })
+            return row
+          })
+          .filter(row => historicalMedians.some(h => (row[h.season] as number) > 0))
+
+        if (chartData.length === 0) return null
+
+        const SEASON_COLORS = ['#d4cfca', '#6b7fa8', '#2a6e45']
+
+        return (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
+              Median T/Ha by Age Band
+              <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 8 }}>
+                — 3 season comparison
+              </span>
+            </div>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={chartData} margin={{ top: 8, right: 20, left: 0, bottom: 0 }} barCategoryGap="20%">
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" />
+                <XAxis
+                  dataKey="band"
+                  tick={{ fontSize: 11, fill: '#6a7a70', fontFamily: 'Inter' }}
+                  tickLine={false} axisLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: '#9aaa9f', fontFamily: 'Inter' }}
+                  tickLine={false} axisLine={false}
+                  label={{ value: 'T/Ha', angle: -90, position: 'insideLeft', fontSize: 11, fill: '#9aaa9f' }}
+                />
+                <Tooltip
+                  content={({ active, payload, label }: any) => {
+                    if (!active || !payload?.length) return null
+                    return (
+                      <div style={{
+                        background: '#1c3a2a', color: '#e8f0e0', padding: '10px 14px',
+                        borderRadius: 8, fontSize: 12, fontFamily: 'Inter, sans-serif',
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+                      }}>
+                        <div style={{ fontWeight: 700, marginBottom: 6 }}>{label}</div>
+                        {payload.map((p: any, i: number) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                            <span style={{ width: 8, height: 8, borderRadius: 2, background: p.fill }} />
+                            <span>{p.dataKey}:</span>
+                            <strong>{p.value > 0 ? `${p.value} t/ha` : '—'}</strong>
+                            {p.dataKey === currentSeason && <span style={{ color: '#a8d5a2', fontSize: 10, marginLeft: 4 }}>current</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  }}
+                />
+                <Legend
+                  verticalAlign="top" height={28}
+                  formatter={(value: string) => (
+                    <span style={{ fontSize: 11, color: value === currentSeason ? '#1c3a2a' : '#9aaa9f', fontWeight: value === currentSeason ? 700 : 400 }}>
+                      {value}
+                    </span>
+                  )}
+                />
+                {historicalMedians.map((h, i) => (
+                  <Bar
+                    key={h.season}
+                    dataKey={h.season}
+                    fill={SEASON_COLORS[i] || SEASON_COLORS[SEASON_COLORS.length - 1]}
+                    radius={[3, 3, 0, 0]}
+                    opacity={h.season === currentSeason ? 1 : 0.7}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )
+      })()}
 
       {/* Attention Required */}
       {problems.length > 0 && (

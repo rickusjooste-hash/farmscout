@@ -144,6 +144,7 @@ export default function OrchardAnalysisPage() {
   const [orchardRaw, setOrchardRaw] = useState<OrchardRaw[]>([])
   const [production, setProduction] = useState<ProductionRow[]>([])
   const [prevProduction, setPrevProduction] = useState<ProductionRow[]>([])
+  const [historicalProduction, setHistoricalProduction] = useState<Record<string, ProductionRow[]>>({})
   const [bruising, setBruising] = useState<BruisingRow[]>([])
   const [boundaries, setBoundaries] = useState<any[]>([])
   const [pestPressure, setPestPressure] = useState<Record<string, { status: string; count: number }>>({})
@@ -184,7 +185,8 @@ export default function OrchardAnalysisPage() {
       setLoading(true)
       try {
         const prevSeason = previousSeason(season)
-        const [orchRes, boundRes, prodRes, prevProdRes, bruRes, weekRes] = await Promise.all([
+        const prev2Season = previousSeason(prevSeason)
+        const [orchRes, boundRes, prodRes, prevProdRes, prev2ProdRes, bruRes, weekRes] = await Promise.all([
           supabase.from('orchards')
             .select('id, name, variety, variety_group, rootstock, ha, year_planted, nr_of_trees, commodity_id, farm_id, commodities(name, code)')
             .in('farm_id', effectiveFarmIds)
@@ -195,6 +197,9 @@ export default function OrchardAnalysisPage() {
             : Promise.resolve({ data: [] }),
           hasProduction
             ? supabase.rpc('get_production_summary', { p_farm_ids: effectiveFarmIds, p_season: prevSeason })
+            : Promise.resolve({ data: [] }),
+          hasProduction
+            ? supabase.rpc('get_production_summary', { p_farm_ids: effectiveFarmIds, p_season: prev2Season })
             : Promise.resolve({ data: [] }),
           hasProduction
             ? supabase.rpc('get_production_bruising_summary', { p_farm_ids: effectiveFarmIds, p_season: season })
@@ -216,6 +221,11 @@ export default function OrchardAnalysisPage() {
         setBoundaries((boundRes.data || []).filter((b: any) => orchardIds.has(b.id)))
         setProduction((prodRes.data || []) as ProductionRow[])
         setPrevProduction((prevProdRes.data || []) as ProductionRow[])
+        setHistoricalProduction({
+          [season]: (prodRes.data || []) as ProductionRow[],
+          [prevSeason]: (prevProdRes.data || []) as ProductionRow[],
+          [prev2Season]: (prev2ProdRes.data || []) as ProductionRow[],
+        })
         setBruising((bruRes.data || []) as BruisingRow[])
 
         // Group weekly bins by orchard (for sparklines)
@@ -448,6 +458,55 @@ export default function OrchardAnalysisPage() {
     const prev = prevProduction.find(p => p.orchard_id === selectedOrchardId)
     return { tons: prev?.tons ?? null, tonHa: prev?.ton_ha ?? null }
   }, [selectedOrchardId, prevProduction])
+
+  // ── Historical band medians for age analysis ────────────────────────────
+  const AGE_BAND_RANGES: Record<string, [number, number]> = {
+    establishing: [0, 4], young: [5, 10], prime: [11, 20], mature: [21, 30], aging: [31, 999],
+  }
+
+  const historicalBandMedians = useMemo(() => {
+    const currentYear = new Date().getFullYear()
+    const orchards = orchardRaw.filter(o => o.year_planted != null)
+    const result: { season: string; bands: Record<string, number> }[] = []
+
+    // Sort seasons chronologically
+    const sortedSeasons = Object.keys(historicalProduction).sort((a, b) => {
+      const aYear = parseInt(a.split('/')[0])
+      const bYear = parseInt(b.split('/')[0])
+      return aYear - bYear
+    })
+
+    for (const s of sortedSeasons) {
+      const prod = historicalProduction[s] || []
+      const prodMap: Record<string, ProductionRow> = {}
+      prod.forEach(p => { if (p.orchard_id) prodMap[p.orchard_id] = p })
+
+      const bands: Record<string, number> = {}
+
+      for (const [bandKey, [min, max]] of Object.entries(AGE_BAND_RANGES)) {
+        // Adjust age based on season year (not current year)
+        const seasonStartYear = parseInt(s.split('/')[0])
+        const tonHaValues = orchards
+          .filter(o => {
+            const age = seasonStartYear - o.year_planted!
+            return age >= min && age <= max
+          })
+          .map(o => prodMap[o.id]?.ton_ha)
+          .filter((v): v is number => v != null && v > 0)
+          .sort((a, b) => a - b)
+
+        if (tonHaValues.length > 0) {
+          const mid = Math.floor(tonHaValues.length / 2)
+          bands[bandKey] = tonHaValues.length % 2
+            ? tonHaValues[mid]
+            : (tonHaValues[mid - 1] + tonHaValues[mid]) / 2
+        }
+      }
+
+      result.push({ season: s, bands })
+    }
+    return result
+  }, [orchardRaw, historicalProduction])
 
   // KPI delta helper
   function yoyArrow(current: number | null, prev: number | null): string {
@@ -710,6 +769,8 @@ export default function OrchardAnalysisPage() {
                     hasProduction={hasProduction}
                     selectedAgeBand={selectedAgeBand}
                     onAgeBandSelect={setSelectedAgeBand}
+                    historicalMedians={historicalBandMedians}
+                    currentSeason={season}
                   />
                 </div>
               </div>
