@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase-auth'
 import { useUserContext } from '@/lib/useUserContext'
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, type CSSProperties } from 'react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -130,6 +130,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
   const [chartData, setChartData]   = useState<Array<Record<string, number | string>>>([])
   const [chartPests, setChartPests] = useState<string[]>([])
   const [chartLoading, setChartLoading] = useState(false)
+  const [showMobileMap, setShowMobileMap] = useState(false)
 
   // ── Load orchards ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -404,13 +405,18 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
         }
         .opm-tooltip::before { display: none !important; }
         @keyframes opm-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .opm-map-toggle { display: none; }
+        .opm-chart-section { display: block; }
         @media (max-width: 768px) {
           .opm-body { flex-direction: column-reverse !important; height: auto !important; }
           .opm-map { flex: none !important; height: 50vh !important; width: 100% !important; margin: 0 !important; padding: 0 !important; border-radius: 0 !important; }
+          .opm-map.opm-map-hidden { display: none !important; }
+          .opm-map-toggle { display: flex !important; }
           .opm-table-panel { flex: none !important; width: 100% !important; border-left: none !important; border-top: none !important; border-bottom: 1px solid #e8e4dc; max-height: 300px; }
           .opm-header { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
-          .opm-pills { margin-left: 0 !important; overflow-x: auto; flex-wrap: nowrap !important; -webkit-overflow-scrolling: touch; }
+          .opm-pills { margin-left: 0 !important; flex-wrap: wrap !important; gap: 6px !important; }
           .opm-chart-container { height: 180px; }
+          .opm-chart-section { display: none; }
           .opm-summary-table thead { display: none !important; }
           .opm-summary-table tr {
             display: flex !important; flex-wrap: wrap !important;
@@ -475,8 +481,22 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
         {/* Body: map + table */}
         <div className="opm-body" style={{ display: 'flex', height: 440 }}>
 
+          {/* Mobile map toggle */}
+          <button
+            className="opm-map-toggle"
+            onClick={() => setShowMobileMap(v => !v)}
+            style={{
+              width: '100%', padding: '12px 16px', background: '#f9f7f3',
+              border: 'none', borderBottom: '1px solid #e8e4dc',
+              fontSize: 13, fontWeight: 500, color: '#2a6e45', cursor: 'pointer',
+              alignItems: 'center', justifyContent: 'center', gap: 6,
+            } as CSSProperties}
+          >
+            {showMobileMap ? 'Hide Map \u25B2' : 'Show Map \u25BC'}
+          </button>
+
           {/* Map */}
-          <div className="opm-map" style={{ flex: '0 0 60%', position: 'relative' }}>
+          <div className={`opm-map${!showMobileMap ? ' opm-map-hidden' : ''}`} style={{ flex: '0 0 60%', position: 'relative' }}>
             <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
             {/* Legend */}
             <div style={{
@@ -592,9 +612,9 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
           </div>
         </div>
 
-        {/* Season trend chart — full width */}
+        {/* Season trend chart — full width (hidden on mobile) */}
         {(chartLoading || chartData.length > 0) && (
-          <div style={{ padding: '20px 24px 24px', borderTop: '1px solid #f0ede6' }}>
+          <div className="opm-chart-section" style={{ padding: '20px 24px 24px', borderTop: '1px solid #f0ede6' }}>
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#9aaa9f', marginBottom: 14 }}>
               Season Trap Counts by Week{selectedPest ? ` · ${selectedPest.name}` : ''}
             </div>

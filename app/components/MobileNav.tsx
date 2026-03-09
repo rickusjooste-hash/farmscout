@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase-auth'
 
 interface MobileNavProps {
@@ -158,14 +159,14 @@ export default function MobileNav({ isSuperAdmin, modules = ['farmscout'] }: Mob
       {/* Bottom tab bar */}
       <nav className="mnav-bar">
         {TABS.filter(tab => tab.module === null || modules.includes(tab.module)).map(tab => (
-          <a
+          <Link
             key={tab.href}
             href={tab.href}
             className={`mnav-tab${isActive(tab.href) ? ' active' : ''}`}
           >
             <span className="mnav-tab-icon">{tab.icon}</span>
             <span>{tab.label}</span>
-          </a>
+          </Link>
         ))}
         <button
           className={`mnav-tab${showMore ? ' active' : ''}`}
@@ -184,52 +185,52 @@ export default function MobileNav({ isSuperAdmin, modules = ['farmscout'] }: Mob
       <div ref={sheetRef} className={`mnav-sheet${showMore ? ' open' : ''}`}>
         <div className="mnav-sheet-handle" />
 
-        <a href="/heatmap" className={`mnav-sheet-item${isActive('/heatmap') ? ' active' : ''}`}>
+        <Link href="/heatmap" className={`mnav-sheet-item${isActive('/heatmap') ? ' active' : ''}`}>
           <span className="mnav-sheet-icon">{'\u{1F321}\uFE0F'}</span> Heat Map
-        </a>
-        <a href="/inspections" className={`mnav-sheet-item${isActive('/inspections') ? ' active' : ''}`}>
+        </Link>
+        <Link href="/inspections" className={`mnav-sheet-item${isActive('/inspections') ? ' active' : ''}`}>
           <span className="mnav-sheet-icon">{'\u{1F50D}'}</span> Tree Inspections
-        </a>
-        <a href="/orchards" className={`mnav-sheet-item${isActive('/orchards') ? ' active' : ''}`}>
+        </Link>
+        <Link href="/orchards" className={`mnav-sheet-item${isActive('/orchards') ? ' active' : ''}`}>
           <span className="mnav-sheet-icon">{'\u{1F3E1}'}</span> Orchards
-        </a>
-        <a href="/pests" className={`mnav-sheet-item${isActive('/pests') ? ' active' : ''}`}>
+        </Link>
+        <Link href="/pests" className={`mnav-sheet-item${isActive('/pests') ? ' active' : ''}`}>
           <span className="mnav-sheet-icon">{'\u{1F41B}'}</span> Pests
-        </a>
-        <a href="/scouts" className={`mnav-sheet-item${isActive('/scouts') ? ' active' : ''}`}>
+        </Link>
+        <Link href="/scouts" className={`mnav-sheet-item${isActive('/scouts') ? ' active' : ''}`}>
           <span className="mnav-sheet-icon">{'\u{1F477}'}</span> Scouts
-        </a>
-        <a href="/settings" className={`mnav-sheet-item${isActive('/settings') ? ' active' : ''}`}>
+        </Link>
+        <Link href="/settings" className={`mnav-sheet-item${isActive('/settings') ? ' active' : ''}`}>
           <span className="mnav-sheet-icon">{'\u{1F514}'}</span> Settings
-        </a>
+        </Link>
 
         {isSuperAdmin && (
-          <a href="/admin" className={`mnav-sheet-item${isActive('/admin') ? ' active' : ''}`}>
+          <Link href="/admin" className={`mnav-sheet-item${isActive('/admin') ? ' active' : ''}`}>
             <span className="mnav-sheet-icon">{'\u2699\uFE0F'}</span> Admin
-          </a>
+          </Link>
         )}
 
         {hasQc && (
           <>
             <div className="mnav-sheet-section">QC</div>
-            <a href="/qc/dashboard" className={`mnav-sheet-item${isActive('/qc/dashboard') ? ' active' : ''}`}>
+            <Link href="/qc/dashboard" className={`mnav-sheet-item${isActive('/qc/dashboard') ? ' active' : ''}`}>
               <span className="mnav-sheet-icon">{'\u2696\uFE0F'}</span> QC Dashboard
-            </a>
-            <a href="/qc/map" className={`mnav-sheet-item${isActive('/qc/map') ? ' active' : ''}`}>
+            </Link>
+            <Link href="/qc/map" className={`mnav-sheet-item${isActive('/qc/map') ? ' active' : ''}`}>
               <span className="mnav-sheet-icon">{'\u{1F4CD}'}</span> Bag Map
-            </a>
-            <a href="/qc/heatmap" className={`mnav-sheet-item${isActive('/qc/heatmap') ? ' active' : ''}`}>
+            </Link>
+            <Link href="/qc/heatmap" className={`mnav-sheet-item${isActive('/qc/heatmap') ? ' active' : ''}`}>
               <span className="mnav-sheet-icon">{'\u{1F321}\uFE0F'}</span> QC Heat Map
-            </a>
+            </Link>
           </>
         )}
 
         {hasProduction && (
           <>
             <div className="mnav-sheet-section">Production</div>
-            <a href="/production" className={`mnav-sheet-item${isActive('/production') ? ' active' : ''}`}>
+            <Link href="/production" className={`mnav-sheet-item${isActive('/production') ? ' active' : ''}`}>
               <span className="mnav-sheet-icon">{'\u{1F4E6}'}</span> Production
-            </a>
+            </Link>
           </>
         )}
 

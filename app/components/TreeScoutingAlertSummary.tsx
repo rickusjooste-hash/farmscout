@@ -291,9 +291,9 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
         .tsa-tooltip::before { display: none !important; }
         @media (max-width: 768px) {
           .tsa-body { flex-direction: column !important; height: auto !important; }
-          .tsa-pest-list { flex: none !important; width: 100% !important; border-right: none !important; border-bottom: 1px solid #e8e4dc; max-height: 260px; overflow-y: auto; }
+          .tsa-pest-list { max-height: none !important; border-right: none !important; border-bottom: none !important; }
           .tsa-pest-item { min-height: 44px !important; padding: 14px 16px !important; }
-          .tsa-map-panel { flex: none !important; width: 100% !important; height: 300px !important; }
+          .tsa-map-panel { display: none !important; }
         }
       `}</style>
 
