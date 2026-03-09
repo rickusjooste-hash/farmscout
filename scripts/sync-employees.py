@@ -162,9 +162,20 @@ def sync():
     log.info("Synced %d employees in %.1fs", len(payload), elapsed)
 
     # 4. Deactivate employees no longer in FCS (per farm)
+    #    Safety: skip deactivation if FCS returned <50 employees for a farm
+    #    (protects against FCS query issues / ENDDATE bulk changes wiping the table)
+    MIN_EMPLOYEES_FOR_DEACTIVATION = 50
     for farm_id, count in farm_counts.items():
         active_nrs = [p['employee_nr'] for p in payload if p['farm_id'] == farm_id]
         if not active_nrs:
+            continue
+        if count < MIN_EMPLOYEES_FOR_DEACTIVATION:
+            company = next((c for c, f in COMPANY_FARM_MAP.items() if f == farm_id), farm_id)
+            log.warning(
+                "Skipping deactivation for %s — only %d employees from FCS (min %d required). "
+                "Check COMPANYNAME mapping or ENDDATE values in FCS.",
+                company, count, MIN_EMPLOYEES_FOR_DEACTIVATION,
+            )
             continue
         try:
             nr_list = ','.join(active_nrs)
