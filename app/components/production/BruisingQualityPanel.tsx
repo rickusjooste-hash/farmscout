@@ -92,6 +92,22 @@ export default function BruisingQualityPanel({ bruisingData, bruisingSummary }: 
     })).sort((a, b) => b[metric] - a[metric])
   }, [bruisingData, metric])
 
+  // ── Per-sample values for each team (for inline dots on cards) ────────────
+  const teamSamples = useMemo(() => {
+    const map: Record<string, number[]> = {}
+    bruisingData.forEach(row => {
+      const key = row.team || '_none'
+      if (!map[key]) map[key] = []
+      const val = metric === 'bruising' ? (row.bruising_pct || 0)
+        : metric === 'stem' ? (row.stem_pct || 0)
+        : (row.injury_pct || 0)
+      map[key].push(Math.round(val * 10) / 10)
+    })
+    // Sort each team's samples descending so worst shows first
+    Object.values(map).forEach(arr => arr.sort((a, b) => b - a))
+    return map
+  }, [bruisingData, metric])
+
   // ── Sparkline data: per-team weekly averages ─────────────────────────────
   const sparklineData = useMemo(() => {
     const map: Record<string, Record<number, { sum: number; count: number }>> = {}
@@ -211,16 +227,34 @@ export default function BruisingQualityPanel({ bruisingData, bruisingSummary }: 
                   <span style={{ ...styles.teamValue, color }}>{value.toFixed(1)}%</span>
                   <span style={{ ...styles.teamArrow, color: arrowColor }}>{arrow}</span>
                 </div>
-                {spark.length > 1 && (
-                  <div style={styles.sparkContainer}>
-                    <ResponsiveContainer width="100%" height={24}>
-                      <LineChart data={spark} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
-                        <Line type="monotone" dataKey="value" stroke={color} strokeWidth={1.5} dot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-                <div style={styles.teamSub}>{team.samples} samples</div>
+                {/* Individual sample chips (≤12 samples) or sparkline (weekly data) */}
+                {(() => {
+                  const samples = teamSamples[team.key] || []
+                  if (samples.length >= 2 && samples.length <= 12) {
+                    return (
+                      <div style={styles.sampleChips}>
+                        {samples.map((v, i) => (
+                          <span key={i} style={{ ...styles.sampleChip, background: heatmapBg(v), color: heatmapText(v) }}>
+                            {v.toFixed(1)}
+                          </span>
+                        ))}
+                      </div>
+                    )
+                  }
+                  if (spark.length > 1) {
+                    return (
+                      <div style={styles.sparkContainer}>
+                        <ResponsiveContainer width="100%" height={24}>
+                          <LineChart data={spark} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+                            <Line type="monotone" dataKey="value" stroke={color} strokeWidth={1.5} dot={false} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
+                <div style={styles.teamSub}>{team.samples} sample{team.samples !== 1 ? 's' : ''}</div>
               </div>
             )
           })}
@@ -413,6 +447,20 @@ const styles: Record<string, React.CSSProperties> = {
   teamSub: {
     fontSize: 11,
     color: '#9aaa9f',
+  },
+  sampleChips: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 3,
+    marginTop: 6,
+    marginBottom: 2,
+  },
+  sampleChip: {
+    fontSize: 10,
+    fontWeight: 600,
+    padding: '2px 5px',
+    borderRadius: 4,
+    lineHeight: 1.3,
   },
   // Heatmap
   heatmapWrap: {

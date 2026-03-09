@@ -626,13 +626,23 @@ export default function RunnerPage() {
           </div>
           <div style={st.confirmRow}>
             <span style={st.confirmLabel}>Orchard</span>
-            <span style={st.confirmValue}>
-              {detectedOrchard
-                ? `✅ ${detectedOrchard.name}`
-                : showNearbyPicker
-                  ? `📍 ${nearbyOrchards.length} nearby — tap to select`
-                  : gpsLoading ? 'Detecting...' : '⚠️ Select manually'}
-            </span>
+            <div style={{ textAlign: 'right' as const }}>
+              <span style={st.confirmValue}>
+                {detectedOrchard
+                  ? `✅ ${detectedOrchard.name}`
+                  : showNearbyPicker
+                    ? `📍 ${nearbyOrchards.length} nearby — tap to select`
+                    : gpsLoading ? 'Detecting...' : '⚠️ Select manually'}
+              </span>
+              {detectedOrchard && !gpsLoading && (
+                <button
+                  style={{ background: 'none', border: '1px solid #6a5a20', borderRadius: 4, color: '#f0b040', fontSize: 12, padding: '4px 10px', marginTop: 4, cursor: 'pointer', display: 'block', marginLeft: 'auto' }}
+                  onClick={() => { setDetectedOrchard(null); setManualOrchard(null) }}
+                >
+                  Change orchard
+                </button>
+              )}
+            </div>
           </div>
           {/* Nearby orchards popup */}
           {showNearbyPicker && nearbyOrchards.length > 0 && (
