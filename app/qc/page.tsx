@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import jsQR from 'jsqr'
 import {
   qcGetAll,
@@ -96,6 +97,10 @@ export default function QcHome() {
   const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const pendingStreamRef = useRef<MediaStream | null>(null)
 
+  // Supabase Realtime
+  const rtClientRef = useRef<any>(null)
+  const rtChannelRef = useRef<any>(null)
+
   // Attach stream to video element once it mounts
   useEffect(() => {
     if (pendingStreamRef.current && videoRef.current && !videoRef.current.srcObject) {
@@ -123,9 +128,68 @@ export default function QcHome() {
     loadPendingCount()
     window.addEventListener('online', handleSync)
     const pollInterval = setInterval(() => handleSync(), 300000)
+
+    // ── Supabase Realtime: instant bag arrival notifications ──────────
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+    if (supabaseUrl && anonKey) {
+      const farmIds: string[] = (() => { try { return JSON.parse(localStorage.getItem('qcapp_farm_ids') || '[]') } catch { return [] } })()
+      const runnerIds: string[] = (() => { try { return JSON.parse(localStorage.getItem('qcapp_assigned_runner_ids') || '[]') } catch { return [] } })()
+
+      const rtClient = createSupabaseClient(supabaseUrl, anonKey, {
+        realtime: { params: { eventsPerSecond: 10 } },
+      })
+      rtClient.realtime.setAuth(token)
+      rtClientRef.current = rtClient
+
+      const channel = rtClient
+        .channel('qc-bag-queue')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'qc_bag_sessions',
+        }, async (payload: any) => {
+          const bag = payload.new
+          if (!bag || bag.status !== 'collected') return
+
+          // Filter by runner assignment (most important!)
+          if (runnerIds.length > 0) {
+            if (!runnerIds.includes(bag.runner_id)) return
+          } else if (farmIds.length > 0) {
+            if (!farmIds.includes(bag.farm_id)) return
+          }
+
+          // Enrich with display names from IndexedDB
+          const [employees, orchards_] = await Promise.all([qcGetAll('employees'), qcGetAll('orchards')])
+          const empName = employees.find((e: any) => e.id === bag.employee_id)?.full_name || 'Unknown picker'
+          const orchName = orchards_.find((o: any) => o.id === bag.orchard_id)?.name || 'Unknown orchard'
+
+          const enrichedBag: QcBagSession = {
+            ...bag,
+            _syncStatus: 'synced' as const,
+            _employee_name: empName,
+            _orchard_name: orchName,
+          }
+
+          // Save to IndexedDB + update state (avoid duplicates)
+          await qcPut('bag_sessions', enrichedBag)
+          setPendingSessions(prev => {
+            if (prev.some(s => s.id === bag.id)) return prev
+            return [enrichedBag, ...prev]  // newest first
+          })
+          console.log(`[QC Realtime] New bag #${bag.bag_seq} from runner ${bag.runner_id}`)
+        })
+        .subscribe((status: string) => {
+          console.log(`[QC Realtime] Channel status: ${status}`)
+        })
+      rtChannelRef.current = channel
+    }
+
     return () => {
       window.removeEventListener('online', handleSync)
       clearInterval(pollInterval)
+      rtChannelRef.current?.unsubscribe()
+      rtClientRef.current?.removeAllChannels()
     }
   }, [])
 
