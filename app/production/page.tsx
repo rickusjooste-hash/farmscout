@@ -10,6 +10,7 @@ import {
 } from 'recharts'
 import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
 import MobileNav from '@/app/components/MobileNav'
+import BruisingQualityPanel from '@/app/components/production/BruisingQualityPanel'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -39,6 +40,7 @@ interface BruisingRow {
   bin_weight_kg: number | null
   team: string | null
   team_name: string | null
+  week_num: number | null
 }
 
 interface BinWeight {
@@ -330,7 +332,7 @@ export default function ProductionPage() {
 
         let bruisingQ = supabase
           .from('production_bruising')
-          .select('orchard_id, orchard_name, variety, bruising_pct, stem_pct, injury_pct, bin_weight_kg, received_date, team, team_name')
+          .select('orchard_id, orchard_name, variety, bruising_pct, stem_pct, injury_pct, bin_weight_kg, received_date, team, team_name, week_num')
           .eq('season', season)
           .in('farm_id', effectiveFarmIds)
         if (filterDate) bruisingQ = bruisingQ.eq('received_date', filterDate)
@@ -1141,39 +1143,8 @@ export default function ProductionPage() {
               </div>
             </div>
 
-            {/* Quality Summary (Bruising) — per team */}
-            {bruisingSummary.length > 0 && (
-              <div style={s.card}>
-                <div style={s.cardHeader}><span style={s.cardTitle}>Quality Summary (Bruising)</span></div>
-                <div style={{ overflowX: 'auto', maxHeight: 460, overflowY: 'auto' }} className="prod-bruising-table">
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                    <thead>
-                      <tr style={{ background: '#f7f5f0', position: 'sticky' as const, top: 0, zIndex: 1 }}>
-                        {['Orchard', 'Variety', 'Team', 'Samples', 'Bruising %', 'Stem %', 'Injury %', 'Avg Weight'].map(h => (
-                          <th key={h} style={{ padding: '10px 8px', textAlign: h === 'Orchard' || h === 'Variety' || h === 'Team' ? 'left' : 'right', fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid #e8e4dc' }}>
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {bruisingSummary.map((b, i) => (
-                        <tr key={`${b.orchard_id || ''}-${b.team || ''}-${i}`} style={{ borderBottom: '1px solid #f0ede6' }}>
-                          <td style={{ padding: '9px 8px', fontWeight: 500 }}>{b.name}</td>
-                          <td style={{ padding: '9px 8px', color: '#6a7a70' }}>{b.variety || '–'}</td>
-                          <td style={{ padding: '9px 8px', color: '#6a7a70' }}>{b.teamName || b.team || '–'}</td>
-                          <td style={{ padding: '9px 8px', textAlign: 'right' }}>{b.samples}</td>
-                          <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 600, color: qualityColor(b.bruising) }}>{b.bruising.toFixed(1)}%</td>
-                          <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 600, color: qualityColor(b.stem) }}>{b.stem.toFixed(1)}%</td>
-                          <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 600, color: qualityColor(b.injury) }}>{b.injury.toFixed(1)}%</td>
-                          <td style={{ padding: '9px 8px', textAlign: 'right', color: '#6a7a70' }}>{b.avgWeight ? `${b.avgWeight} kg` : '–'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+            {/* Quality Summary — team cards + heatmap */}
+            <BruisingQualityPanel bruisingData={filteredBruising} bruisingSummary={bruisingSummary} />
 
             {/* Charts row */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }} className="prod-charts">
