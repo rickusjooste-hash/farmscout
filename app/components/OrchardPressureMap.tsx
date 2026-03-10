@@ -389,10 +389,10 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
 
   const arrowBtn = (label: string, onClick: () => void, disabled = false) => (
     <button onClick={onClick} disabled={disabled} style={{
-      width: 26, height: 26, borderRadius: '50%', border: '1.5px solid #e0ddd6',
-      background: '#fff', color: disabled ? '#ccc' : '#3a4a40', fontSize: 14,
+      background: 'none', border: 'none',
+      color: disabled ? '#d0cdc6' : '#3478F6', fontSize: 22,
       cursor: disabled ? 'default' : 'pointer', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', flexShrink: 0, lineHeight: 1,
+      justifyContent: 'center', flexShrink: 0, lineHeight: 1, padding: '4px 8px',
     }}>{label}</button>
   )
 

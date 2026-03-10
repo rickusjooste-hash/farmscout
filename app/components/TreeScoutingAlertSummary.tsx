@@ -450,13 +450,13 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
                 <button
                   onClick={() => setMobileDrilldown(null)}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
+                    display: 'flex', alignItems: 'center', gap: 4,
                     background: 'none', border: 'none', cursor: 'pointer',
-                    padding: '12px 16px 8px', fontSize: 13, color: '#7a8a80',
+                    padding: '12px 16px 8px', fontSize: 15, color: '#3478F6',
                     fontFamily: 'Inter, sans-serif', fontWeight: 500,
                   }}
                 >
-                  {'\u25C0'} Back to pests
+                  <span style={{ fontSize: 20, lineHeight: 1 }}>{'\u2039'}</span> Back to pests
                 </button>
 
                 {/* Pest name + week nav */}
@@ -470,12 +470,11 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
                     <button
                       onClick={goWeekBack}
                       style={{
-                        background: 'none', border: '1px solid #e0ddd5', borderRadius: 6,
-                        width: 32, height: 32, cursor: 'pointer', fontSize: 14, color: '#3a4a40',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        fontSize: 22, color: '#3478F6', lineHeight: 1, padding: '4px 8px',
                         fontFamily: 'Inter, sans-serif',
                       }}
-                    >{'\u25C0'}</button>
+                    >{'\u2039'}</button>
                     <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a' }}>
                       {formatWeekLabel(drilldownWeekStart)}
                     </span>
@@ -483,14 +482,13 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
                       onClick={goWeekForward}
                       disabled={isCurrentWeek}
                       style={{
-                        background: 'none', border: '1px solid #e0ddd5', borderRadius: 6,
-                        width: 32, height: 32, cursor: isCurrentWeek ? 'default' : 'pointer',
-                        fontSize: 14, color: isCurrentWeek ? '#d0cdc6' : '#3a4a40',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'none', border: 'none',
+                        cursor: isCurrentWeek ? 'default' : 'pointer',
+                        fontSize: 22, color: isCurrentWeek ? '#d0cdc6' : '#3478F6',
+                        lineHeight: 1, padding: '4px 8px',
                         fontFamily: 'Inter, sans-serif',
-                        opacity: isCurrentWeek ? 0.5 : 1,
                       }}
-                    >{'\u25B6'}</button>
+                    >{'\u203A'}</button>
                   </div>
                 </div>
 
