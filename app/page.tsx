@@ -47,7 +47,11 @@ export default function DashboardPage() {
   const [selectedPestId, setSelectedPestId] = useState<string | undefined>()
   const [effectiveFarmIds, setEffectiveFarmIds] = useState<string[]>([])
   const [farms, setFarms] = useState<{ id: string; full_name: string }[]>([])
+  const [trapAlertCount, setTrapAlertCount] = useState(0)
+  const [treeAlertCount, setTreeAlertCount] = useState(0)
   const pressureMapRef = useRef<HTMLDivElement>(null)
+  const alertsSectionRef = useRef<HTMLDivElement>(null)
+  const treeSectionRef = useRef<HTMLDivElement>(null)
 
   function handlePestSelect(pestId: string) {
     setSelectedPestId(pestId)
@@ -105,6 +109,8 @@ export default function DashboardPage() {
           { data: weekData },
           { data: trapInspData },
           { data: scoutData },
+          { data: trapAlertData },
+          { data: treeAlertData },
         ] = await Promise.all([
           orchardIds.length > 0
             ? supabase.from('inspection_sessions')
@@ -120,6 +126,12 @@ export default function DashboardPage() {
                 .in('orchard_id', orchardIds)
             : Promise.resolve({ data: [], error: null, count: null, status: 200, statusText: 'OK' }),
           scoutQuery,
+          resolvedFarmIds.length > 0
+            ? supabase.rpc('get_farm_pest_pressure_summary', { p_farm_ids: resolvedFarmIds })
+            : Promise.resolve({ data: [], error: null }),
+          resolvedFarmIds.length > 0
+            ? supabase.rpc('get_tree_pest_pressure_summary', { p_farm_ids: resolvedFarmIds })
+            : Promise.resolve({ data: [], error: null }),
         ])
 
         // Build scout lookup: user_id → { name, first_trap_id, sectionId }
@@ -186,6 +198,8 @@ export default function DashboardPage() {
           scoutMapResult[sid] = { name: scoutLookup[sid]?.name || 'Unknown', orchardIds: [...orchardSet], assignedOrchardIds: assigned }
         })
         setWeekScoutMap(scoutMapResult)
+        setTrapAlertCount((trapAlertData || []).filter((r: any) => Number(r.red_orchards) > 0).length)
+        setTreeAlertCount((treeAlertData || []).filter((r: any) => Number(r.red_orchards) > 0).length)
       } catch (err) {
         console.error('Dashboard fetchData error:', err)
       } finally {
@@ -584,18 +598,25 @@ export default function DashboardPage() {
 
         /* ===== Dashboard mobile responsive (dash- prefix) ===== */
 
+        /* Mobile-only elements */
+        .dash-mobile-only { display: none; }
+        .dash-desktop-only { display: flex; }
+
         /* General mobile — tablets + phones */
         @media (max-width: 768px) {
+          body { background: #fff !important; }
           .dash-main {
-            padding: 16px 12px 80px 12px !important;
+            padding: 0 0 80px 0 !important;
+            background: #fff !important;
           }
-          .dash-page-header {
-            padding-top: env(safe-area-inset-top, 0px);
-          }
+          .dash-desktop-only { display: none !important; }
+          .dash-mobile-only { display: block !important; }
           .dash-mobile-reorder {
             display: flex;
             flex-direction: column;
+            padding: 0 14px;
           }
+          .dash-section-kpi    { order: 0; }
           .dash-section-alerts { order: 1; }
           .dash-section-weeks  { order: 2; display: none; }
           .dash-section-map    { order: 3; }
@@ -630,7 +651,8 @@ export default function DashboardPage() {
 
           {/* Main */}
           <main className="main dash-main">
-            <div className="page-header dash-page-header">
+            {/* Desktop header */}
+            <div className="page-header dash-page-header dash-desktop-only">
               <div>
                 <div className="page-title">Farm Overview</div>
                 <div className="page-subtitle">All farms &middot; Season 2024/25</div>
@@ -641,10 +663,107 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {/* Mobile top bar */}
+            <div className="dash-mobile-only" style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top, 0px))',
+              background: '#fff', borderBottom: '1px solid #e8e4dc',
+            }}>
+              <button
+                onClick={() => window.location.reload()}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: '#3a4a40', lineHeight: 0 }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="23 4 23 10 17 10"/>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                </svg>
+              </button>
+              <img src="/allfarm-logo.svg" alt="allFarm" style={{ height: 36, width: 36, borderRadius: 10 }} />
+              <button
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: '#3a4a40', lineHeight: 0, position: 'relative' }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                {(trapAlertCount + treeAlertCount) > 0 && (
+                  <span style={{
+                    position: 'absolute', top: 2, right: 2,
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: '#e85a4a',
+                  }} />
+                )}
+              </button>
+            </div>
+
             <div className="dash-mobile-reorder">
 
+            {/* Mobile KPI cards + progress bars */}
+            <div className="dash-section-kpi dash-mobile-only">
+              {/* KPI cards */}
+              <div style={{ display: 'flex', gap: 12, marginBottom: 14, marginTop: 4 }}>
+                <div
+                  onClick={() => alertsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  style={{
+                    flex: 1, background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc',
+                    padding: '18px 16px', cursor: 'pointer',
+                    borderLeft: `4px solid ${trapAlertCount > 0 ? '#e85a4a' : '#4caf72'}`,
+                  }}
+                >
+                  <div style={{ fontSize: 36, fontWeight: 700, color: trapAlertCount > 0 ? '#e85a4a' : '#1c3a2a', lineHeight: 1 }}>
+                    {trapAlertCount}
+                  </div>
+                  <div style={{ height: 2, background: '#f0ede6', margin: '8px 0' }} />
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a80', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Trap Alerts
+                  </div>
+                </div>
+                <div
+                  onClick={() => treeSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  style={{
+                    flex: 1, background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc',
+                    padding: '18px 16px', cursor: 'pointer',
+                    borderLeft: `4px solid ${treeAlertCount > 0 ? '#e85a4a' : '#4caf72'}`,
+                  }}
+                >
+                  <div style={{ fontSize: 36, fontWeight: 700, color: treeAlertCount > 0 ? '#e85a4a' : '#1c3a2a', lineHeight: 1 }}>
+                    {treeAlertCount}
+                  </div>
+                  <div style={{ height: 2, background: '#f0ede6', margin: '8px 0' }} />
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a80', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Tree Alerts
+                  </div>
+                </div>
+              </div>
+              {/* Progress bars */}
+              <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '14px 16px', marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a' }}>Trap Inspections</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#1c3a2a' }}>{trapPct}%</span>
+                </div>
+                <div style={{ height: 8, background: '#f0ede6', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${trapPct}%`, background: 'linear-gradient(90deg, #b36a00, #f0a500)', borderRadius: 4, transition: 'width 0.6s ease' }} />
+                </div>
+                <div style={{ fontSize: 11, color: '#9aaa9f', marginTop: 4 }}>
+                  {trapWeekData.inspectedTraps} of {trapWeekData.totalTraps} traps this week
+                </div>
+              </div>
+              <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '14px 16px', marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a' }}>Tree Scouting</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#1c3a2a' }}>{weekPct}%</span>
+                </div>
+                <div style={{ height: 8, background: '#f0ede6', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${weekPct}%`, background: 'linear-gradient(90deg, #2a6e45, #6abf7a)', borderRadius: 4, transition: 'width 0.6s ease' }} />
+                </div>
+                <div style={{ fontSize: 11, color: '#9aaa9f', marginTop: 4 }}>
+                  {weekSessions.length} of {totalOrchards} orchards this week
+                </div>
+              </div>
+            </div>
+
             {/* Pest Alerts */}
-            <div className="dash-section-alerts">
+            <div className="dash-section-alerts" ref={alertsSectionRef}>
               <PestAlertSummary farmIds={effectiveFarmIds} onPestSelect={handlePestSelect} />
             </div>
 
@@ -794,7 +913,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Tree Scouting Alerts */}
-            <div className="dash-section-tree">
+            <div className="dash-section-tree" ref={treeSectionRef}>
               <TreeScoutingAlertSummary farmIds={effectiveFarmIds} onPestSelect={() => router.push('/inspections')} />
             </div>
 
