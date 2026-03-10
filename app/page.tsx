@@ -611,6 +611,7 @@ export default function DashboardPage() {
           }
           .dash-desktop-only { display: none !important; }
           .dash-mobile-only { display: block !important; }
+          .dash-mobile-topbar { display: flex !important; }
           .dash-mobile-reorder {
             display: flex;
             flex-direction: column;
@@ -664,8 +665,8 @@ export default function DashboardPage() {
             </div>
 
             {/* Mobile top bar */}
-            <div className="dash-mobile-only" style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            <div className="dash-mobile-only dash-mobile-topbar" style={{
+              alignItems: 'center', justifyContent: 'space-between',
               padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top, 0px))',
               background: '#fff', borderBottom: '1px solid #e8e4dc',
             }}>
