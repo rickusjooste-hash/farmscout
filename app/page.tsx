@@ -664,11 +664,12 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Mobile top bar */}
+            {/* Mobile top bar — sticky */}
             <div className="dash-mobile-only dash-mobile-topbar" style={{
               alignItems: 'center', justifyContent: 'space-between',
               padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top, 0px))',
               background: '#fff', borderBottom: '1px solid #e8e4dc',
+              position: 'sticky', top: 0, zIndex: 100,
             }}>
               <button
                 onClick={() => window.location.reload()}
