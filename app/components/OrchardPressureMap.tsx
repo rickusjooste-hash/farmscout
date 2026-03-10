@@ -324,9 +324,9 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
     else setTrapDetail([])
   }, [selectedOrchardId, loadTrapDetail])
 
-  // ── Init Leaflet ──────────────────────────────────────────────────────
+  // ── Init Leaflet (re-check when expanded toggles, since map div is conditionally rendered) ──
   useEffect(() => {
-    if (mapReady || !mapRef.current) return
+    if (mapReady || !expanded || !mapRef.current) return
     ;(async () => {
       const L = (await import('leaflet')).default
       leafletRef.current = L
@@ -334,10 +334,11 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
         const map = L.map(mapRef.current, { zoomControl: true, attributionControl: false, scrollWheelZoom: true, maxZoom: 19 })
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, maxNativeZoom: 18 }).addTo(map)
         mapRef.current._map = map
+        setTimeout(() => map.invalidateSize(), 200)
         setMapReady(true)
       }
     })()
-  }, [])
+  }, [expanded])
 
   // ── Draw polygons ─────────────────────────────────────────────────────
   useEffect(() => {
