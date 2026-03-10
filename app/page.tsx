@@ -616,6 +616,7 @@ export default function DashboardPage() {
             display: flex;
             flex-direction: column;
             padding: 0 14px;
+            padding-top: calc(56px + env(safe-area-inset-top, 0px));
           }
           .dash-section-kpi    { order: 0; }
           .dash-section-alerts { order: 1; }
@@ -664,12 +665,12 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Mobile top bar — sticky */}
+            {/* Mobile top bar — fixed */}
             <div className="dash-mobile-only dash-mobile-topbar" style={{
               alignItems: 'center', justifyContent: 'space-between',
               padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top, 0px))',
               background: '#fff', borderBottom: '1px solid #e8e4dc',
-              position: 'sticky', top: 0, zIndex: 100,
+              position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200,
             }}>
               <button
                 onClick={() => window.location.reload()}
