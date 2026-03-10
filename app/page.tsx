@@ -584,16 +584,39 @@ export default function DashboardPage() {
         .activity-orchard { font-size: 13.5px; font-weight: 500; color: #1c3a2a; }
         .activity-date { font-size: 12px; color: #9aaa9f; margin-left: auto; }
 
-        /* Loading */
+        /* Loading / splash screen */
         .loading {
           display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
           height: 100vh;
           font-family: 'Inter', sans-serif;
-          font-size: 24px;
-          color: #1c3a2a;
-          background: #f4f1eb;
+          background: #fff;
+          gap: 32px;
+        }
+        .splash-dots {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          justify-content: center;
+        }
+        .splash-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #2176d9;
+          opacity: 0;
+          animation: splash-fade-in 0.4s forwards;
+        }
+        .splash-dot:nth-child(1) { animation-delay: 0.2s; }
+        .splash-dot:nth-child(2) { animation-delay: 0.6s; }
+        .splash-dot:nth-child(3) { animation-delay: 1.0s; }
+        .splash-dot:nth-child(4) { animation-delay: 1.4s; }
+        .splash-dot:nth-child(5) { animation-delay: 1.8s; }
+        @keyframes splash-fade-in {
+          0% { opacity: 0; transform: scale(0.5); }
+          100% { opacity: 1; transform: scale(1); }
         }
 
         /* ===== Dashboard mobile responsive (dash- prefix) ===== */
@@ -645,7 +668,16 @@ export default function DashboardPage() {
       `}</style>
 
       {loading ? (
-        <div className="loading">Loading FarmScout...</div>
+        <div className="loading">
+          <img src="/allfarm-logo.svg" alt="allFarm" style={{ width: 96, height: 96, borderRadius: 22 }} />
+          <div className="splash-dots">
+            <div className="splash-dot" />
+            <div className="splash-dot" />
+            <div className="splash-dot" />
+            <div className="splash-dot" />
+            <div className="splash-dot" />
+          </div>
+        </div>
       ) : (
         <div className="app">
           <ManagerSidebarStyles />
