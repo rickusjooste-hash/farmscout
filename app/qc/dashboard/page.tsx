@@ -81,7 +81,7 @@ interface PickerIssueRow {
   fruit_sampled: number
 }
 
-type DateFilter = 'today' | 'this_week' | 'last_7' | 'this_month' | 'season'
+type DateFilter = 'today' | 'this_week' | 'last_7' | 'this_month' | 'season' | 'custom'
 type Lang = 'en' | 'af'
 
 // ── Season helpers ──────────────────────────────────────────────────────────
@@ -116,12 +116,18 @@ function getSeasonRange(season: string): { from: Date; to: Date } {
 
 // ── Date helpers ────────────────────────────────────────────────────────────
 
-function getDateRange(filter: DateFilter, season?: string): { from: Date; to: Date } {
+function getDateRange(filter: DateFilter, season?: string, customDate?: string): { from: Date; to: Date } {
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const tomorrow = new Date(today.getTime() + 86400000)
 
   if (filter === 'today') return { from: today, to: tomorrow }
+
+  if (filter === 'custom' && customDate) {
+    const [y, m, d] = customDate.split('-').map(Number)
+    const day = new Date(y, m - 1, d)
+    return { from: day, to: new Date(day.getTime() + 86400000) }
+  }
 
   if (filter === 'this_week') {
     const dow = (today.getDay() + 6) % 7 // Mon = 0
@@ -144,8 +150,12 @@ function getDateRange(filter: DateFilter, season?: string): { from: Date; to: Da
   return { from: monthStart, to: monthEnd }
 }
 
-function fmtDateFilter(filter: DateFilter, season?: string): string {
+function fmtDateFilter(filter: DateFilter, season?: string, customDate?: string): string {
   if (filter === 'today') return 'Today'
+  if (filter === 'custom' && customDate) {
+    const d = new Date(customDate + 'T00:00:00')
+    return d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
+  }
   if (filter === 'this_week') {
     const { from, to } = getDateRange(filter)
     const end = new Date(to.getTime() - 1)
@@ -261,7 +271,18 @@ export default function QcDashboardPage() {
     return allFarms.map(f => f.id)
   }, [allFarms, selectedFarmId])
 
-  const [dateFilter, setDateFilter] = useState<DateFilter>('today')
+  // Before 08:00 SAST → default to yesterday so morning team briefing shows previous day
+  const [dateFilter, setDateFilter] = useState<DateFilter>(() => {
+    const sast = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Johannesburg' }))
+    return sast.getHours() < 8 ? 'custom' : 'today'
+  })
+  const [customDate, setCustomDate] = useState(() => {
+    const sast = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Johannesburg' }))
+    if (sast.getHours() < 8) {
+      sast.setDate(sast.getDate() - 1)
+    }
+    return sast.toISOString().slice(0, 10)
+  })
   const [season, setSeason] = useState<string>(getCurrentSeason())
   const [commodityId, setCommodityId] = useState<string | null>(null)
   const [variety, setVariety] = useState<string | null>(null)
@@ -380,12 +401,12 @@ export default function QcDashboardPage() {
   useEffect(() => {
     if (effectiveFarmIds.length === 0) return
     fetchAll()
-  }, [effectiveFarmIds, dateFilter, season, commodityId, variety, orchardId, selectedFarmId])
+  }, [effectiveFarmIds, dateFilter, customDate, season, commodityId, variety, orchardId, selectedFarmId])
 
   async function fetchAll() {
     setLoading(true)
     setBagPage(0)
-    const { from, to } = getDateRange(dateFilter, season)
+    const { from, to } = getDateRange(dateFilter, season, customDate)
     const fromIso = from.toISOString()
     const toIso   = to.toISOString()
 
@@ -695,6 +716,16 @@ export default function QcDashboardPage() {
                 ))}
               </select>
             )}
+            <input
+              type="date"
+              value={dateFilter === 'custom' ? customDate : ''}
+              onChange={e => { setCustomDate(e.target.value); setDateFilter('custom') }}
+              style={{
+                ...s.pill,
+                ...(dateFilter === 'custom' ? { borderColor: '#2a6e45', background: '#e8f5ee', color: '#2a6e45', fontWeight: 600 } : {}),
+                width: 130,
+              }}
+            />
           </div>
 
           <div style={s.divider} />

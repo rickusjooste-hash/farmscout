@@ -262,8 +262,18 @@ export default function ProductionPage() {
   const seasons = useMemo(() => buildSeasonOptions(2020), [])
 
   // Date filter: 'today' | 'all' | 'custom'
-  const [dateFilter, setDateFilter] = useState<'today' | 'all' | 'custom'>('today')
-  const [customDate, setCustomDate] = useState(() => new Date().toISOString().slice(0, 10))
+  // Before 08:00 SAST → default to yesterday so morning team briefing shows previous day
+  const [dateFilter, setDateFilter] = useState<'today' | 'all' | 'custom'>(() => {
+    const sast = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Johannesburg' }))
+    return sast.getHours() < 8 ? 'custom' : 'today'
+  })
+  const [customDate, setCustomDate] = useState(() => {
+    const sast = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Johannesburg' }))
+    if (sast.getHours() < 8) {
+      sast.setDate(sast.getDate() - 1)
+    }
+    return sast.toISOString().slice(0, 10)
+  })
 
   const [allOrchards, setAllOrchards] = useState<OrchardRef[]>([])
   const [binRows, setBinRows] = useState<BinRow[]>([])
