@@ -447,6 +447,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
             <span style={{ fontSize: 13, color: '#7a8a80', transition: 'transform 0.2s', display: 'inline-block', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>{'\u25BC'}</span>
           </div>
 
+          {expanded && <>
           {/* Week navigation */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={e => e.stopPropagation()}>
             {arrowBtn('‹', () => { const p = prevWeek(weekYear, weekNum); setWeekYear(p.year); setWeekNum(p.week) })}
@@ -475,6 +476,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
               }}>{p.name}</button>
             ))}
           </div>
+          </>}
         </div>
 
         {expanded && <>
