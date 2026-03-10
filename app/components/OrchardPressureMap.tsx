@@ -131,6 +131,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
   const [chartPests, setChartPests] = useState<string[]>([])
   const [chartLoading, setChartLoading] = useState(false)
   const [showMobileMap, setShowMobileMap] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
   // ── Load orchards ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -440,11 +441,14 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 20 }}>
 
         {/* Card header */}
-        <div className="opm-header" style={{ padding: '16px 20px', borderBottom: '1px solid #f0ede6', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-          <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a', flexShrink: 0 }}>Orchard Trap Pressure</div>
+        <div className="opm-header" style={{ padding: '16px 20px', borderBottom: expanded ? '1px solid #f0ede6' : 'none', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', cursor: 'pointer' }} onClick={() => setExpanded(e => !e)}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a' }}>Orchard Trap Pressure</div>
+            <span style={{ fontSize: 13, color: '#7a8a80', transition: 'transform 0.2s', display: 'inline-block', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>{'\u25BC'}</span>
+          </div>
 
           {/* Week navigation */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={e => e.stopPropagation()}>
             {arrowBtn('‹', () => { const p = prevWeek(weekYear, weekNum); setWeekYear(p.year); setWeekNum(p.week) })}
             <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a', whiteSpace: 'nowrap', minWidth: 170, textAlign: 'center' }}>
               {weekLabel(weekYear, weekNum)}
@@ -459,7 +463,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
           </div>
 
           {/* Pest pills */}
-          <div className="opm-pills" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginLeft: 'auto' }}>
+          <div className="opm-pills" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginLeft: 'auto' }} onClick={e => e.stopPropagation()}>
             <span style={{ fontSize: 11, color: '#9aaa9f', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', flexShrink: 0 }}>Pest</span>
             {pests.map(p => (
               <button key={p.id} onClick={() => setSelectedPest(p)} style={{
@@ -473,6 +477,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
           </div>
         </div>
 
+        {expanded && <>
         {/* Loading bar */}
         {loading && (
           <div style={{ height: 3, background: 'linear-gradient(90deg, #2a6e45, #a8d5a2)', animation: 'shimmer 1s infinite' }} />
@@ -667,6 +672,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
             )}
           </div>
         )}
+        </>}
       </div>
     </>
   )
