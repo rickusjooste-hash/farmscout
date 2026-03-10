@@ -597,11 +597,11 @@ export default function DashboardPage() {
             flex-direction: column;
           }
           .dash-section-alerts { order: 1; }
-          .dash-section-weeks  { order: 2; }
+          .dash-section-weeks  { order: 2; display: none; }
           .dash-section-map    { order: 3; }
           .dash-section-tree   { order: 4; }
-          .dash-section-trend  { order: 5; }
-          .dash-section-rebait { order: 6; }
+          .dash-section-trend  { order: 5; display: none; }
+          .dash-section-rebait { order: 6; display: none; }
 
           .dash-expand-btn {
             min-height: 44px !important;
