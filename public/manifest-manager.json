@@ -1,13 +1,13 @@
 {
-  "name": "FarmScout Manager",
-  "short_name": "FarmScout",
+  "name": "allFarm",
+  "short_name": "allFarm",
   "description": "Farm management dashboard",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone"],
-  "background_color": "#f4f1eb",
-  "theme_color": "#1c3a2a",
+  "background_color": "#ffffff",
+  "theme_color": "#2176d9",
   "orientation": "any",
   "icons": [
     {
