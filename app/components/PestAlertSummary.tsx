@@ -70,7 +70,7 @@ export default function PestAlertSummary({ farmIds, onPestSelect }: Props) {
           @keyframes pas-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
         `}</style>
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '20px 24px', marginBottom: 20 }}>
-          <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a', marginBottom: 12 }}>Pest Alerts</div>
+          <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a', marginBottom: 12 }}>Trap Alerts</div>
           {[0, 1, 2].map(i => (
             <div key={i} style={{ height: 48, background: '#f4f1eb', borderRadius: 8, marginBottom: 8, animation: 'pas-pulse 1.5s ease infinite' }} />
           ))}
@@ -93,7 +93,7 @@ export default function PestAlertSummary({ farmIds, onPestSelect }: Props) {
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 20 }}>
         <div style={{ padding: '16px 20px', borderBottom: expanded ? '1px solid #f0ede6' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => setExpanded(e => !e)}>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a' }}>Pest Alerts</div>
+            <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a' }}>Trap Alerts</div>
             <div style={{ fontSize: 12, color: '#9aaa9f', marginTop: 3 }}>
               {expanded ? 'This week vs last week — click View to jump to map' : `${rows.length} pest${rows.length !== 1 ? 's' : ''} tracked · ${rows.filter(r => Number(r.red_orchards) > 0).length} with alerts`}
             </div>
