@@ -552,6 +552,33 @@ export default function ProductionPage() {
     }
   }, [orchardAgg])
 
+  // Avg Bruising — extracted for reuse in mobile KPI + desktop KPI strip
+  const avgBruisingData = useMemo(() => {
+    const withBruising = filteredBruising.filter(b => b.bruising_pct != null)
+    const avg = withBruising.length > 0
+      ? withBruising.reduce((s, b) => s + (b.bruising_pct || 0), 0) / withBruising.length
+      : null
+    return { avg, samples: withBruising.length }
+  }, [filteredBruising])
+
+  // Class 1 % — extracted for reuse in mobile KPI + desktop KPI strip
+  const class1Data = useMemo(() => {
+    const totalFruit = sizeBins.reduce((sum, b) => sum + b.fruit_count, 0)
+    const qcDefects = issueRows.filter(r => r.category === 'qc_issue').reduce((sum, r) => sum + r.total_count, 0)
+    const realBins = sizeBins.filter(b => b.bin_label !== 'Out of spec')
+    const outOfSpec = sizeBins.filter(b => b.bin_label === 'Out of spec').reduce((s, b) => s + b.fruit_count, 0)
+    const oversizeCount = realBins.length > 0 ? realBins[0].fruit_count : 0
+    const undersizeCount = realBins.length > 1 ? realBins[realBins.length - 1].fruit_count : 0
+    const packable = totalFruit - oversizeCount - undersizeCount - outOfSpec
+    const class1 = packable > 0 ? Math.round((packable - qcDefects) / packable * 1000) / 10 : null
+    return { class1, packable }
+  }, [sizeBins, issueRows])
+
+  // Top 5 orchards by total bins — for mobile compact list
+  const topOrchards = useMemo(() => {
+    return [...orchardAgg].sort((a, b) => b.total - a.total).slice(0, 5)
+  }, [orchardAgg])
+
   // Weekly trend grouped by commodity
   const { weeklyTrend, weekCommodities } = useMemo(() => {
     // Build commodity name lookup per orchard
@@ -727,8 +754,129 @@ export default function ProductionPage() {
       <MobileNav isSuperAdmin={isSuperAdmin} modules={modules} />
 
       <main style={s.main} className="prod-main">
-        {/* Header */}
-        <div style={s.pageHeader} className="prod-header">
+        {/* ── Mobile top bar (fixed) ────────────────────────────────── */}
+        <div className="prod-mobile-only prod-mobile-topbar" style={{
+          alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top, 0px))',
+          background: '#fff', borderBottom: '1px solid #e8e4dc',
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200,
+        }}>
+          <button
+            onClick={() => window.location.reload()}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: '#3a4a40', lineHeight: 0 }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="23 4 23 10 17 10"/>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+          </button>
+          <img src="/allfarm-logo.svg" alt="allFarm" style={{ height: 36, width: 36, borderRadius: 10 }} />
+          <button
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: '#3a4a40', lineHeight: 0 }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* ── Mobile KPI section ────────────────────────────────────── */}
+        <div className="prod-mobile-only prod-mobile-content">
+          {/* Date + week label */}
+          <div style={{ padding: '14px 2px 6px', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 20, fontWeight: 700, color: '#1c3a2a', letterSpacing: '-0.3px' }}>
+              {dateFilter === 'all'
+                ? `Season ${season}`
+                : new Date(filterDate! + 'T12:00:00').toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              {dateFilter !== 'all' && `W${(() => {
+                const d = new Date(filterDate! + 'T12:00:00')
+                d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7))
+                const y = new Date(d.getFullYear(), 0, 4)
+                return Math.round(((d.getTime() - y.getTime()) / 86400000 - 3 + ((y.getDay() + 6) % 7)) / 7) + 1
+              })()}`}
+            </span>
+          </div>
+
+          {/* Quick date toggle: Yesterday / Today / Season */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+            {(() => {
+              const sast = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Johannesburg' }))
+              const todayStr = sast.toISOString().slice(0, 10)
+              sast.setDate(sast.getDate() - 1)
+              const yesterdayStr = sast.toISOString().slice(0, 10)
+              const isYesterday = dateFilter === 'custom' && customDate === yesterdayStr
+              const isToday = dateFilter === 'today'
+              const isSeason = dateFilter === 'all'
+              return (<>
+                <button
+                  onClick={() => { setCustomDate(yesterdayStr); setDateFilter('custom') }}
+                  style={isYesterday ? s.pillActive : s.pill}
+                >Yesterday</button>
+                <button
+                  onClick={() => setDateFilter('today')}
+                  style={isToday ? s.pillActive : s.pill}
+                >Today</button>
+                <button
+                  onClick={() => setDateFilter('all')}
+                  style={isSeason ? s.pillActive : s.pill}
+                >Season</button>
+              </>)
+            })()}
+          </div>
+
+          {/* 2x2 KPI cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+            {/* Total Bins */}
+            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '18px 16px' }}>
+              <div style={{ fontSize: 36, fontWeight: 700, color: '#1c3a2a', lineHeight: 1 }}>
+                {kpis.totalBins.toLocaleString('en-ZA')}
+              </div>
+              <div style={{ height: 2, background: '#f0ede6', margin: '8px 0' }} />
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a80', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Total Bins
+              </div>
+            </div>
+            {/* Total Tons */}
+            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '18px 16px' }}>
+              <div style={{ fontSize: 36, fontWeight: 700, color: '#1c3a2a', lineHeight: 1 }}>
+                {kpis.totalTons.toLocaleString('en-ZA', { maximumFractionDigits: 1 })}
+              </div>
+              <div style={{ height: 2, background: '#f0ede6', margin: '8px 0' }} />
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a80', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Total Tons
+              </div>
+            </div>
+            {/* Avg Bruising */}
+            <div style={{
+              background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '18px 16px',
+              borderLeft: `4px solid ${avgBruisingData.avg != null ? qualityColor(avgBruisingData.avg) : '#e8e4dc'}`,
+            }}>
+              <div style={{ fontSize: 36, fontWeight: 700, color: avgBruisingData.avg != null ? qualityColor(avgBruisingData.avg) : '#1c3a2a', lineHeight: 1 }}>
+                {avgBruisingData.avg != null ? `${avgBruisingData.avg.toFixed(1)}%` : '–'}
+              </div>
+              <div style={{ height: 2, background: '#f0ede6', margin: '8px 0' }} />
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a80', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Bruising
+              </div>
+            </div>
+            {/* Class 1 % */}
+            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '18px 16px' }}>
+              <div style={{ fontSize: 36, fontWeight: 700, color: '#1c3a2a', lineHeight: 1 }}>
+                {class1Data.class1 != null ? `${class1Data.class1}%` : '–'}
+              </div>
+              <div style={{ height: 2, background: '#f0ede6', margin: '8px 0' }} />
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a80', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Class 1 %
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Header */}
+        <div style={s.pageHeader} className="prod-header prod-desktop-only">
           <div>
             <div style={s.pageTitle} className="prod-title">Production</div>
             <div style={s.pageSub}>Bin receiving, tonnage & quality</div>
@@ -753,8 +901,8 @@ export default function ProductionPage() {
               <button key={c.id} style={selectedCommodityId === c.id ? s.pillActive : s.pill} onClick={() => { setSelectedCommodityId(c.id); setSelectedVarietyGroup(null); setSelectedOrchardId(null) }}>{c.name}</button>
             ))}
           </div>
-          <div style={s.divider} />
-          <div style={s.filterGroup}>
+          <div style={s.divider} className="prod-date-filter" />
+          <div style={s.filterGroup} className="prod-date-filter">
             <button style={dateFilter === 'today' ? s.pillActive : s.pill} onClick={() => setDateFilter('today')}>Today</button>
             <button style={dateFilter === 'all' ? s.pillActive : s.pill} onClick={() => setDateFilter('all')}>All</button>
             <input
@@ -801,33 +949,16 @@ export default function ProductionPage() {
         {loading && <div style={{ textAlign: 'center', padding: '8px 0', fontSize: 13, color: '#9aaa9f' }}>Loading production data...</div>}
           <>
             {/* KPI Strip */}
-            <div style={s.kpiStrip} className="prod-kpi-strip">
+            <div style={s.kpiStrip} className="prod-kpi-strip prod-desktop-only">
               {[
                 { label: 'Total Bins', value: kpis.totalBins.toLocaleString('en-ZA'), sub: `${kpis.orchards} orchards` },
                 { label: 'Total Tons', value: kpis.totalTons.toLocaleString('en-ZA', { maximumFractionDigits: 1 }), sub: null },
                 { label: 'Avg Ton/Ha', value: kpis.avgTonHa != null ? kpis.avgTonHa.toFixed(1) : '–', sub: null },
                 { label: 'Total Juice', value: kpis.totalJuice.toLocaleString('en-ZA'), sub: null },
                 { label: 'Avg Bin Weight', value: `${kpis.avgBinWeight} kg`, sub: null },
-                (() => {
-                  const withBruising = filteredBruising.filter(b => b.bruising_pct != null)
-                  const avg = withBruising.length > 0
-                    ? withBruising.reduce((s, b) => s + (b.bruising_pct || 0), 0) / withBruising.length
-                    : null
-                  return { label: 'Avg Bruising', value: avg != null ? `${avg.toFixed(1)}%` : '–', sub: withBruising.length > 0 ? `${withBruising.length} samples` : null, color: avg != null ? qualityColor(avg) : undefined }
-                })(),
+                { label: 'Avg Bruising', value: avgBruisingData.avg != null ? `${avgBruisingData.avg.toFixed(1)}%` : '–', sub: avgBruisingData.samples > 0 ? `${avgBruisingData.samples} samples` : null, color: avgBruisingData.avg != null ? qualityColor(avgBruisingData.avg) : undefined },
                 { label: 'Orchards', value: String(kpis.orchards), sub: 'harvested' },
-                (() => {
-                  const totalFruit = sizeBins.reduce((sum, b) => sum + b.fruit_count, 0)
-                  const qcDefects = issueRows.filter(r => r.category === 'qc_issue').reduce((sum, r) => sum + r.total_count, 0)
-                  // First bin (lowest display_order) = oversize, last real bin = undersize, "Out of spec" = unmatched
-                  const realBins = sizeBins.filter(b => b.bin_label !== 'Out of spec')
-                  const outOfSpec = sizeBins.filter(b => b.bin_label === 'Out of spec').reduce((s, b) => s + b.fruit_count, 0)
-                  const oversizeCount = realBins.length > 0 ? realBins[0].fruit_count : 0
-                  const undersizeCount = realBins.length > 1 ? realBins[realBins.length - 1].fruit_count : 0
-                  const packable = totalFruit - oversizeCount - undersizeCount - outOfSpec
-                  const class1 = packable > 0 ? Math.round((packable - qcDefects) / packable * 1000) / 10 : null
-                  return { label: 'Class 1 %', value: class1 != null ? `${class1}%` : '–', sub: packable > 0 ? `${packable.toLocaleString('en-ZA')} packable` : null }
-                })(),
+                { label: 'Class 1 %', value: class1Data.class1 != null ? `${class1Data.class1}%` : '–', sub: class1Data.packable > 0 ? `${class1Data.packable.toLocaleString('en-ZA')} packable` : null },
               ].map((kpi: any, i: number) => (
                 <div key={i} style={s.kpiCard}>
                   <div style={s.kpiAccent as any} />
@@ -860,7 +991,7 @@ export default function ProductionPage() {
               return (
             <>
             {/* Map + QC panels — three columns */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24, marginBottom: 24, alignItems: 'start' }} className="prod-panels">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24, marginBottom: 24, alignItems: 'start' }} className="prod-panels prod-desktop-only">
                 {/* Orchard Map */}
                 <div style={{ ...s.card, display: 'flex', flexDirection: 'column' }}>
                   <div style={s.cardHeader}><span style={s.cardTitle}>Orchard Map — Ton/Ha</span></div>
@@ -1108,7 +1239,7 @@ export default function ProductionPage() {
             })()}
 
             {/* Orchard summary table */}
-            <div style={{ ...s.card, marginBottom: 24 }}>
+            <div style={{ ...s.card, marginBottom: 24 }} className="prod-desktop-only">
               <div style={s.cardHeader}><span style={s.cardTitle}>Orchard Summary</span></div>
               <div style={{ overflowX: 'auto', maxHeight: 460, overflowY: 'auto' }} className="prod-orchard-table">
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -1153,11 +1284,37 @@ export default function ProductionPage() {
               </div>
             </div>
 
+            {/* Mobile: Top 5 orchards compact list */}
+            <div className="prod-mobile-only" style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#1c3a2a', marginBottom: 10 }}>Top Orchards</div>
+              {topOrchards.length > 0 ? topOrchards.map((o, i) => (
+                <div key={o.orchard_id || i} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '12px 0', borderBottom: '1px solid #f0ede6',
+                }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#1c3a2a' }}>{o.name}</div>
+                    <div style={{ fontSize: 11, color: '#9aaa9f' }}>
+                      {[o.variety, o.ha ? `${o.ha.toFixed(1)} ha` : null].filter(Boolean).join(' · ')}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#1c3a2a' }}>{o.total} bins</div>
+                    {o.tonHa != null && (
+                      <div style={{ fontSize: 11, fontWeight: 600, color: tonHaColor(o.tonHa) }}>{o.tonHa.toFixed(1)} t/ha</div>
+                    )}
+                  </div>
+                </div>
+              )) : (
+                <div style={{ fontSize: 13, color: '#9aaa9f', padding: '12px 0' }}>No data</div>
+              )}
+            </div>
+
             {/* Quality Summary — team cards + heatmap */}
             <BruisingQualityPanel bruisingData={filteredBruising} bruisingSummary={bruisingSummary} />
 
             {/* Charts row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }} className="prod-charts">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }} className="prod-charts prod-desktop-only">
               {/* Ton/Ha Bar Chart */}
               <div style={s.card}>
                 <div style={s.cardHeader}><span style={s.cardTitle}>Ton/Ha by Orchard</span></div>
@@ -1223,37 +1380,33 @@ export default function ProductionPage() {
           box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
         }
         .prod-tooltip::before { display: none !important; }
+
+        /* ===== Mobile visibility toggles ===== */
+        .prod-mobile-only { display: none; }
+        .prod-desktop-only { /* visible by default */ }
+
         @media (max-width: 768px) {
+          .prod-mobile-only { display: block !important; }
+          .prod-mobile-topbar { display: flex !important; }
+          .prod-desktop-only { display: none !important; }
+          .prod-date-filter { display: none !important; }
+          .prod-heatmap-wrap { display: none !important; }
+
           .prod-main {
-            padding: 16px 12px 80px 12px !important;
-            padding-top: max(16px, env(safe-area-inset-top, 0px)) !important;
+            padding: 0 14px 80px 14px !important;
+            padding-top: calc(56px + env(safe-area-inset-top, 0px)) !important;
+            background: #fff !important;
           }
-          .prod-header {
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            gap: 8px !important;
-          }
-          .prod-title { font-size: 22px !important; }
-          .prod-panels { grid-template-columns: 1fr !important; }
-          .prod-charts { grid-template-columns: 1fr !important; }
           .prod-filters {
             overflow-x: auto !important;
             flex-wrap: nowrap !important;
             -webkit-overflow-scrolling: touch !important;
+            margin-bottom: 16px !important;
           }
           .prod-filters > * { flex-shrink: 0 !important; }
-          .prod-orchard-table {
-            overflow-x: auto !important;
-            -webkit-overflow-scrolling: touch !important;
-          }
-          .prod-orchard-table table { min-width: 600px !important; }
-          .prod-bruising-table {
-            overflow-x: auto !important;
-            -webkit-overflow-scrolling: touch !important;
-          }
-          .prod-bruising-table table { min-width: 600px !important; }
           .prod-card-body { padding: 12px 16px !important; }
         }
+
         @media (max-width: 480px) {
           .prod-kpi-strip { grid-template-columns: repeat(2, 1fr) !important; }
         }

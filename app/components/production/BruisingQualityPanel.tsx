@@ -262,7 +262,7 @@ export default function BruisingQualityPanel({ bruisingData, bruisingSummary }: 
 
         {/* Layer 2: Heatmap Grid */}
         {heatmapData.orchards.length > 0 && heatmapData.teams.length > 0 && (
-          <div style={styles.heatmapWrap}>
+          <div style={styles.heatmapWrap} className="prod-heatmap-wrap">
             <table style={styles.heatmapTable}>
               <thead>
                 <tr>
