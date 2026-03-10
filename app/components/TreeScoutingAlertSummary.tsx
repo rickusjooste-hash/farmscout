@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase-auth'
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 
 interface TreePestRow {
   pest_id: string
@@ -25,6 +26,16 @@ interface TreePestRow {
 interface OrchardSeverityRow {
   orchard_id: string
   orchard_name: string
+  severity: number
+  status: string
+}
+
+interface TrendWeek {
+  week_label: string
+  week_start: string
+  trees_inspected: number
+  trees_affected: number
+  total_count: number
   severity: number
   status: string
 }
@@ -155,6 +166,12 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
   const [orchardPressure, setOrchardPressure] = useState<Record<string, { status: string; severity: number }>>({})
   const [mapReady, setMapReady] = useState(false)
 
+  // Desktop detail panel state
+  const [selectedOrchardId, setSelectedOrchardId] = useState<string | null>(null)
+  const selectedOrchardIdRef = useRef<string | null>(null)
+  const [trendData, setTrendData] = useState<TrendWeek[]>([])
+  const [trendLoading, setTrendLoading] = useState(false)
+
   // Mobile drill-down state
   const [isMobile, setIsMobile] = useState(false)
   const [mobileDrilldown, setMobileDrilldown] = useState<{ pestId: string; pestName: string; method: string } | null>(null)
@@ -216,7 +233,13 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
   // ── Fetch per-orchard severity when pest selected (desktop map) ────
   useEffect(() => {
     if (!selectedPestId || farmIds.length === 0 || isMobile) return
-    supabase.rpc('get_tree_orchard_severity', { p_farm_ids: farmIds, p_pest_id: selectedPestId })
+    const weekEnd = getWeekEnd(currentWeekStart)
+    supabase.rpc('get_tree_orchard_severity', {
+      p_farm_ids: farmIds,
+      p_pest_id: selectedPestId,
+      p_week_start: formatDateParam(currentWeekStart),
+      p_week_end: formatDateParam(weekEnd),
+    })
       .then(({ data, error }) => {
         if (error) console.error('get_tree_orchard_severity error:', JSON.stringify(error))
         const pressureMap: Record<string, { status: string; severity: number }> = {}
@@ -248,6 +271,41 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
     if (!mobileDrilldown) return
     fetchDrilldown(mobileDrilldown.pestId, drilldownWeekStart)
   }, [mobileDrilldown?.pestId, drilldownWeekStart.getTime()])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep selectedOrchardIdRef in sync
+  useEffect(() => { selectedOrchardIdRef.current = selectedOrchardId }, [selectedOrchardId])
+
+  // ── Fetch trend data when orchard + pest selected (desktop) ─────
+  useEffect(() => {
+    if (!selectedOrchardId || !selectedPestId || farmIds.length === 0 || isMobile) {
+      setTrendData([])
+      return
+    }
+    setTrendLoading(true)
+    // Season: Aug 1 of previous year (or current year if past Aug)
+    const now = new Date()
+    const seasonYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1
+    const seasonStart = new Date(seasonYear, 7, 1) // Aug 1
+    supabase.rpc('get_tree_orchard_pest_trend', {
+      p_farm_ids: farmIds,
+      p_orchard_id: selectedOrchardId,
+      p_pest_id: selectedPestId,
+      p_from: seasonStart.toISOString(),
+      p_to: new Date().toISOString(),
+    }).then(({ data, error }) => {
+      if (error) console.error('get_tree_orchard_pest_trend error:', JSON.stringify(error))
+      setTrendData((data as TrendWeek[]) || [])
+      setTrendLoading(false)
+    })
+  }, [selectedOrchardId, selectedPestId, farmIds.join(','), isMobile])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Invalidate map size when detail panel opens/closes ──────────
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!map) return
+    const timer = setTimeout(() => map.invalidateSize(), 50)
+    return () => clearTimeout(timer)
+  }, [selectedOrchardId])
 
   // ── Init / destroy map on expand / collapse (desktop only) ─────────
   useEffect(() => {
@@ -310,6 +368,8 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
       const method = selectedMethodRef.current
       const pressure = orchardPressure
 
+      const selId = selectedOrchardIdRef.current
+
       const layer = L.geoJSON(
         {
           type: 'FeatureCollection',
@@ -323,7 +383,13 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
           style: (f: any) => {
             const p = pressure[f.properties.id]
             const color = p ? (MAP_COLORS[p.status] || '#aaaaaa') : '#aaaaaa'
-            return { fillColor: color, fillOpacity: 0.7, color: '#fff', weight: 1.5 }
+            const isSel = f.properties.id === selId
+            return {
+              fillColor: color,
+              fillOpacity: isSel ? 0.95 : 0.7,
+              color: isSel ? '#fff' : '#fff',
+              weight: isSel ? 3 : 1.5,
+            }
           },
           onEachFeature: (f: any, lyr: any) => {
             const id = f.properties.id
@@ -333,8 +399,15 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
               ? `${name} \u00B7 ${formatSeverity(p.severity, method)}`
               : name
             lyr.bindTooltip(tooltipText, { permanent: false, className: 'tsa-tooltip' })
-            lyr.on('mouseover', () => lyr.setStyle({ fillOpacity: 0.9 }))
-            lyr.on('mouseout', () => lyr.setStyle({ fillOpacity: 0.7 }))
+            lyr.on('mouseover', () => {
+              if (id !== selectedOrchardIdRef.current) lyr.setStyle({ fillOpacity: 0.9 })
+            })
+            lyr.on('mouseout', () => {
+              if (id !== selectedOrchardIdRef.current) lyr.setStyle({ fillOpacity: 0.7 })
+            })
+            lyr.on('click', () => {
+              setSelectedOrchardId(prev => prev === id ? null : id)
+            })
           },
         },
       ).addTo(map)
@@ -345,7 +418,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
         hasInitialBoundsRef.current = true
       }
     })()
-  }, [mapReady, orchardPressure])  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mapReady, orchardPressure, selectedOrchardId])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Week nav helpers ──────────────────────────────────────────────
   function goWeekBack() {
@@ -406,11 +479,34 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
         }
         .tsa-tooltip::before { display: none !important; }
         .tsa-worst-label { display: none; }
+        .tsa-detail-panel {
+          flex: 0 0 340px; border-left: 1px solid #e8e4dc; display: flex;
+          flex-direction: column; background: #fff; overflow-y: auto;
+        }
+        .tsa-detail-header {
+          display: flex; align-items: flex-start; justify-content: space-between;
+          padding: 16px 16px 12px; border-bottom: 1px solid #f0ede6;
+        }
+        .tsa-detail-close {
+          background: none; border: none; cursor: pointer; font-size: 20px;
+          color: #9aaa9f; line-height: 1; padding: 0 0 0 8px; flex-shrink: 0;
+        }
+        .tsa-detail-close:hover { color: #1c3a2a; }
+        .tsa-detail-body { padding: 16px; flex: 1; }
+        .tsa-section-label {
+          font-size: 10px; font-weight: 700; text-transform: uppercase;
+          letter-spacing: 0.8px; color: #9aaa9f; margin-bottom: 8px; margin-top: 16px;
+        }
+        .tsa-severity-badge {
+          display: inline-block; padding: 2px 10px; border-radius: 10px;
+          font-size: 12px; font-weight: 700; margin-left: 8px;
+        }
         @media (max-width: 768px) {
           .tsa-body { flex-direction: column !important; height: auto !important; }
           .tsa-pest-list { max-height: none !important; border-right: none !important; border-bottom: none !important; }
           .tsa-pest-item { min-height: 44px !important; padding: 14px 16px !important; }
           .tsa-map-panel { display: none !important; }
+          .tsa-detail-panel { display: none !important; }
           .tsa-worst-label { display: block !important; }
         }
       `}</style>
@@ -424,7 +520,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             cursor: 'pointer',
           }}
-          onClick={() => { setExpanded(e => !e); setMobileDrilldown(null) }}
+          onClick={() => { setExpanded(e => !e); setMobileDrilldown(null); setSelectedOrchardId(null) }}
         >
           <div>
             <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a' }}>Tree Scouting This Week</div>
@@ -536,7 +632,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
             ) : (
               <>
                 {/* Left: pest list */}
-                <div className="tsa-pest-list" style={{ flex: '0 0 35%', overflowY: 'auto', borderRight: '1px solid #e8e4dc' }}>
+                <div className="tsa-pest-list" style={{ flex: selectedOrchardId ? '0 0 30%' : '0 0 35%', overflowY: 'auto', borderRight: '1px solid #e8e4dc', transition: 'flex 0.2s' }}>
                   {rows.map(row => {
                     const method = row.observation_method
                     const twSev = calcSeverity(method, Number(row.tw_trees_inspected), Number(row.tw_trees_affected), Number(row.tw_total_count))
@@ -582,7 +678,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
                 </div>
 
                 {/* Right: map (desktop only — hidden on mobile via CSS) */}
-                <div className="tsa-map-panel" style={{ flex: '0 0 65%', position: 'relative' }}>
+                <div className="tsa-map-panel" style={{ flex: selectedOrchardId ? '1 1 0' : '0 0 65%', position: 'relative', transition: 'flex 0.2s' }}>
                   <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
                   {/* Legend */}
                   <div style={{
@@ -609,6 +705,102 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
                     ))}
                   </div>
                 </div>
+
+                {/* Detail panel (desktop only) */}
+                {selectedOrchardId && !isMobile && (() => {
+                  const orchardName = orchardsCacheRef.current.find(o => o.id === selectedOrchardId)?.name || 'Orchard'
+                  const op = orchardPressure[selectedOrchardId]
+                  const sevValue = op?.severity ?? 0
+                  const sevStatus = op?.status || 'grey'
+                  const method = selectedRow?.observation_method || 'count'
+                  const isCountMethod = method === 'count'
+                  const badgeBg = sevStatus === 'red' ? '#fde8e6' : sevStatus === 'yellow' ? '#fff8e1' : sevStatus === 'green' ? '#e8f5e9' : '#f0f0f0'
+                  const badgeColor = sevStatus === 'red' ? '#e85a4a' : sevStatus === 'yellow' ? '#c59a00' : sevStatus === 'green' ? '#2e7d32' : '#888'
+
+                  return (
+                    <div className="tsa-detail-panel">
+                      <div className="tsa-detail-header">
+                        <div>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: '#1c3a2a' }}>
+                            {orchardName}
+                            <span className="tsa-severity-badge" style={{ background: badgeBg, color: badgeColor }}>
+                              {sevStatus === 'red' ? 'High' : sevStatus === 'yellow' ? 'Moderate' : sevStatus === 'green' ? 'Low' : 'No data'}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 12, color: '#9aaa9f', marginTop: 2 }}>
+                            {formatSeverity(sevValue, method)}
+                          </div>
+                        </div>
+                        <button className="tsa-detail-close" onClick={() => setSelectedOrchardId(null)}>&times;</button>
+                      </div>
+
+                      <div className="tsa-detail-body">
+                        {/* This week summary */}
+                        <div className="tsa-section-label" style={{ marginTop: 0 }}>
+                          {selectedRow?.pest_name || 'Pest'} &middot; This Week
+                        </div>
+                        <div style={{ fontSize: 22, fontWeight: 700, color: '#1c3a2a' }}>
+                          {formatSeverity(sevValue, method)}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#9aaa9f', marginTop: 2 }}>
+                          {METHOD_LABELS[method] || method}
+                        </div>
+
+                        {/* Season trend chart */}
+                        <div className="tsa-section-label">Season Trend</div>
+                        {trendLoading ? (
+                          <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9aaa9f', fontSize: 13 }}>
+                            Loading...
+                          </div>
+                        ) : trendData.length === 0 ? (
+                          <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9aaa9f', fontSize: 13 }}>
+                            No trend data
+                          </div>
+                        ) : (
+                          <ResponsiveContainer width="100%" height={180}>
+                            <LineChart data={trendData} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#e8e4dc" />
+                              <XAxis
+                                dataKey="week_label"
+                                tick={{ fontSize: 10, fill: '#9aaa9f' }}
+                                axisLine={{ stroke: '#e8e4dc' }}
+                                tickLine={false}
+                              />
+                              <YAxis
+                                tick={{ fontSize: 10, fill: '#9aaa9f' }}
+                                axisLine={false}
+                                tickLine={false}
+                                domain={isCountMethod ? ['auto', 'auto'] : [0, (max: number) => Math.max(max, 55)]}
+                              />
+                              <Tooltip
+                                contentStyle={{
+                                  background: '#1c3a2a', border: 'none', borderRadius: 6,
+                                  fontSize: 12, color: '#fff', padding: '6px 10px',
+                                }}
+                                labelStyle={{ color: '#9aaa9f', fontSize: 11, marginBottom: 4 }}
+                                formatter={(value: number | undefined) => [formatSeverity(value ?? 0, method), METHOD_LABELS[method] || method]}
+                              />
+                              {!isCountMethod && (
+                                <>
+                                  <ReferenceLine y={50} stroke="#e85a4a" strokeDasharray="4 4" strokeWidth={1} />
+                                  <ReferenceLine y={20} stroke="#f5c842" strokeDasharray="4 4" strokeWidth={1} />
+                                </>
+                              )}
+                              <Line
+                                type="monotone"
+                                dataKey="severity"
+                                stroke="#4caf72"
+                                strokeWidth={2}
+                                dot={{ r: 3, fill: '#4caf72', stroke: '#fff', strokeWidth: 1 }}
+                                activeDot={{ r: 5, fill: '#4caf72', stroke: '#fff', strokeWidth: 2 }}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()}
               </>
             )}
           </div>
