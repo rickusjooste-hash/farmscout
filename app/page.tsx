@@ -703,6 +703,15 @@ export default function DashboardPage() {
 
             {/* Mobile KPI cards + progress bars */}
             <div className="dash-section-kpi dash-mobile-only">
+              {/* Date + week label */}
+              <div style={{ padding: '14px 2px 6px', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 20, fontWeight: 700, color: '#1c3a2a', letterSpacing: '-0.3px' }}>
+                  {new Date().toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  W{(() => { const d = new Date(); d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7)); const y = new Date(d.getFullYear(), 0, 4); return Math.round(((d.getTime() - y.getTime()) / 86400000 - 3 + ((y.getDay() + 6) % 7)) / 7) + 1 })()}
+                </span>
+              </div>
               {/* KPI cards */}
               <div style={{ display: 'flex', gap: 12, marginBottom: 14, marginTop: 4 }}>
                 <div
