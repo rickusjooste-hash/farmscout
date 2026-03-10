@@ -8,6 +8,21 @@ interface MobileNavProps {
   modules?: string[]
 }
 
+const HomeIcon = ({ active }: { active: boolean }) => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? '#000' : 'none'} stroke={active ? '#000' : '#888'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+    <polyline points="9 22 9 12 15 12 15 22"/>
+  </svg>
+)
+
+const ProductionIcon = ({ active }: { active: boolean }) => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#000' : '#888'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="12" width="4" height="9"/>
+    <rect x="10" y="7" width="4" height="14"/>
+    <rect x="17" y="3" width="4" height="18"/>
+  </svg>
+)
+
 export default function MobileNav(_props: MobileNavProps) {
   const pathname = usePathname()
 
@@ -26,11 +41,10 @@ export default function MobileNav(_props: MobileNavProps) {
           height: calc(56px + env(safe-area-inset-bottom, 0px));
           padding-bottom: env(safe-area-inset-bottom, 0px);
           background: #fff;
-          border-top: 1px solid #e8e4dc;
+          border-top: 1px solid #eee;
           z-index: 9000;
           align-items: stretch;
           justify-content: space-around;
-          box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
         }
         @media (max-width: 768px) {
           .mnav-bar { display: flex; }
@@ -41,22 +55,20 @@ export default function MobileNav(_props: MobileNavProps) {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 2px;
+          gap: 3px;
           background: none;
           border: none;
           cursor: pointer;
-          color: #9aaa9f;
-          font-size: 11px;
+          color: #888;
+          font-size: 10px;
           font-weight: 500;
           font-family: 'Inter', sans-serif;
           text-decoration: none;
           padding: 6px 0;
           -webkit-tap-highlight-color: transparent;
-          transition: transform 0.1s ease;
         }
-        .mnav-tab:active { transform: scale(0.92); }
-        .mnav-tab.active { color: #1c3a2a; }
-        .mnav-tab-icon { font-size: 24px; line-height: 1; }
+        .mnav-tab:active { opacity: 0.6; }
+        .mnav-tab.active { color: #000; }
         @media (min-width: 769px) {
           .mnav-bar { display: none !important; }
         }
@@ -64,13 +76,13 @@ export default function MobileNav(_props: MobileNavProps) {
 
       <nav className="mnav-bar">
         <Link href="/" className={`mnav-tab${isActive('/') ? ' active' : ''}`}>
-          <span className="mnav-tab-icon">{'\u{1F4CA}'}</span>
-          <span>Dashboard</span>
+          <HomeIcon active={isActive('/')} />
+          <span>Home</span>
         </Link>
-        <button className="mnav-tab" onClick={() => window.location.reload()}>
-          <span className="mnav-tab-icon">{'\u{1F504}'}</span>
-          <span>Refresh</span>
-        </button>
+        <Link href="/production" className={`mnav-tab${isActive('/production') ? ' active' : ''}`}>
+          <ProductionIcon active={isActive('/production')} />
+          <span>Production</span>
+        </Link>
       </nav>
     </>
   )
