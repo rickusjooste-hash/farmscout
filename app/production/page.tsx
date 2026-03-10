@@ -579,6 +579,36 @@ export default function ProductionPage() {
     return [...orchardAgg].sort((a, b) => b.total - a.total).slice(0, 5)
   }, [orchardAgg])
 
+  // Total fruit sampled — shared between mobile + desktop panels
+  const totalFruitSampled = useMemo(() => sizeBins.reduce((sum, b) => sum + b.fruit_count, 0), [sizeBins])
+
+  // Size distribution % — extracted for mobile panel + desktop IIFE
+  const sizePctData = useMemo(() => {
+    return sizeBins.map(b => ({
+      ...b,
+      pct: totalFruitSampled > 0 ? Math.round((b.fruit_count / totalFruitSampled) * 1000) / 10 : 0,
+    }))
+  }, [sizeBins, totalFruitSampled])
+
+  // QC issue % — extracted for mobile panel + desktop IIFE
+  const issuePctData = useMemo(() => {
+    const filteredIssues = issueRows.filter(r => r.category !== 'picking_issue')
+    const totalIssues = filteredIssues.reduce((s, r) => s + r.total_count, 0)
+    return filteredIssues.map(r => ({
+      ...r,
+      pct: r.pct_of_fruit > 0
+        ? Math.round(r.pct_of_fruit * 10) / 10
+        : totalIssues > 0
+          ? Math.round((r.total_count / totalIssues) * 1000) / 10
+          : 0,
+    }))
+  }, [issueRows])
+
+  // Mobile collapse states
+  const [qualityOpen, setQualityOpen] = useState(false)
+  const [sizeOpen, setSizeOpen] = useState(false)
+  const [issuesOpen, setIssuesOpen] = useState(false)
+
   // Weekly trend grouped by commodity
   const { weeklyTrend, weekCommodities } = useMemo(() => {
     // Build commodity name lookup per orchard
@@ -972,22 +1002,6 @@ export default function ProductionPage() {
             {/* Map + QC panels row */}
             {(() => {
               const totalFruit = sizeBins.reduce((sum, b) => sum + b.fruit_count, 0)
-              const sizePctData = sizeBins.map(b => ({
-                ...b,
-                pct: totalFruit > 0 ? Math.round((b.fruit_count / totalFruit) * 1000) / 10 : 0,
-              }))
-              const filteredIssues = issueRows.filter(r => r.category !== 'picking_issue')
-              const totalIssues = filteredIssues.reduce((s, r) => s + r.total_count, 0)
-              const issuePctData = filteredIssues
-                .map(r => ({
-                  ...r,
-                  // Use pct_of_fruit from RPC when available, otherwise compute relative % among issues
-                  pct: r.pct_of_fruit > 0
-                    ? Math.round(r.pct_of_fruit * 10) / 10
-                    : totalIssues > 0
-                      ? Math.round((r.total_count / totalIssues) * 1000) / 10
-                      : 0,
-                }))
               return (
             <>
             {/* Map + QC panels — three columns */}
@@ -1310,8 +1324,119 @@ export default function ProductionPage() {
               )}
             </div>
 
-            {/* Quality Summary — team cards + heatmap */}
-            <BruisingQualityPanel bruisingData={filteredBruising} bruisingSummary={bruisingSummary} />
+            {/* Quality Summary — desktop: always visible */}
+            <div className="prod-desktop-only">
+              <BruisingQualityPanel bruisingData={filteredBruising} bruisingSummary={bruisingSummary} />
+            </div>
+
+            {/* ── Mobile collapsible panels ───────────────────────── */}
+
+            {/* Mobile: Quality Summary (collapsible) */}
+            <div className="prod-mobile-only" style={{ marginBottom: 16 }}>
+              <button
+                onClick={() => setQualityOpen(v => !v)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '14px 16px', background: '#fff', borderRadius: 14,
+                  border: '1px solid #e8e4dc', cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <span style={{ fontSize: 15, fontWeight: 700, color: '#1c3a2a' }}>Quality by Team</span>
+                <span style={{ fontSize: 18, color: '#9aaa9f', transform: qualityOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>&#9662;</span>
+              </button>
+              {qualityOpen && (
+                <div style={{ marginTop: 8 }}>
+                  <BruisingQualityPanel bruisingData={filteredBruising} bruisingSummary={bruisingSummary} />
+                </div>
+              )}
+            </div>
+
+            {/* Mobile: Size Distribution (collapsible) */}
+            <div className="prod-mobile-only" style={{ marginBottom: 16 }}>
+              <button
+                onClick={() => setSizeOpen(v => !v)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '14px 16px', background: '#fff', borderRadius: 14,
+                  border: '1px solid #e8e4dc', cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: '#1c3a2a' }}>Size Distribution</span>
+                  <span style={{ fontSize: 10, background: '#4caf72', color: 'white', padding: '2px 8px', borderRadius: 20, fontFamily: 'monospace', fontWeight: 700 }}>QC</span>
+                </div>
+                <span style={{ fontSize: 18, color: '#9aaa9f', transform: sizeOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>&#9662;</span>
+              </button>
+              {sizeOpen && (
+                <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', marginTop: 8, padding: '16px' }}>
+                  {qcLoading ? (
+                    <div style={{ textAlign: 'center', padding: 16, color: '#9aaa9f', fontSize: 13 }}>Loading QC data...</div>
+                  ) : sizePctData.length > 0 ? (() => {
+                    const byOrder = [...sizePctData].sort((a, b) => a.display_order - b.display_order)
+                    const maxPct = Math.max(...byOrder.map(b => b.pct), 1)
+                    return (
+                      <div>
+                        {byOrder.map((item, i) => (
+                          <div key={item.bin_label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                            <span style={{ width: 70, textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#1c3a2a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{item.bin_label}</span>
+                            <div style={{ flex: 1, position: 'relative', height: 22, background: '#f0ede6', borderRadius: 3 }}>
+                              <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${(item.pct / maxPct) * 100}%`, background: SIZE_PALETTE[i % SIZE_PALETTE.length], borderRadius: 3, transition: 'width 0.4s ease' }} />
+                            </div>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: SIZE_PALETTE[i % SIZE_PALETTE.length], fontFamily: 'monospace', width: 40, textAlign: 'right', flexShrink: 0 }}>{item.pct}%</span>
+                          </div>
+                        ))}
+                        <div style={{ fontSize: 11, color: '#9aaa9f', marginTop: 8 }}>{totalFruitSampled.toLocaleString('en-ZA')} fruit sampled</div>
+                      </div>
+                    )
+                  })() : (
+                    <div style={{ textAlign: 'center', padding: 16, color: '#9aaa9f', fontSize: 13 }}>No QC size data</div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Mobile: QC Issues (collapsible) */}
+            <div className="prod-mobile-only" style={{ marginBottom: 16 }}>
+              <button
+                onClick={() => setIssuesOpen(v => !v)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '14px 16px', background: '#fff', borderRadius: 14,
+                  border: '1px solid #e8e4dc', cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: '#1c3a2a' }}>QC Issues</span>
+                  <span style={{ fontSize: 10, background: '#e85a4a', color: 'white', padding: '2px 8px', borderRadius: 20, fontFamily: 'monospace', fontWeight: 700 }}>DEFECTS</span>
+                </div>
+                <span style={{ fontSize: 18, color: '#9aaa9f', transform: issuesOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>&#9662;</span>
+              </button>
+              {issuesOpen && (
+                <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', marginTop: 8, padding: '16px' }}>
+                  {qcLoading ? (
+                    <div style={{ textAlign: 'center', padding: 16, color: '#9aaa9f', fontSize: 13 }}>Loading QC data...</div>
+                  ) : issuePctData.length > 0 ? (() => {
+                    const sorted = [...issuePctData].sort((a, b) => b.pct - a.pct)
+                    const maxPct = sorted[0]?.pct || 1
+                    return (
+                      <div>
+                        {sorted.map((item, i) => (
+                          <div key={item.pest_id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                            <span style={{ width: 85, textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#1c3a2a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{item.pest_name}</span>
+                            <div style={{ flex: 1, position: 'relative', height: 22, background: '#f0ede6', borderRadius: 3 }}>
+                              <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${(item.pct / maxPct) * 100}%`, background: ISSUE_PALETTE[i % ISSUE_PALETTE.length], borderRadius: 3, transition: 'width 0.4s ease' }} />
+                            </div>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: ISSUE_PALETTE[i % ISSUE_PALETTE.length], fontFamily: 'monospace', width: 40, textAlign: 'right', flexShrink: 0 }}>{item.pct}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })() : (
+                    <div style={{ textAlign: 'center', padding: 16, color: '#9aaa9f', fontSize: 13 }}>No QC issue data</div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Charts row */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }} className="prod-charts prod-desktop-only">
