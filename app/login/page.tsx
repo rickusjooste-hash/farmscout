@@ -39,10 +39,10 @@ export default function LoginPage() {
           display: flex;
         }
 
-        /* Left panel — green brand */
+        /* Left panel — blue brand */
         .left-panel {
           width: 45%;
-          background: #1c3a2a;
+          background: linear-gradient(180deg, #2176d9, #1148a8);
           display: flex;
           flex-direction: column;
           justify-content: center;
@@ -57,7 +57,7 @@ export default function LoginPage() {
           top: -100px; right: -100px;
           width: 400px; height: 400px;
           border-radius: 50%;
-          background: radial-gradient(circle, #2a6e45 0%, transparent 70%);
+          background: radial-gradient(circle, #3a8ef0 0%, transparent 70%);
           opacity: 0.4;
         }
         .left-panel::after {
@@ -66,7 +66,7 @@ export default function LoginPage() {
           bottom: -80px; left: -80px;
           width: 300px; height: 300px;
           border-radius: 50%;
-          background: radial-gradient(circle, #4a9e6b 0%, transparent 70%);
+          background: radial-gradient(circle, #5a9ef0 0%, transparent 70%);
           opacity: 0.3;
         }
         .brand {
@@ -76,10 +76,10 @@ export default function LoginPage() {
           margin-bottom: 16px;
           position: relative; z-index: 1;
         }
-        .brand span { color: #a8d5a2; }
+        .brand span { color: #a0c4f0; }
         .brand-tagline {
           font-size: 16px;
-          color: #6aaa80;
+          color: #8ab8e8;
           line-height: 1.6;
           max-width: 320px;
           position: relative; z-index: 1;
@@ -95,13 +95,13 @@ export default function LoginPage() {
           display: flex;
           align-items: center;
           gap: 12px;
-          color: #8aab96;
+          color: #a0c4f0;
           font-size: 14px;
         }
         .feature-dot {
           width: 8px; height: 8px;
           border-radius: 50%;
-          background: #a8d5a2;
+          background: #a0c4f0;
           flex-shrink: 0;
         }
 
@@ -122,12 +122,12 @@ export default function LoginPage() {
         .login-title {
           font-family: 'DM Serif Display', serif;
           font-size: 28px;
-          color: #1c3a2a;
+          color: #1a3a6a;
           margin-bottom: 8px;
         }
         .login-subtitle {
           font-size: 14px;
-          color: #9aaa9f;
+          color: #7a8fa0;
           margin-bottom: 36px;
         }
         .field {
@@ -137,7 +137,7 @@ export default function LoginPage() {
           display: block;
           font-size: 12px;
           font-weight: 600;
-          color: #4a6a55;
+          color: #4a6a8a;
           text-transform: uppercase;
           letter-spacing: 0.8px;
           margin-bottom: 8px;
@@ -155,7 +155,7 @@ export default function LoginPage() {
           transition: border-color 0.15s;
         }
         .field input:focus {
-          border-color: #2a6e45;
+          border-color: #2176d9;
         }
         .error-msg {
           background: #fef2f2;
@@ -171,8 +171,8 @@ export default function LoginPage() {
           padding: 14px;
           border-radius: 10px;
           border: none;
-          background: #1c3a2a;
-          color: #a8d5a2;
+          background: #1a4ba0;
+          color: #fff;
           font-family: 'DM Sans', sans-serif;
           font-size: 15px;
           font-weight: 600;
@@ -180,13 +180,13 @@ export default function LoginPage() {
           transition: background 0.15s;
           margin-top: 4px;
         }
-        .login-btn:hover:not(:disabled) { background: #2a4f38; }
+        .login-btn:hover:not(:disabled) { background: #1a5fb8; }
         .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
         .login-footer {
           margin-top: 24px;
           font-size: 12px;
-          color: #9aaa9f;
+          color: #7a8fa0;
           text-align: center;
         }
 
@@ -199,9 +199,9 @@ export default function LoginPage() {
       <div className="login-page">
         {/* Left — brand panel */}
         <div className="left-panel">
-          <div className="brand"><span>Farm</span>Scout</div>
+          <div className="brand"><span>all</span>Farm</div>
           <div className="brand-tagline">
-            Precision pest monitoring for South African fruit farms.
+            Precision farm management for South African fruit farms.
           </div>
           <div className="brand-features">
             <div className="brand-feature">
@@ -227,7 +227,7 @@ export default function LoginPage() {
         <div className="right-panel">
           <div className="login-card">
             <div className="login-title">Welcome back</div>
-            <div className="login-subtitle">Sign in to your FarmScout account</div>
+            <div className="login-subtitle">Sign in to your allFarm account</div>
 
             {error && <div className="error-msg">{error}</div>}
 

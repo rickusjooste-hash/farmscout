@@ -72,7 +72,7 @@ export default function QcLabelsPage() {
         }
         .label-qr { width: 82px; height: 82px; flex-shrink: 0; }
         .label-text { display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
-        .label-brand { font-size: 9px; font-weight: 800; color: #2a6e45; letter-spacing: 0.12em; text-transform: uppercase; }
+        .label-brand { font-size: 9px; font-weight: 800; color: #1a4ba0; letter-spacing: 0.12em; text-transform: uppercase; }
         .label-seq { font-size: 24px; font-weight: 800; color: #111; line-height: 1; }
         .label-date { font-size: 10px; font-weight: 600; color: #333; }
         .label-id { font-size: 8px; color: #888; letter-spacing: 0.04em; }
@@ -180,7 +180,7 @@ export default function QcLabelsPage() {
               <div key={label.uuid} className="label-card">
                 <img className="label-qr" src={label.dataUrl} alt="" />
                 <div className="label-text">
-                  <div className="label-brand">FarmScout QC</div>
+                  <div className="label-brand">allFarm QC</div>
                   <div className="label-seq">#{String(label.seq).padStart(3, '0')}</div>
                   <div className="label-date">{batchDate}</div>
                   <div className="label-id">{label.uuid.slice(-12)}</div>
