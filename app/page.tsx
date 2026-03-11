@@ -260,7 +260,7 @@ export default function DashboardPage() {
           display: flex;
           align-items: center;
           gap: 6px;
-          background: #1a2a3a;
+          background: #1a4ba0;
           color: #a0c4f0;
           padding: 6px 14px;
           border-radius: 20px;
@@ -338,7 +338,7 @@ export default function DashboardPage() {
         .week-progress-bar-bg {
           flex: 1;
           height: 12px;
-          background: #f0ede6;
+          background: #eef2fa;
           border-radius: 6px;
           overflow: hidden;
         }
@@ -468,7 +468,7 @@ export default function DashboardPage() {
         }
         .map-card-header {
           padding: 16px 20px 14px;
-          border-bottom: 1px solid #f0ede6;
+          border-bottom: 1px solid #eef2fa;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -505,7 +505,7 @@ export default function DashboardPage() {
         }
         .card-header {
           padding: 20px 24px 16px;
-          border-bottom: 1px solid #f0ede6;
+          border-bottom: 1px solid #eef2fa;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -547,7 +547,7 @@ export default function DashboardPage() {
         .pest-bar-bg {
           flex: 1;
           height: 7px;
-          background: #f0ede6;
+          background: #eef2fa;
           border-radius: 4px;
           overflow: hidden;
         }
@@ -757,7 +757,7 @@ export default function DashboardPage() {
                   <div style={{ fontSize: 36, fontWeight: 700, color: trapAlertCount > 0 ? '#e85a4a' : '#1a2a3a', lineHeight: 1 }}>
                     {trapAlertCount}
                   </div>
-                  <div style={{ height: 2, background: '#f0ede6', margin: '8px 0' }} />
+                  <div style={{ height: 2, background: '#eef2fa', margin: '8px 0' }} />
                   <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a9a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     Trap Alerts
                   </div>
@@ -773,7 +773,7 @@ export default function DashboardPage() {
                   <div style={{ fontSize: 36, fontWeight: 700, color: treeAlertCount > 0 ? '#e85a4a' : '#1a2a3a', lineHeight: 1 }}>
                     {treeAlertCount}
                   </div>
-                  <div style={{ height: 2, background: '#f0ede6', margin: '8px 0' }} />
+                  <div style={{ height: 2, background: '#eef2fa', margin: '8px 0' }} />
                   <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a9a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     Tree Alerts
                   </div>
@@ -785,7 +785,7 @@ export default function DashboardPage() {
                   <span style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a' }}>Trap Inspections</span>
                   <span style={{ fontSize: 13, fontWeight: 700, color: '#1a2a3a' }}>{trapPct}%</span>
                 </div>
-                <div style={{ height: 8, background: '#f0ede6', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ height: 8, background: '#eef2fa', borderRadius: 4, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${trapPct}%`, background: 'linear-gradient(90deg, #b36a00, #f0a500)', borderRadius: 4, transition: 'width 0.6s ease' }} />
                 </div>
                 <div style={{ fontSize: 11, color: '#8a95a0', marginTop: 4 }}>
@@ -797,7 +797,7 @@ export default function DashboardPage() {
                   <span style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a' }}>Tree Scouting</span>
                   <span style={{ fontSize: 13, fontWeight: 700, color: '#1a2a3a' }}>{weekPct}%</span>
                 </div>
-                <div style={{ height: 8, background: '#f0ede6', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ height: 8, background: '#eef2fa', borderRadius: 4, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${weekPct}%`, background: 'linear-gradient(90deg, #2176d9, #4a9ef0)', borderRadius: 4, transition: 'width 0.6s ease' }} />
                 </div>
                 <div style={{ fontSize: 11, color: '#8a95a0', marginTop: 4 }}>

@@ -195,7 +195,7 @@ export default function SettingsPage() {
         .app { display: flex; min-height: 100vh; }
         .sidebar {
           width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto;
-          background: #1a2a3a; padding: 32px 20px; display: flex;
+          background: #1a4ba0; padding: 32px 20px; display: flex;
           flex-direction: column; gap: 8px; flex-shrink: 0;
         }
         .logo { font-size: 22px; color: #a0c4f0; margin-bottom: 32px; letter-spacing: -0.5px; }
@@ -205,14 +205,14 @@ export default function SettingsPage() {
           border-radius: 8px; color: #7a8fa0; font-size: 13.5px; font-weight: 500;
           cursor: pointer; transition: all 0.15s; text-decoration: none;
         }
-        .nav-item:hover { background: #1a4a7a; color: #fff; }
-        .nav-item.active { background: #1a4a7a; color: #a0c4f0; }
+        .nav-item:hover { background: #1a5fb8; color: #fff; }
+        .nav-item.active { background: #1a5fb8; color: #a0c4f0; }
         .main { flex: 1; padding: 40px; overflow-y: auto; }
         .page-title { font-size: 32px; color: #1a2a3a; letter-spacing: -0.5px; margin-bottom: 6px; }
         .page-subtitle { font-size: 14px; color: #7a8a9a; font-weight: 300; margin-bottom: 32px; }
         .section-title { font-size: 20px; color: #1a2a3a; font-weight: 600; margin-bottom: 20px; }
         .farm-card { background: #fff; border-radius: 14px; border: 1px solid #e8e4dc; overflow: hidden; margin-bottom: 20px; }
-        .farm-card-header { padding: 20px 24px; border-bottom: 1px solid #f0ede6; display: flex; align-items: center; justify-content: space-between; }
+        .farm-card-header { padding: 20px 24px; border-bottom: 1px solid #eef2fa; display: flex; align-items: center; justify-content: space-between; }
         .farm-name { font-size: 17px; font-weight: 600; color: #1a2a3a; }
         .farm-card-body { padding: 20px 24px; }
         .field-row { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -223,8 +223,8 @@ export default function SettingsPage() {
         }
         select:focus, input:focus { outline: 2px solid #2176d9; border-color: transparent; }
         .btn { padding: 7px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: inherit; }
-        .btn-primary { background: #1a2a3a; color: #a0c4f0; }
-        .btn-primary:hover { background: #1a4a7a; }
+        .btn-primary { background: #1a4ba0; color: #a0c4f0; }
+        .btn-primary:hover { background: #1a5fb8; }
         .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn-danger { background: #fdecea; color: #e85a4a; border: 1px solid #f5c0bb; }
         .btn-danger:hover { background: #fad3d0; }
@@ -232,13 +232,13 @@ export default function SettingsPage() {
         .btn-outline:hover { background: #e8e4dc; }
         .btn-outline:disabled { opacity: 0.5; cursor: not-allowed; }
         .recipients-label { font-size: 12px; color: #8a95a0; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
-        .recipient-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid #f0ede6; border-radius: 8px; margin-bottom: 8px; background: #faf9f6; flex-wrap: wrap; }
+        .recipient-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid #eef2fa; border-radius: 8px; margin-bottom: 8px; background: #faf9f6; flex-wrap: wrap; }
         .recipient-email { font-size: 13px; color: #1a2a3a; font-weight: 500; flex: 1; min-width: 160px; }
         .recipient-name { font-size: 12px; color: #8a95a0; }
         .checkbox-label { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #3a4a40; cursor: pointer; white-space: nowrap; }
         .add-row { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
         .toggle-active { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #3a4a40; }
-        .success-toast { position: fixed; bottom: 24px; right: 24px; background: #1a2a3a; color: #a0c4f0; padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 9999; }
+        .success-toast { position: fixed; bottom: 24px; right: 24px; background: #1a4ba0; color: #a0c4f0; padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 9999; }
       `}</style>
 
       <div className="app">

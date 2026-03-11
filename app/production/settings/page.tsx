@@ -95,7 +95,7 @@ export default function BinWeightSettingsPage() {
     title:      { fontSize: 28, fontWeight: 700, color: '#1a2a3a', marginBottom: 8 },
     sub:        { fontSize: 14, color: '#8a95a0', marginBottom: 32 },
     card:       { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 24 },
-    cardHeader: { padding: '20px 24px 16px', borderBottom: '1px solid #f0ede6', fontSize: 17, fontWeight: 600, color: '#1a2a3a' },
+    cardHeader: { padding: '20px 24px 16px', borderBottom: '1px solid #eef2fa', fontSize: 17, fontWeight: 600, color: '#1a2a3a' },
     cardBody:   { padding: '20px 24px' },
     formRow:    { display: 'flex', gap: 12, alignItems: 'flex-end', marginBottom: 16, flexWrap: 'wrap' as const },
     label:      { fontSize: 12, fontWeight: 600, color: '#8a95a0', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 6 },
@@ -158,7 +158,7 @@ export default function BinWeightSettingsPage() {
               </thead>
               <tbody>
                 {rows.map(r => (
-                  <tr key={r.id} style={{ borderBottom: '1px solid #f0ede6' }}>
+                  <tr key={r.id} style={{ borderBottom: '1px solid #eef2fa' }}>
                     <td style={{ padding: '10px 12px', fontWeight: 500 }}>{r.commodity_name}</td>
                     <td style={{ padding: '10px 12px', color: '#6a7a70' }}>{r.variety || '(default)'}</td>
                     <td style={{ padding: '10px 12px' }}>

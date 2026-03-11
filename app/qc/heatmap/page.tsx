@@ -307,7 +307,7 @@ export default function QcHeatmapPage() {
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { overflow: hidden; }
         .qhm-tooltip {
-          background: #1a2a3a !important; color: #fff !important; border: none !important;
+          background: #1a4ba0 !important; color: #fff !important; border: none !important;
           border-radius: 6px !important; font-size: 12px !important; font-weight: 500 !important;
           padding: 5px 10px !important; font-family: 'Inter', sans-serif !important; line-height: 1.5 !important;
         }
@@ -323,7 +323,7 @@ export default function QcHeatmapPage() {
 
         {/* Toolbar */}
         <div style={{
-          padding: '10px 20px', background: '#1a2a3a', borderBottom: '1px solid #1a4a7a',
+          padding: '10px 20px', background: '#1a4ba0', borderBottom: '1px solid #1a5fb8',
           display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', flexShrink: 0,
         }}>
           <span style={{ fontSize: 15, fontWeight: 600, color: '#fff', flexShrink: 0 }}>QC Issue Heat Map</span>

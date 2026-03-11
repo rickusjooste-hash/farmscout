@@ -118,7 +118,7 @@ const s: Record<string, React.CSSProperties> = {
   kpiValue:    { fontSize: 28, fontWeight: 700, color: '#1a2a3a', lineHeight: 1 },
   kpiSub:      { fontSize: 12, color: '#8a95a0', marginTop: 6 },
   card:        { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 24 },
-  cardHeader:  { padding: '20px 24px 16px', borderBottom: '1px solid #f0ede6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 12 },
+  cardHeader:  { padding: '20px 24px 16px', borderBottom: '1px solid #eef2fa', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 12 },
   cardTitle:   { fontSize: 17, fontWeight: 600, color: '#1a2a3a' },
   cardBody:    { padding: '20px 24px' },
   loading:     { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200, color: '#8a95a0', fontSize: 14 },

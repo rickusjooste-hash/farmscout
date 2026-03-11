@@ -374,7 +374,7 @@ export default function ScoutProductivityPage() {
           font-family: 'Inter', sans-serif;
         }
         .sprod-toggle-btn.active {
-          background: #1a2a3a;
+          background: #1a4ba0;
           color: #a0c4f0;
         }
         .sprod-nav {
@@ -427,9 +427,9 @@ export default function ScoutProductivityPage() {
         }
         .sprod-pill:hover { border-color: #2176d9; }
         .sprod-pill.active {
-          background: #1a2a3a;
+          background: #1a4ba0;
           color: #a0c4f0;
-          border-color: #1a2a3a;
+          border-color: #1a4ba0;
         }
         .sprod-card {
           background: #fff;
@@ -454,7 +454,7 @@ export default function ScoutProductivityPage() {
         }
         .sprod-shimmer {
           height: 16px;
-          background: linear-gradient(90deg, #f0ede6 25%, #fafaf8 50%, #f0ede6 75%);
+          background: linear-gradient(90deg, #eef2fa 25%, #fafaf8 50%, #eef2fa 75%);
           background-size: 200% 100%;
           animation: sprod-pulse 1.5s ease-in-out infinite;
           border-radius: 4px;

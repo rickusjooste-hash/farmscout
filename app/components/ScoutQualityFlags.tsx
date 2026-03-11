@@ -143,7 +143,7 @@ export default function ScoutQualityFlags({ flags, scoutName, onClose }: Props) 
         }
         .sqf-flag-detail {
           padding: 6px 12px 6px 24px;
-          border-top: 1px solid #f0ede6;
+          border-top: 1px solid #eef2fa;
           display: flex;
           gap: 12px;
           align-items: center;

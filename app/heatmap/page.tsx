@@ -382,7 +382,7 @@ export default function HeatmapPage() {
   ]
   const navStyle = (href: string): React.CSSProperties => ({
     display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8,
-    background: href === '/heatmap' ? '#1a4a7a' : 'transparent',
+    background: href === '/heatmap' ? '#1a5fb8' : 'transparent',
     color: href === '/heatmap' ? '#a0c4f0' : '#7a8fa0',
     fontSize: 13.5, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s', textDecoration: 'none',
   })
@@ -393,9 +393,9 @@ export default function HeatmapPage() {
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { overflow: hidden; }
-        .hm-sb:hover { background: #1a4a7a !important; color: #fff !important; }
+        .hm-sb:hover { background: #1a5fb8 !important; color: #fff !important; }
         .hm-tooltip {
-          background: #1a2a3a !important; color: #fff !important; border: none !important;
+          background: #1a4ba0 !important; color: #fff !important; border: none !important;
           border-radius: 6px !important; font-size: 12px !important; font-weight: 500 !important;
           padding: 5px 10px !important; font-family: 'Inter', sans-serif !important; line-height: 1.5 !important;
         }
@@ -414,7 +414,7 @@ export default function HeatmapPage() {
 
       {/* Sidebar */}
       <aside className="hm-sidebar" style={{
-        width: 220, height: '100vh', overflowY: 'auto', background: '#1a2a3a',
+        width: 220, height: '100vh', overflowY: 'auto', background: 'linear-gradient(180deg, #2176d9, #1148a8)',
         padding: '32px 20px', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0,
       }}>
         <div style={{ fontSize: 22, color: '#a0c4f0', marginBottom: 32, letterSpacing: '-0.5px', fontWeight: 700 }}>
@@ -429,7 +429,7 @@ export default function HeatmapPage() {
         <a href="/scouts/sections" className="hm-sb" style={{ ...navStyle('/scouts/sections'), paddingLeft: 28, fontSize: 13 }}>
           <span>🗂️</span> Sections
         </a>
-        <div style={{ marginTop: 'auto', paddingTop: 24, borderTop: '1px solid #1a4a7a', fontSize: 12, color: '#5a7a8a' }}>
+        <div style={{ marginTop: 'auto', paddingTop: 24, borderTop: '1px solid #1a5fb8', fontSize: 12, color: '#5a7a8a' }}>
           Mouton&apos;s Valley Group<br />
           <span style={{ color: '#2176d9' }}>●</span> Connected
         </div>
@@ -440,7 +440,7 @@ export default function HeatmapPage() {
 
         {/* Toolbar */}
         <div className="hm-toolbar" style={{
-          padding: '10px 20px', background: '#1a2a3a', borderBottom: '1px solid #1a4a7a',
+          padding: '10px 20px', background: '#1a4ba0', borderBottom: '1px solid #1a5fb8',
           display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', flexShrink: 0,
         }}>
           <span style={{ fontSize: 15, fontWeight: 600, color: '#fff', flexShrink: 0 }}>Pest Heat Map</span>

@@ -70,7 +70,7 @@ export default function OrchardRankingTable({ orchards, weeklyBins, selectedOrch
           position: sticky; top: 0; background: #f9f7f3; text-align: left;
           font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px;
           color: #8a95a0; font-weight: 700; padding: 8px 10px;
-          border-bottom: 1px solid #f0ede6; cursor: pointer; white-space: nowrap;
+          border-bottom: 1px solid #eef2fa; cursor: pointer; white-space: nowrap;
           user-select: none;
         }
         .oa-th:hover { color: #1a2a3a; }
@@ -82,7 +82,7 @@ export default function OrchardRankingTable({ orchards, weeklyBins, selectedOrch
           .oa-ranking-table thead { display: none; }
           .oa-ranking-table .oa-tr {
             display: flex; flex-wrap: wrap; padding: 10px 14px;
-            border-bottom: 1px solid #f0ede6; gap: 4px 12px;
+            border-bottom: 1px solid #eef2fa; gap: 4px 12px;
           }
           .oa-ranking-table .oa-td { border-bottom: none; padding: 0; }
         }

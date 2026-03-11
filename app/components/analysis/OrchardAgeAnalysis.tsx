@@ -143,7 +143,7 @@ function ScatterTooltip({ active, payload }: any) {
   const d = payload[0].payload
   return (
     <div style={{
-      background: '#1a2a3a', color: '#e8f0e0', padding: '10px 14px',
+      background: '#1a4ba0', color: '#e0ecf8', padding: '10px 14px',
       borderRadius: 8, fontSize: 13, fontFamily: 'Inter, sans-serif',
       boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
     }}>
@@ -304,7 +304,7 @@ export default function OrchardAgeAnalysis({
         <div style={{ fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
           Age Distribution
         </div>
-        <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', height: 28, background: '#f0ede6' }}>
+        <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', height: 28, background: '#eef2fa' }}>
           {AGE_BANDS.map(b => {
             const ha = bandStats[b.key]?.totalHa || 0
             const pct = totalHaAll > 0 ? (ha / totalHaAll) * 100 : 0
@@ -359,11 +359,11 @@ export default function OrchardAgeAnalysis({
           </div>
           <ResponsiveContainer width="100%" height={280}>
             <ScatterChart margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#eef2fa" />
               <XAxis
                 type="number" dataKey="age" name="Age"
                 tick={{ fontSize: 11, fill: '#8a95a0', fontFamily: 'Inter' }}
-                tickLine={false} axisLine={{ stroke: '#f0ede6' }}
+                tickLine={false} axisLine={{ stroke: '#eef2fa' }}
                 label={{ value: 'Orchard Age (years)', position: 'insideBottom', offset: -4, fontSize: 11, fill: '#8a95a0' }}
                 domain={[0, 'auto']}
               />
@@ -421,7 +421,7 @@ export default function OrchardAgeAnalysis({
             position: sticky; top: 0; background: #f9f7f3; text-align: left;
             font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px;
             color: #8a95a0; font-weight: 700; padding: 8px 12px;
-            border-bottom: 1px solid #f0ede6;
+            border-bottom: 1px solid #eef2fa;
           }
           .oa-age-td { padding: 10px 12px; font-size: 13px; color: #3a4a40; border-bottom: 1px solid #f9f7f3; }
           .oa-age-tr:hover .oa-age-td { background: #f9f7f3; }
@@ -523,7 +523,7 @@ export default function OrchardAgeAnalysis({
             </div>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={chartData} margin={{ top: 8, right: 20, left: 0, bottom: 0 }} barCategoryGap="20%">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#eef2fa" />
                 <XAxis
                   dataKey="band"
                   tick={{ fontSize: 11, fill: '#6a7a70', fontFamily: 'Inter' }}
@@ -539,7 +539,7 @@ export default function OrchardAgeAnalysis({
                     if (!active || !payload?.length) return null
                     return (
                       <div style={{
-                        background: '#1a2a3a', color: '#e8f0e0', padding: '10px 14px',
+                        background: '#1a4ba0', color: '#e0ecf8', padding: '10px 14px',
                         borderRadius: 8, fontSize: 12, fontFamily: 'Inter, sans-serif',
                         boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
                       }}>
@@ -598,7 +598,7 @@ export default function OrchardAgeAnalysis({
               onClick={() => onOrchardSelect(p.orchard.id)}
               style={{
                 padding: '10px 12px', borderRadius: 8, marginBottom: 6,
-                background: '#fff', border: '1px solid #f0ede6', cursor: 'pointer',
+                background: '#fff', border: '1px solid #eef2fa', cursor: 'pointer',
                 transition: 'border-color 0.15s',
                 borderLeftWidth: 3,
                 borderLeftColor: p.severity === 'high' ? '#e85a4a' : '#f5c842',

@@ -34,7 +34,7 @@ function CustomTooltip({ active, payload }: any) {
   const d = payload[0].payload
   return (
     <div style={{
-      background: '#1a2a3a', color: '#e8f0e0', padding: '10px 14px',
+      background: '#1a4ba0', color: '#e0ecf8', padding: '10px 14px',
       borderRadius: 8, fontSize: 13, fontFamily: 'Inter, sans-serif',
     }}>
       <div style={{ fontWeight: 600, marginBottom: 4 }}>{d.name}</div>
@@ -115,7 +115,7 @@ export default function PerformanceComparison({ orchards, farms }: Props) {
       </div>
       <ResponsiveContainer width="100%" height={Math.max(data.length * 36 + 20, 120)}>
         <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
-          <XAxis type="number" tick={{ fontSize: 11, fill: '#8a95a0' }} tickLine={false} axisLine={{ stroke: '#f0ede6' }} />
+          <XAxis type="number" tick={{ fontSize: 11, fill: '#8a95a0' }} tickLine={false} axisLine={{ stroke: '#eef2fa' }} />
           <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 12, fill: '#3a4a40' }} tickLine={false} axisLine={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(42,110,69,0.06)' }} />
           <Bar dataKey="value" name={metricLabel} radius={[0, 4, 4, 0]} barSize={22}>

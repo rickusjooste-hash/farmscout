@@ -473,7 +473,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
     <>
       <style>{`
         .tsa-tooltip {
-          background: #1a2a3a !important; color: #fff !important; border: none !important;
+          background: #1a4ba0 !important; color: #fff !important; border: none !important;
           border-radius: 6px !important; font-size: 12px !important; font-weight: 500 !important;
           padding: 4px 10px !important; font-family: 'Inter', sans-serif !important;
         }
@@ -485,7 +485,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
         }
         .tsa-detail-header {
           display: flex; align-items: flex-start; justify-content: space-between;
-          padding: 16px 16px 12px; border-bottom: 1px solid #f0ede6;
+          padding: 16px 16px 12px; border-bottom: 1px solid #eef2fa;
         }
         .tsa-detail-close {
           background: none; border: none; cursor: pointer; font-size: 20px;
@@ -516,7 +516,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
         <div
           style={{
             padding: '16px 20px',
-            borderBottom: expanded ? '1px solid #f0ede6' : 'none',
+            borderBottom: expanded ? '1px solid #eef2fa' : 'none',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             cursor: 'pointer',
           }}
@@ -774,7 +774,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
                               />
                               <Tooltip
                                 contentStyle={{
-                                  background: '#1a2a3a', border: 'none', borderRadius: 6,
+                                  background: '#1a4ba0', border: 'none', borderRadius: 6,
                                   fontSize: 12, color: '#fff', padding: '6px 10px',
                                 }}
                                 labelStyle={{ color: '#8a95a0', fontSize: 11, marginBottom: 4 }}

@@ -417,7 +417,7 @@ export default function TrapInspectionsPage() {
         body { font-family: 'Inter', sans-serif; background: #f4f1ea; }
         .app { display: flex; height: 100vh; overflow: hidden; }
         .sidebar {
-          width: 220px; min-width: 220px; background: #1a2a3a; display: flex;
+          width: 220px; min-width: 220px; background: linear-gradient(180deg, #2176d9, #1148a8); display: flex;
           flex-direction: column; padding: 24px 14px; overflow-y: auto;
         }
         .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a0c4f0; margin-bottom: 32px; }
@@ -427,9 +427,9 @@ export default function TrapInspectionsPage() {
           border-radius: 8px; color: #7a8fa0; font-size: 13.5px; font-weight: 500;
           cursor: pointer; transition: all 0.15s; text-decoration: none;
         }
-        .nav-item:hover { background: #1a4a7a; color: #fff; }
-        .nav-item.active { background: #1a4a7a; color: #a0c4f0; }
-        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #1a4a7a; font-size: 12px; color: #5a7a8a; }
+        .nav-item:hover { background: #1a5fb8; color: #fff; }
+        .nav-item.active { background: #1a5fb8; color: #a0c4f0; }
+        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #1a5fb8; font-size: 12px; color: #5a7a8a; }
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         .top-bar {
           background: #fff; border-bottom: 1px solid #e8e4dc;
@@ -437,7 +437,7 @@ export default function TrapInspectionsPage() {
         }
         .page-title { font-size: 17px; font-weight: 700; color: #1a2a3a; }
         .pills-bar {
-          background: #fff; border-bottom: 1px solid #f0ede6;
+          background: #fff; border-bottom: 1px solid #eef2fa;
           padding: 8px 20px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 42px;
         }
         .tri-scout-pill, .tri-pest-pill {
@@ -446,7 +446,7 @@ export default function TrapInspectionsPage() {
           cursor: pointer; transition: all 0.15s; white-space: nowrap;
         }
         .tri-scout-pill.active, .tri-pest-pill.active {
-          background: #1a2a3a; border-color: #1a2a3a; color: #a0c4f0;
+          background: #1a4ba0; border-color: #1a4ba0; color: #a0c4f0;
         }
         .tri-scout-pill:hover:not(.active), .tri-pest-pill:hover:not(.active) { background: #f4f1ea; }
         .tri-coverage-btn {
@@ -455,7 +455,7 @@ export default function TrapInspectionsPage() {
           cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 5px;
         }
         .tri-coverage-btn.open {
-          background: #eef5f1; border-color: #1a2a3a; color: #1a2a3a;
+          background: #eef2fa; border-color: #1a4ba0; color: #1a2a3a;
         }
         .tri-coverage-btn:hover:not(.open) { background: #f4f1ea; }
         .body-row { flex: 1; display: flex; overflow: hidden; position: relative; }
@@ -473,7 +473,7 @@ export default function TrapInspectionsPage() {
           display: flex; flex-direction: column; overflow: hidden;
         }
         .tri-panel-header {
-          padding: 14px 16px; border-bottom: 1px solid #f0ede6;
+          padding: 14px 16px; border-bottom: 1px solid #eef2fa;
           display: flex; align-items: flex-start; gap: 10px; flex-shrink: 0;
         }
         .tri-panel-close {
@@ -521,7 +521,7 @@ export default function TrapInspectionsPage() {
         .tri-coverage-row.uninspected { color: #8a95a0; }
         .tri-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
         .tri-tooltip {
-          background: #1a2a3a !important; color: #fff !important; border: none !important;
+          background: #1a4ba0 !important; color: #fff !important; border: none !important;
           border-radius: 6px !important; font-size: 12px !important; font-weight: 500 !important;
           padding: 4px 10px !important; font-family: 'Inter', sans-serif !important;
         }
@@ -636,7 +636,7 @@ export default function TrapInspectionsPage() {
               onChange={e => setSelectedOrchardId(e.target.value || null)}
               style={{
                 padding: '5px 10px', borderRadius: 8, border: '1.5px solid #d0cdc6',
-                background: selectedOrchardId ? '#eef5f1' : '#fff',
+                background: selectedOrchardId ? '#eef2fa' : '#fff',
                 color: selectedOrchardId ? '#1a2a3a' : '#6a7a70',
                 fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
                 maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis',

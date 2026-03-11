@@ -136,7 +136,7 @@ export default function ScoutingReportPanel({ orgId: _orgId, farmId, farmName }:
 
       {panelExpanded && <>
         {/* Top orchards */}
-        <div style={{ borderTop: '1px solid #f0ede6', padding: '12px 20px 4px' }}>
+        <div style={{ borderTop: '1px solid #eef2fa', padding: '12px 20px 4px' }}>
           {orchards.slice(0, 5).map(o => (
             <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid #faf9f6', fontSize: 13 }}>
               <div style={{ flex: 1, color: '#1a2a3a' }}>{o.display}</div>
@@ -159,13 +159,13 @@ export default function ScoutingReportPanel({ orgId: _orgId, farmId, farmName }:
         </div>
 
         {/* Footer: send button */}
-        <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12, borderTop: '1px solid #f0ede6' }}>
+        <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12, borderTop: '1px solid #eef2fa' }}>
           <button
             onClick={handleSendReport}
             disabled={sendStatus === 'sending'}
             style={{
               padding: '7px 16px', borderRadius: 8, border: 'none',
-              background: '#1a2a3a', color: '#a0c4f0',
+              background: '#1a4ba0', color: '#a0c4f0',
               fontSize: 13, fontWeight: 500, cursor: sendStatus === 'sending' ? 'not-allowed' : 'pointer',
               opacity: sendStatus === 'sending' ? 0.7 : 1,
               fontFamily: 'inherit',

@@ -401,7 +401,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
     <>
       <style>{`
         .opm-tooltip {
-          background: #1a2a3a !important; color: #fff !important; border: none !important;
+          background: #1a4ba0 !important; color: #fff !important; border: none !important;
           border-radius: 6px !important; font-size: 12px !important; font-weight: 500 !important;
           padding: 4px 10px !important; font-family: 'Inter', sans-serif !important;
         }
@@ -422,7 +422,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
           .opm-summary-table thead { display: none !important; }
           .opm-summary-table tr {
             display: flex !important; flex-wrap: wrap !important;
-            padding: 12px 16px !important; border-bottom: 1px solid #f0ede6 !important;
+            padding: 12px 16px !important; border-bottom: 1px solid #eef2fa !important;
             gap: 4px 12px !important;
           }
           .opm-summary-table td { border-bottom: none !important; padding: 0 !important; }
@@ -431,7 +431,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
           position: sticky; top: 0; background: #f9f7f3; text-align: left;
           font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px;
           color: #8a95a0; font-weight: 700; padding: 8px 14px;
-          border-bottom: 1px solid #f0ede6;
+          border-bottom: 1px solid #eef2fa;
         }
         .opm-td { padding: 9px 14px; font-size: 13px; color: #3a4a40; border-bottom: 1px solid #f9f7f3; }
         .opm-tr-click { cursor: pointer; }
@@ -442,7 +442,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 20 }}>
 
         {/* Card header */}
-        <div className="opm-header" style={{ padding: '16px 20px', borderBottom: expanded ? '1px solid #f0ede6' : 'none', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', cursor: 'pointer' }} onClick={() => setExpanded(e => !e)}>
+        <div className="opm-header" style={{ padding: '16px 20px', borderBottom: expanded ? '1px solid #eef2fa' : 'none', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', cursor: 'pointer' }} onClick={() => setExpanded(e => !e)}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
             <div style={{ fontSize: 17, fontWeight: 600, color: '#1a2a3a' }}>Orchard Trap Pressure</div>
             <span style={{ fontSize: 13, color: '#7a8a9a', transition: 'transform 0.2s', display: 'inline-block', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>{'\u25BC'}</span>
@@ -525,7 +525,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
           {/* Table panel */}
           <div className="opm-table-panel" style={{ flex: '0 0 40%', borderLeft: '1px solid #e8e4dc', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {/* Table header */}
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0ede6', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid #eef2fa', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
               {selectedOrchardId ? (
                 <>
                   <button onClick={() => setSelectedOrchardId(null)} style={{ fontSize: 12, color: '#2176d9', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, padding: 0 }}>‹ All orchards</button>
@@ -622,7 +622,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
 
         {/* Season trend chart — full width (hidden on mobile) */}
         {(chartLoading || chartData.length > 0) && (
-          <div className="opm-chart-section" style={{ padding: '20px 24px 24px', borderTop: '1px solid #f0ede6' }}>
+          <div className="opm-chart-section" style={{ padding: '20px 24px 24px', borderTop: '1px solid #eef2fa' }}>
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#8a95a0', marginBottom: 14 }}>
               Season Trap Counts by Week{selectedPest ? ` · ${selectedPest.name}` : ''}
             </div>
@@ -633,12 +633,12 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
             ) : (
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#eef2fa" />
                   <XAxis
                     dataKey="week"
                     tick={{ fontSize: 11, fill: '#8a95a0', fontFamily: 'Inter' }}
                     tickLine={false}
-                    axisLine={{ stroke: '#f0ede6' }}
+                    axisLine={{ stroke: '#eef2fa' }}
                     interval="preserveStartEnd"
                   />
                   <YAxis
@@ -648,7 +648,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
                   />
                   <Tooltip
                     contentStyle={{
-                      background: '#1a2a3a', border: 'none', borderRadius: 10,
+                      background: '#1a4ba0', border: 'none', borderRadius: 10,
                       padding: '10px 14px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
                     }}
                     labelStyle={{ color: '#a0c4f0', fontSize: 12, fontWeight: 600, marginBottom: 6 }}

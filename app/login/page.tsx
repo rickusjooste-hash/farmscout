@@ -108,7 +108,7 @@ export default function LoginPage() {
         /* Right panel — login form */
         .right-panel {
           flex: 1;
-          background: #f4f1eb;
+          background: #fff;
           display: flex;
           flex-direction: column;
           justify-content: center;

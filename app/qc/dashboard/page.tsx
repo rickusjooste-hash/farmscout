@@ -216,12 +216,12 @@ const s: Record<string, React.CSSProperties> = {
   kpiSub:      { fontSize: 12, color: '#8a95a0', marginTop: 6 },
   // Cards
   card:        { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 24 },
-  cardHeader:  { padding: '20px 24px 16px', borderBottom: '1px solid #f0ede6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  cardHeader:  { padding: '20px 24px 16px', borderBottom: '1px solid #eef2fa', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   cardTitle:   { fontSize: 17, fontWeight: 600, color: '#1a2a3a' },
   cardBody:    { padding: '20px 24px' },
   // Table
   tableHead:   { display: 'grid', gap: 8, padding: '10px 16px', background: '#f7f5f0', borderBottom: '1px solid #e8e4dc', fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase' as const, letterSpacing: '0.06em', alignItems: 'center' },
-  tableRow:    { display: 'grid', gap: 8, padding: '11px 16px', borderBottom: '1px solid #f0ede6', alignItems: 'center', cursor: 'pointer', transition: 'background 0.1s' },
+  tableRow:    { display: 'grid', gap: 8, padding: '11px 16px', borderBottom: '1px solid #eef2fa', alignItems: 'center', cursor: 'pointer', transition: 'background 0.1s' },
   // Slide-out panel
   overlay:     { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 100 },
   panel:       { position: 'fixed', right: 0, top: 0, bottom: 0, width: 440, background: '#fff', zIndex: 101, boxShadow: '-4px 0 24px rgba(0,0,0,0.12)', display: 'flex', flexDirection: 'column', overflowY: 'auto' },
@@ -229,7 +229,7 @@ const s: Record<string, React.CSSProperties> = {
   panelBody:   { padding: '20px 24px', flex: 1, overflowY: 'auto' },
   closeBtn:    { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#8a95a0', lineHeight: 1, padding: 4 },
   // Progress bar
-  progBg:      { flex: 1, height: 6, background: '#f0ede6', borderRadius: 3, overflow: 'hidden' },
+  progBg:      { flex: 1, height: 6, background: '#eef2fa', borderRadius: 3, overflow: 'hidden' },
   progFill:    { height: '100%', borderRadius: 3, transition: 'width 0.6s ease' },
   // Issue category badge
   badgePicking:{ padding: '2px 7px', borderRadius: 4, fontSize: 10, fontWeight: 700, background: '#fffbe6', color: '#7a5c00', border: '1px solid #f5c842' },
@@ -242,7 +242,7 @@ const s: Record<string, React.CSSProperties> = {
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
-    <div style={{ background: '#1a2a3a', color: '#e8f0e0', padding: '10px 14px', borderRadius: 8, fontSize: 13 }}>
+    <div style={{ background: '#1a4ba0', color: '#e0ecf8', padding: '10px 14px', borderRadius: 8, fontSize: 13 }}>
       <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i}>{p.name}: <strong>{p.value}</strong></div>
@@ -898,7 +898,7 @@ export default function QcDashboardPage() {
                 ) : (
                   <ResponsiveContainer width="100%" height={280}>
                     <BarChart data={sizeData} margin={{ top: 20, right: 8, bottom: 4, left: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#eef2fa" />
                       <XAxis dataKey="bin_label" tick={{ fontSize: 11, fill: '#7a8a9a' }} />
                       <YAxis tick={{ fontSize: 11, fill: '#7a8a9a' }} tickFormatter={(v: number) => `${v}%`} />
                       <Tooltip content={<CustomTooltip />} />
@@ -936,7 +936,7 @@ export default function QcDashboardPage() {
                     <button key={key} onClick={() => setIssueView(key)} style={{
                       padding: '5px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
                       fontSize: 12, fontWeight: 600,
-                      background: issueView === key ? '#1a2a3a' : '#f0ede6',
+                      background: issueView === key ? '#1a2a3a' : '#eef2fa',
                       color: issueView === key ? 'white' : '#6a7a70',
                       transition: 'all 0.15s',
                     }}>{label}</button>
@@ -996,7 +996,7 @@ export default function QcDashboardPage() {
                                 }}>
                                   {name}
                                 </span>
-                                <div style={{ position: 'relative', height: 28, background: '#f0ede6', borderRadius: 4 }}>
+                                <div style={{ position: 'relative', height: 28, background: '#eef2fa', borderRadius: 4 }}>
                                   <div style={{
                                     position: 'absolute', left: 0, top: 0, height: '100%',
                                     width: `${barW}%`,
@@ -1124,7 +1124,7 @@ export default function QcDashboardPage() {
                             {grid.map((cell, i) => (
                               <div key={i} style={{
                                 width: 32, height: 32, borderRadius: 4,
-                                background: cell ? (ISSUE_PALETTE[cell.idx % ISSUE_PALETTE.length] + 'cc') : '#f0ede6',
+                                background: cell ? (ISSUE_PALETTE[cell.idx % ISSUE_PALETTE.length] + 'cc') : '#eef2fa',
                                 transition: 'all 0.15s',
                               }} />
                             ))}
@@ -1198,7 +1198,7 @@ export default function QcDashboardPage() {
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#1a2a3a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
                       <div style={{ fontSize: 14, fontWeight: 700, color: r.totalIssues > 0 ? '#e85a4a' : '#3a4a40' }}>{r.totalIssues}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <div style={{ flex: 1, height: 6, background: '#f0ede6', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ flex: 1, height: 6, background: '#eef2fa', borderRadius: 3, overflow: 'hidden' }}>
                           <div style={{ height: '100%', borderRadius: 3, background: '#f5c842', width: `${pickerIssueMetrics[0].totalIssues > 0 ? Math.round(r.pickingIssues / pickerIssueMetrics[0].totalIssues * 100) : 0}%` }} />
                         </div>
                         <span style={{ fontSize: 13, color: '#7a5c00', minWidth: 24 }}>{r.pickingIssues}</span>
@@ -1343,7 +1343,7 @@ export default function QcDashboardPage() {
 
                   {/* Pagination */}
                   {totalPages > 1 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 24px', borderTop: '1px solid #f0ede6' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 24px', borderTop: '1px solid #eef2fa' }}>
                       <button
                         style={{ ...s.pill, padding: '4px 12px', fontSize: 12 }}
                         disabled={bagPage === 0}
@@ -1490,7 +1490,7 @@ export default function QcDashboardPage() {
                       <div style={{ fontSize: 13, color: '#4caf72' }}>✓ No issues recorded</div>
                     ) : (
                       bagDetail.issues.map((issue, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #f0ede6' }}>
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #eef2fa' }}>
                           <span style={issue.category === 'picking_issue' ? s.badgePicking : s.badgeQc}>
                             {issue.category === 'picking_issue' ? 'Picking' : 'QC'}
                           </span>

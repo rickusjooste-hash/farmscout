@@ -91,7 +91,7 @@ export default function PestAlertSummary({ farmIds, onPestSelect }: Props) {
         }
       `}</style>
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 20 }}>
-        <div style={{ padding: '16px 20px', borderBottom: expanded ? '1px solid #f0ede6' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => setExpanded(e => !e)}>
+        <div style={{ padding: '16px 20px', borderBottom: expanded ? '1px solid #eef2fa' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => setExpanded(e => !e)}>
           <div>
             <div style={{ fontSize: 17, fontWeight: 600, color: '#1a2a3a' }}>Trap Alerts</div>
             <div style={{ fontSize: 12, color: '#8a95a0', marginTop: 3 }}>

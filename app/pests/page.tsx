@@ -504,7 +504,7 @@ export default function PestsPage() {
         body { font-family: 'DM Sans', sans-serif; background: #f4f1eb; color: #1a1a1a; }
         .app { display: flex; min-height: 100vh; }
         .sidebar {
-          width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto; background: #1a2a3a;
+          width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto; background: linear-gradient(180deg, #2176d9, #1148a8);
           padding: 32px 20px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
         }
         .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a0c4f0; margin-bottom: 32px; }
@@ -514,9 +514,9 @@ export default function PestsPage() {
           border-radius: 8px; color: #7a8fa0; font-size: 13.5px; font-weight: 500;
           cursor: pointer; transition: all 0.15s; text-decoration: none;
         }
-        .nav-item:hover { background: #1a4a7a; color: #fff; }
-        .nav-item.active { background: #1a4a7a; color: #a0c4f0; }
-        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #1a4a7a; font-size: 12px; color: #5a7a8a; }
+        .nav-item:hover { background: #1a5fb8; color: #fff; }
+        .nav-item.active { background: #1a5fb8; color: #a0c4f0; }
+        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #1a5fb8; font-size: 12px; color: #5a7a8a; }
         .main { flex: 1; padding: 40px; overflow: auto; }
         .page-title { font-family: 'DM Serif Display', serif; font-size: 28px; color: #1a2a3a; margin-bottom: 6px; }
         .page-sub { font-size: 14px; color: #7a8a9a; margin-bottom: 28px; }
@@ -526,14 +526,14 @@ export default function PestsPage() {
           cursor: pointer; border: none; font-family: 'DM Sans', sans-serif;
           color: #6a7a70; background: transparent; transition: all 0.15s;
         }
-        .tab.active { background: #1a2a3a; color: #a0c4f0; }
+        .tab.active { background: #1a4ba0; color: #a0c4f0; }
         .pest-table { width: 100%; border-collapse: collapse; }
         .pest-table th {
           text-align: left; font-size: 11px; font-weight: 600; color: #8a95a0;
           text-transform: uppercase; letter-spacing: 0.6px; padding: 10px 12px;
           border-bottom: 1px solid #e8e4dc;
         }
-        .pest-table td { padding: 12px; border-bottom: 1px solid #f0ede6; vertical-align: middle; }
+        .pest-table td { padding: 12px; border-bottom: 1px solid #eef2fa; vertical-align: middle; }
         .pest-table tr:last-child td { border-bottom: none; }
         .pest-table tr:hover td { background: #faf9f6; }
         .pest-table tr.editing td { background: #f7faf8; }
@@ -572,21 +572,21 @@ export default function PestsPage() {
         .field { margin-bottom: 14px; }
         .btn-primary {
           padding: 10px 18px; border-radius: 8px; border: none;
-          background: #1a2a3a; color: #a0c4f0; font-size: 13px; font-weight: 600;
+          background: #1a4ba0; color: #a0c4f0; font-size: 13px; font-weight: 600;
           cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background 0.15s;
         }
-        .btn-primary:hover { background: #1a4a7a; }
+        .btn-primary:hover { background: #1a5fb8; }
         .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn-ghost {
           padding: 10px 18px; border-radius: 8px; border: 1.5px solid #e0ddd6;
           background: transparent; color: #6a7a70; font-size: 13px; font-weight: 600;
           cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s;
         }
-        .btn-ghost:hover { border-color: #1a2a3a; color: #1a2a3a; }
+        .btn-ghost:hover { border-color: #1a4ba0; color: #1a2a3a; }
         .error-msg { background: #fdf0ee; border: 1px solid #f5c5be; color: #c0392b; border-radius: 8px; padding: 10px 14px; font-size: 12px; margin-bottom: 12px; }
         .hint { font-size: 11px; color: #8a95a0; margin-top: 4px; line-height: 1.4; }
         .table-card { background: #fff; border-radius: 14px; border: 1px solid #e8e4dc; overflow: hidden; }
-        .table-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #f0ede6; }
+        .table-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #eef2fa; }
         .table-header-title { font-size: 14px; font-weight: 600; color: #1a2a3a; }
         .edit-row-form { padding: 12px; background: #f7faf8; border-top: 1px solid #e8e4dc; }
         .edit-row-grid { display: grid; grid-template-columns: 120px 1fr 1fr 80px; gap: 10px; align-items: end; }
@@ -597,10 +597,10 @@ export default function PestsPage() {
           padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600;
           cursor: pointer; font-family: 'DM Sans', sans-serif; border: none; transition: all 0.15s;
         }
-        .btn-sm.primary { background: #1a2a3a; color: #a0c4f0; }
-        .btn-sm.primary:hover { background: #1a4a7a; }
+        .btn-sm.primary { background: #1a4ba0; color: #a0c4f0; }
+        .btn-sm.primary:hover { background: #1a5fb8; }
         .btn-sm.ghost { background: transparent; border: 1.5px solid #e0ddd6; color: #6a7a70; }
-        .btn-sm.ghost:hover { border-color: #1a2a3a; color: #1a2a3a; }
+        .btn-sm.ghost:hover { border-color: #1a4ba0; color: #1a2a3a; }
         .btn-sm:disabled { opacity: 0.5; cursor: not-allowed; }
         .farm-selector { display: flex; align-items: center; gap: 10px; }
         .farm-selector label { margin: 0; text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 500; color: #6a7a70; }
@@ -609,10 +609,10 @@ export default function PestsPage() {
         .pest-list { width: 100%; }
         .pest-list-header { display: flex; align-items: center; padding: 10px 12px; border-bottom: 1px solid #e8e4dc; }
         .pest-list-header-cell { font-size: 11px; font-weight: 600; color: #8a95a0; text-transform: uppercase; letter-spacing: 0.6px; }
-        .pest-row { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #f0ede6; }
+        .pest-row { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #eef2fa; }
         .pest-row:last-child { border-bottom: none; }
         .pest-row.clickable-row { cursor: pointer; }
-        .pest-row.clickable-row:hover { background: #f0f7f3; }
+        .pest-row.clickable-row:hover { background: #eef2fa; }
         .pest-row.editing { background: #f7faf8; }
         .drag-handle { width: 28px; flex-shrink: 0; color: #b0bdb5; font-size: 15px; text-align: center; cursor: grab; user-select: none; touch-action: none; }
         .drag-handle:active { cursor: grabbing; }
@@ -636,7 +636,7 @@ export default function PestsPage() {
               await supabase.auth.signOut()
               window.location.href = '/login'
             }} style={{
-              marginTop: 10, background: 'none', border: '1px solid #1a4a7a',
+              marginTop: 10, background: 'none', border: '1px solid #1a5fb8',
               color: '#6a9fd4', borderRadius: 6, padding: '4px 10px',
               fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
             }}>
@@ -770,7 +770,7 @@ export default function PestsPage() {
                     {linkedPest ? (
                       <>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <div style={{ flex: 1, padding: '9px 12px', borderRadius: 8, border: '1.5px solid #2176d9', background: '#f0f7f3', fontSize: 13, color: '#1a2a3a', fontWeight: 500 }}>
+                          <div style={{ flex: 1, padding: '9px 12px', borderRadius: 8, border: '1.5px solid #2176d9', background: '#eef2fa', fontSize: 13, color: '#1a2a3a', fontWeight: 500 }}>
                             {linkedPest.name}
                           </div>
                           <button type="button" onClick={() => { setLinkedPest(null); setAddForm(f => ({ ...f, name: '' })) }}
@@ -792,13 +792,13 @@ export default function PestsPage() {
                         />
                         {pestSuggestions.length > 0 && (
                           <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1.5px solid #e0ddd6', borderRadius: 8, boxShadow: '0 4px 14px rgba(0,0,0,0.1)', zIndex: 20, overflow: 'hidden', marginTop: 2 }}>
-                            <div style={{ padding: '5px 12px', fontSize: 10, color: '#8a95a0', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #f0ede6' }}>
+                            <div style={{ padding: '5px 12px', fontSize: 10, color: '#8a95a0', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #eef2fa' }}>
                               Already exists — click to link
                             </div>
                             {pestSuggestions.map(p => (
                               <div key={p.id} onMouseDown={() => selectExistingPest(p)}
-                                style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #f0ede6' }}
-                                onMouseEnter={e => (e.currentTarget.style.background = '#f0f7f3')}
+                                style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #eef2fa' }}
+                                onMouseEnter={e => (e.currentTarget.style.background = '#eef2fa')}
                                 onMouseLeave={e => (e.currentTarget.style.background = '')}>
                                 <span style={{ fontWeight: 500, color: '#1a2a3a' }}>{p.name}</span>
                                 {p.scientific_name && <span style={{ fontSize: 11, color: '#8a95a0', marginLeft: 6, fontStyle: 'italic' }}>{p.scientific_name}</span>}

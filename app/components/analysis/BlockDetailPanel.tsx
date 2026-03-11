@@ -100,7 +100,7 @@ export default function BlockDetailPanel({ orchard, open, onClose, season, prevS
         {orchard && (
           <>
             {/* Header */}
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid #f0ede6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #eef2fa', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: '#1a2a3a' }}>{orchard.name}</div>
                 <div style={{ fontSize: 12, color: '#8a95a0', marginTop: 2 }}>{orchard.commodityName} · {orchard.farmCode}</div>
@@ -113,7 +113,7 @@ export default function BlockDetailPanel({ orchard, open, onClose, season, prevS
             </div>
 
             {/* Identity */}
-            <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0ede6' }}>
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid #eef2fa' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: 13 }}>
                 <div><span style={{ color: '#8a95a0' }}>Variety</span><br /><strong style={{ color: '#1a2a3a' }}>{orchard.variety || '—'}</strong></div>
                 <div><span style={{ color: '#8a95a0' }}>Rootstock</span><br /><strong style={{ color: '#1a2a3a' }}>{orchard.rootstock || '—'}</strong></div>
@@ -125,7 +125,7 @@ export default function BlockDetailPanel({ orchard, open, onClose, season, prevS
 
             {/* Production */}
             {hasProduction && (
-              <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0ede6' }}>
+              <div style={{ padding: '16px 24px', borderBottom: '1px solid #eef2fa' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 12 }}>
                   This Season
                 </div>
@@ -168,7 +168,7 @@ export default function BlockDetailPanel({ orchard, open, onClose, season, prevS
                           content={({ active, payload }: any) => {
                             if (!active || !payload?.length) return null
                             return (
-                              <div style={{ background: '#1a2a3a', color: '#fff', padding: '6px 10px', borderRadius: 6, fontSize: 12 }}>
+                              <div style={{ background: '#1a4ba0', color: '#fff', padding: '6px 10px', borderRadius: 6, fontSize: 12 }}>
                                 W{payload[0].payload.week}: <strong>{Math.round(payload[0].value).toLocaleString('en-ZA')} bins</strong>
                               </div>
                             )
@@ -184,7 +184,7 @@ export default function BlockDetailPanel({ orchard, open, onClose, season, prevS
 
             {/* Quality */}
             {hasProduction && orchard.bruisingPct != null && (
-              <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0ede6' }}>
+              <div style={{ padding: '16px 24px', borderBottom: '1px solid #eef2fa' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
                   Quality
                 </div>

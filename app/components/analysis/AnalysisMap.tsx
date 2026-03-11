@@ -159,7 +159,7 @@ export default function AnalysisMap({
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <style>{`
         .oa-tooltip {
-          background: #1a2a3a !important; color: #fff !important; border: none !important;
+          background: #1a4ba0 !important; color: #fff !important; border: none !important;
           border-radius: 6px !important; font-size: 12px !important; font-weight: 500 !important;
           padding: 4px 10px !important; font-family: 'Inter', sans-serif !important;
         }

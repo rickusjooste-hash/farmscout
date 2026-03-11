@@ -475,7 +475,7 @@ export default function QcBagMapPage() {
         }
         .qbm-page-title { font-size: 17px; font-weight: 700; color: #1a2a3a; }
         .qbm-pills-bar {
-          background: #fff; border-bottom: 1px solid #f0ede6;
+          background: #fff; border-bottom: 1px solid #eef2fa;
           padding: 8px 20px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 44px;
         }
         .qbm-pill {
@@ -483,7 +483,7 @@ export default function QcBagMapPage() {
           background: #fff; color: #6a7a70; font-size: 12px; font-weight: 500;
           cursor: pointer; transition: all 0.15s; white-space: nowrap;
         }
-        .qbm-pill.active { background: #1a2a3a; border-color: #1a2a3a; color: #a0c4f0; }
+        .qbm-pill.active { background: #1a4ba0; border-color: #1a4ba0; color: #a0c4f0; }
         .qbm-pill:hover:not(.active) { background: #f4f1ea; }
         .qbm-body-row { flex: 1; display: flex; overflow: hidden; position: relative; }
         .qbm-map-wrap { flex: 1; position: relative; }
@@ -500,7 +500,7 @@ export default function QcBagMapPage() {
           display: flex; flex-direction: column; overflow-y: auto;
         }
         .qbm-panel-header {
-          padding: 14px 16px; border-bottom: 1px solid #f0ede6;
+          padding: 14px 16px; border-bottom: 1px solid #eef2fa;
           display: flex; align-items: flex-start; gap: 10px;
         }
         .qbm-panel-close {
@@ -523,7 +523,7 @@ export default function QcBagMapPage() {
           color: #fff; flex-shrink: 0;
         }
         .qbm-tooltip {
-          background: #1a2a3a !important; color: #fff !important; border: none !important;
+          background: #1a4ba0 !important; color: #fff !important; border: none !important;
           border-radius: 6px !important; font-size: 12px !important; font-weight: 500 !important;
           padding: 4px 10px !important; font-family: 'Inter', sans-serif !important;
         }

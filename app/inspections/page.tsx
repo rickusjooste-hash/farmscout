@@ -525,7 +525,7 @@ export default function InspectionsPage() {
         body { font-family: 'Inter', sans-serif; background: #f4f1ea; }
         .app { display: flex; height: 100vh; overflow: hidden; }
         .sidebar {
-          width: 220px; min-width: 220px; background: #1a2a3a; display: flex;
+          width: 220px; min-width: 220px; background: linear-gradient(180deg, #2176d9, #1148a8); display: flex;
           flex-direction: column; padding: 24px 14px; overflow-y: auto;
         }
         .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a0c4f0; margin-bottom: 32px; }
@@ -535,9 +535,9 @@ export default function InspectionsPage() {
           border-radius: 8px; color: #7a8fa0; font-size: 13.5px; font-weight: 500;
           cursor: pointer; transition: all 0.15s; text-decoration: none;
         }
-        .nav-item:hover { background: #1a4a7a; color: #fff; }
-        .nav-item.active { background: #1a4a7a; color: #a0c4f0; }
-        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #1a4a7a; font-size: 12px; color: #5a7a8a; }
+        .nav-item:hover { background: #1a5fb8; color: #fff; }
+        .nav-item.active { background: #1a5fb8; color: #a0c4f0; }
+        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #1a5fb8; font-size: 12px; color: #5a7a8a; }
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         .top-bar {
           background: #fff; border-bottom: 1px solid #e8e4dc;
@@ -545,7 +545,7 @@ export default function InspectionsPage() {
         }
         .page-title { font-size: 17px; font-weight: 700; color: #1a2a3a; }
         .scout-pills-bar {
-          background: #fff; border-bottom: 1px solid #f0ede6;
+          background: #fff; border-bottom: 1px solid #eef2fa;
           padding: 8px 20px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 44px;
         }
         .tim-scout-pill {
@@ -554,7 +554,7 @@ export default function InspectionsPage() {
           cursor: pointer; transition: all 0.15s; white-space: nowrap;
         }
         .tim-scout-pill.active {
-          background: #1a2a3a; border-color: #1a2a3a; color: #a0c4f0;
+          background: #1a4ba0; border-color: #1a4ba0; color: #a0c4f0;
         }
         .tim-scout-pill:hover:not(.active) { background: #f4f1ea; }
         .body-row { flex: 1; display: flex; overflow: hidden; position: relative; }
@@ -572,7 +572,7 @@ export default function InspectionsPage() {
           display: flex; flex-direction: column; overflow-y: auto;
         }
         .tim-panel-header {
-          padding: 14px 16px; border-bottom: 1px solid #f0ede6;
+          padding: 14px 16px; border-bottom: 1px solid #eef2fa;
           display: flex; align-items: flex-start; gap: 10px;
         }
         .tim-panel-close {
@@ -596,7 +596,7 @@ export default function InspectionsPage() {
           color: #fff; flex-shrink: 0;
         }
         .tim-tooltip {
-          background: #1a2a3a !important; color: #fff !important; border: none !important;
+          background: #1a4ba0 !important; color: #fff !important; border: none !important;
           border-radius: 6px !important; font-size: 12px !important; font-weight: 500 !important;
           padding: 4px 10px !important; font-family: 'Inter', sans-serif !important;
         }
@@ -851,7 +851,7 @@ export default function InspectionsPage() {
                               key={d.tree_id}
                               onClick={() => setSelectedTree(prev => prev?.tree_id === d.tree_id ? null : d)}
                               style={{
-                                cursor: 'pointer', borderBottom: '1px solid #f0ede6',
+                                cursor: 'pointer', borderBottom: '1px solid #eef2fa',
                                 background: selectedTree?.tree_id === d.tree_id ? '#e8f5e9' : undefined,
                               }}
                             >
@@ -952,7 +952,7 @@ export default function InspectionsPage() {
                   </div>
 
                   {/* Edit Zone */}
-                  <div style={{ borderTop: '1px solid #f0ede6', paddingTop: 12 }}>
+                  <div style={{ borderTop: '1px solid #eef2fa', paddingTop: 12 }}>
                     {!editing ? (
                       <button
                         onClick={startEditing}

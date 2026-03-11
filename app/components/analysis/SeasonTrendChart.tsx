@@ -21,7 +21,7 @@ function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
     <div style={{
-      background: '#1a2a3a', color: '#e8f0e0', padding: '10px 14px',
+      background: '#1a4ba0', color: '#e0ecf8', padding: '10px 14px',
       borderRadius: 8, fontSize: 13, fontFamily: 'Inter, sans-serif',
       boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
     }}>
@@ -44,12 +44,12 @@ export default function SeasonTrendChart({ data, commodities, commodityColors, c
   return (
     <ResponsiveContainer width="100%" height={280}>
       <AreaChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" />
+        <CartesianGrid strokeDasharray="3 3" stroke="#eef2fa" />
         <XAxis
           dataKey="week"
           tick={{ fontSize: 11, fill: '#8a95a0', fontFamily: 'Inter' }}
           tickLine={false}
-          axisLine={{ stroke: '#f0ede6' }}
+          axisLine={{ stroke: '#eef2fa' }}
           interval="preserveStartEnd"
         />
         <YAxis

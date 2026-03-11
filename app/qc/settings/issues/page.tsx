@@ -28,7 +28,7 @@ interface QcIssueRow {
 
 const s: Record<string, React.CSSProperties> = {
   page:      { display: 'flex', minHeight: '100vh', background: '#f4f1eb', fontFamily: 'Inter, sans-serif' },
-  sidebar:   { width: 220, flexShrink: 0, background: '#1a2a3a', padding: '32px 20px', display: 'flex', flexDirection: 'column', gap: 8, position: 'sticky', top: 0, height: '100vh', overflowY: 'auto' },
+  sidebar:   { width: 220, flexShrink: 0, background: 'linear-gradient(180deg, #2176d9, #1148a8)', padding: '32px 20px', display: 'flex', flexDirection: 'column', gap: 8, position: 'sticky', top: 0, height: '100vh', overflowY: 'auto' },
   logo:      { fontSize: 22, color: '#a0c4f0', marginBottom: 32, letterSpacing: '-0.5px' },
   navItem:   { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, color: '#7a8fa0', fontSize: 13.5, fontWeight: 500, cursor: 'pointer', textDecoration: 'none', transition: 'all 0.15s' },
   navLabel:  { fontSize: 10, color: '#5a7a8a', padding: '16px 16px 4px', textTransform: 'uppercase' as const, letterSpacing: '0.08em' },
@@ -39,7 +39,7 @@ const s: Record<string, React.CSSProperties> = {
   pill:      { padding: '6px 14px', borderRadius: 20, border: '1px solid #d4cfca', background: '#fff', color: '#5a6a60', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
   pillActive:{ padding: '6px 14px', borderRadius: 20, border: '1px solid #2176d9', background: '#2176d9', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
   card:      { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 24 },
-  rowBase:   { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid #f0ede6', background: '#fff' },
+  rowBase:   { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid #eef2fa', background: '#fff' },
   rowDrag:   { opacity: 0.4 },
   dragHandle:{ cursor: 'grab', fontSize: 16, color: '#aaa', userSelect: 'none', flexShrink: 0, lineHeight: 1 },
   issueName: { flex: 1, minWidth: 0 },
@@ -231,7 +231,7 @@ export default function QcIssueSettingsPage() {
         <div style={s.navLabel}>QC</div>
         <a href="/qc/dashboard" style={s.navItem}><span>⚖️</span> QC Dashboard</a>
         <a href="/qc/unknowns" style={s.navItem}><span>📷</span> Unknown Issues</a>
-        <a href="/qc/settings/issues" style={{ ...s.navItem, background: '#1a4a7a', color: '#a0c4f0' }}><span>🐛</span> Issue Setup</a>
+        <a href="/qc/settings/issues" style={{ ...s.navItem, background: '#1a5fb8', color: '#a0c4f0' }}><span>🐛</span> Issue Setup</a>
         <a href="/qc/settings/size-bins" style={s.navItem}><span>📏</span> Size Bins</a>
         <a href="/qc/labels" style={s.navItem}><span>🏷️</span> Print Labels</a>
       </aside>

@@ -248,7 +248,7 @@ const s: Record<string, React.CSSProperties> = {
   card:       { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: 24, marginBottom: 24 },
   cardTitle:  { fontSize: 18, fontWeight: 700, color: '#1a2a3a', marginBottom: 16 },
   tableHead:  { display: 'flex', padding: '10px 16px', background: '#f7f5f0', borderBottom: '1px solid #e8e4dc', fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase' as const, letterSpacing: '0.06em' },
-  tableRow:   { display: 'flex', padding: '12px 16px', borderBottom: '1px solid #f0ede6', alignItems: 'center', fontSize: 14 },
+  tableRow:   { display: 'flex', padding: '12px 16px', borderBottom: '1px solid #eef2fa', alignItems: 'center', fontSize: 14 },
   formRow:    { display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center' },
   label:      { fontSize: 13, fontWeight: 600, color: '#5a6a60', width: 110, flexShrink: 0 },
   select:     { flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid #d4cfca', fontSize: 14, fontFamily: 'inherit', outline: 'none', background: '#fff' },

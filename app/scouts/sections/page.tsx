@@ -141,7 +141,7 @@ export default function SectionsPage() {
         body { font-family: 'DM Sans', sans-serif; background: #f4f1eb; }
         .app { display: flex; min-height: 100vh; }
         .sidebar {
-          width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto; background: #1a2a3a;
+          width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto; background: linear-gradient(180deg, #2176d9, #1148a8);
           padding: 32px 20px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
         }
         .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a0c4f0; margin-bottom: 32px; }
@@ -151,10 +151,10 @@ export default function SectionsPage() {
           border-radius: 8px; color: #7a8fa0; font-size: 13.5px; font-weight: 500;
           cursor: pointer; transition: all 0.15s; text-decoration: none;
         }
-        .nav-item:hover { background: #1a4a7a; color: #fff; }
-        .nav-item.active { background: #1a4a7a; color: #a0c4f0; }
+        .nav-item:hover { background: #1a5fb8; color: #fff; }
+        .nav-item.active { background: #1a5fb8; color: #a0c4f0; }
         .nav-item.sub { padding-left: 32px; font-size: 12.5px; }
-        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #1a4a7a; font-size: 12px; color: #5a7a8a; }
+        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #1a5fb8; font-size: 12px; color: #5a7a8a; }
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 100vh; }
         .top-bar {
           padding: 16px 24px; background: #fff; border-bottom: 1px solid #e8e4dc;
@@ -200,7 +200,7 @@ export default function SectionsPage() {
         .sections-area { flex: 1; display: flex; flex-direction: column; gap: 20px; }
         .section-card { background: #fff; border-radius: 12px; border: 1px solid #e8e4dc; overflow: hidden; }
         .section-header {
-          padding: 14px 16px; background: #1a2a3a;
+          padding: 14px 16px; background: #1a4ba0;
           display: flex; align-items: center; justify-content: space-between;
         }
         .section-name { font-size: 14px; font-weight: 600; color: #a0c4f0; }
@@ -232,11 +232,11 @@ export default function SectionsPage() {
         }
         .add-section-input:focus { border-color: #2176d9; }
         .btn-primary {
-          padding: 8px 16px; border-radius: 8px; background: #1a2a3a; color: #a0c4f0;
+          padding: 8px 16px; border-radius: 8px; background: #1a4ba0; color: #a0c4f0;
           border: none; font-size: 13px; font-weight: 600; cursor: pointer;
           font-family: 'DM Sans', sans-serif;
         }
-        .btn-primary:hover { background: #1a4a7a; }
+        .btn-primary:hover { background: #1a5fb8; }
         .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
       `}</style>
 
@@ -259,7 +259,7 @@ export default function SectionsPage() {
               await supabase.auth.signOut()
               window.location.href = '/login'
             }} style={{
-              marginTop: 10, background: 'none', border: '1px solid #1a4a7a',
+              marginTop: 10, background: 'none', border: '1px solid #1a5fb8',
               color: '#6a9fd4', borderRadius: 6, padding: '4px 10px',
               fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif'
             }}>

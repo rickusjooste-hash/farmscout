@@ -68,7 +68,7 @@ const s: Record<string, React.CSSProperties> = {
   },
   pillActive: {
     padding: '6px 14px', borderRadius: 20, border: '1.5px solid #2176d9',
-    background: '#1a2a3a', color: '#fff', fontSize: 12, fontWeight: 600,
+    background: '#1a4ba0', color: '#fff', fontSize: 12, fontWeight: 600,
     cursor: 'pointer',
   },
   grid: {
@@ -135,7 +135,7 @@ const s: Record<string, React.CSSProperties> = {
     padding: '8px 10px', background: '#fff',
   },
   confirmBtn: {
-    padding: '8px 14px', background: '#1a2a3a', color: '#fff',
+    padding: '8px 14px', background: '#1a4ba0', color: '#fff',
     fontSize: 13, fontWeight: 600, borderRadius: 8, border: 'none',
     cursor: 'pointer',
   },

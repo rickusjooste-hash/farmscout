@@ -180,7 +180,7 @@ const s: Record<string, React.CSSProperties> = {
   kpiSub:      { fontSize: 12, color: '#8a95a0', marginTop: 6 },
   // Card
   card:        { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 24 },
-  cardHeader:  { padding: '20px 24px 16px', borderBottom: '1px solid #f0ede6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  cardHeader:  { padding: '20px 24px 16px', borderBottom: '1px solid #eef2fa', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   cardTitle:   { fontSize: 17, fontWeight: 600, color: '#1a2a3a' },
   cardBody:    { padding: '20px 24px' },
   // Loading
@@ -221,7 +221,7 @@ function circlePack(items: { r: number }[], W: number, H: number, GAP = 4) {
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
-    <div style={{ background: '#1a2a3a', color: '#e8f0e0', padding: '10px 14px', borderRadius: 8, fontSize: 13 }}>
+    <div style={{ background: '#1a4ba0', color: '#e0ecf8', padding: '10px 14px', borderRadius: 8, fontSize: 13 }}>
       <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i}>{p.name}: <strong>{typeof p.value === 'number' ? p.value.toLocaleString('en-ZA', { maximumFractionDigits: 1 }) : p.value}</strong></div>
@@ -864,7 +864,7 @@ export default function ProductionPage() {
               <div style={{ fontSize: 36, fontWeight: 700, color: '#1a2a3a', lineHeight: 1 }}>
                 {kpis.totalBins.toLocaleString('en-ZA')}
               </div>
-              <div style={{ height: 2, background: '#f0ede6', margin: '8px 0' }} />
+              <div style={{ height: 2, background: '#eef2fa', margin: '8px 0' }} />
               <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a9a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Total Bins
               </div>
@@ -874,7 +874,7 @@ export default function ProductionPage() {
               <div style={{ fontSize: 36, fontWeight: 700, color: '#1a2a3a', lineHeight: 1 }}>
                 {kpis.totalTons.toLocaleString('en-ZA', { maximumFractionDigits: 1 })}
               </div>
-              <div style={{ height: 2, background: '#f0ede6', margin: '8px 0' }} />
+              <div style={{ height: 2, background: '#eef2fa', margin: '8px 0' }} />
               <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a9a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Total Tons
               </div>
@@ -887,7 +887,7 @@ export default function ProductionPage() {
               <div style={{ fontSize: 36, fontWeight: 700, color: avgBruisingData.avg != null ? qualityColor(avgBruisingData.avg) : '#1a2a3a', lineHeight: 1 }}>
                 {avgBruisingData.avg != null ? `${avgBruisingData.avg.toFixed(1)}%` : '–'}
               </div>
-              <div style={{ height: 2, background: '#f0ede6', margin: '8px 0' }} />
+              <div style={{ height: 2, background: '#eef2fa', margin: '8px 0' }} />
               <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a9a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Bruising
               </div>
@@ -897,7 +897,7 @@ export default function ProductionPage() {
               <div style={{ fontSize: 36, fontWeight: 700, color: '#1a2a3a', lineHeight: 1 }}>
                 {class1Data.class1 != null ? `${class1Data.class1}%` : '–'}
               </div>
-              <div style={{ height: 2, background: '#f0ede6', margin: '8px 0' }} />
+              <div style={{ height: 2, background: '#eef2fa', margin: '8px 0' }} />
               <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a9a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Class 1 %
               </div>
@@ -1037,7 +1037,7 @@ export default function ProductionPage() {
                         <button key={key} onClick={() => setSizeView(key)} style={{
                           padding: '4px 12px', borderRadius: 20, border: 'none', cursor: 'pointer',
                           fontSize: 11, fontWeight: 600,
-                          background: sizeView === key ? '#1a2a3a' : '#f0ede6',
+                          background: sizeView === key ? '#1a2a3a' : '#eef2fa',
                           color: sizeView === key ? 'white' : '#6a7a70',
                         }}>{label}</button>
                       ))}
@@ -1066,7 +1066,7 @@ export default function ProductionPage() {
                         return (<>{kpiCards}<div>{byOrder.map((item, i) => (
                           <div key={item.bin_label} style={{ display: 'grid', gridTemplateColumns: '90px 1fr 48px', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                             <span style={{ textAlign: 'right', fontSize: 11, fontWeight: i < 3 ? 700 : 400, color: i < 3 ? '#1a2a3a' : '#5a6a60', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.bin_label}</span>
-                            <div style={{ position: 'relative', height: 20, background: '#f0ede6', borderRadius: 3 }}>
+                            <div style={{ position: 'relative', height: 20, background: '#eef2fa', borderRadius: 3 }}>
                               <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${(item.pct / maxPct) * 100}%`, background: `linear-gradient(90deg, ${SIZE_PALETTE[i % SIZE_PALETTE.length]}dd, ${SIZE_PALETTE[i % SIZE_PALETTE.length]})`, borderRadius: 3, transition: 'width 0.5s ease' }} />
                             </div>
                             <span style={{ fontSize: 11, fontWeight: 700, color: SIZE_PALETTE[i % SIZE_PALETTE.length], fontFamily: 'monospace', textAlign: 'right' }}>{item.pct}%</span>
@@ -1111,7 +1111,7 @@ export default function ProductionPage() {
                         <div>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 2 }}>
                             {grid.map((cell, i) => (
-                              <div key={i} style={{ width: 24, height: 24, borderRadius: 3, background: cell ? SIZE_PALETTE[cell.idx % SIZE_PALETTE.length] + 'cc' : '#f0ede6' }} />
+                              <div key={i} style={{ width: 24, height: 24, borderRadius: 3, background: cell ? SIZE_PALETTE[cell.idx % SIZE_PALETTE.length] + 'cc' : '#eef2fa' }} />
                             ))}
                           </div>
                           <p style={{ fontSize: 9, color: '#8a95a0', fontFamily: 'monospace', margin: '6px 0 0' }}>Each square ≈ 1%</p>
@@ -1149,7 +1149,7 @@ export default function ProductionPage() {
                         <button key={key} onClick={() => setIssueView(key)} style={{
                           padding: '4px 12px', borderRadius: 20, border: 'none', cursor: 'pointer',
                           fontSize: 11, fontWeight: 600,
-                          background: issueView === key ? '#1a2a3a' : '#f0ede6',
+                          background: issueView === key ? '#1a2a3a' : '#eef2fa',
                           color: issueView === key ? 'white' : '#6a7a70',
                         }}>{label}</button>
                       ))}
@@ -1178,7 +1178,7 @@ export default function ProductionPage() {
                         return (<>{kpiCards}<div>{sorted.map((item, i) => (
                           <div key={item.pest_id} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 48px', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                             <span style={{ textAlign: 'right', fontSize: 11, fontWeight: i < 3 ? 700 : 400, color: i < 3 ? '#1a2a3a' : '#5a6a60', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.pest_name}</span>
-                            <div style={{ position: 'relative', height: 20, background: '#f0ede6', borderRadius: 3 }}>
+                            <div style={{ position: 'relative', height: 20, background: '#eef2fa', borderRadius: 3 }}>
                               <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${(item.pct / maxPct) * 100}%`, background: `linear-gradient(90deg, ${ISSUE_PALETTE[i % ISSUE_PALETTE.length]}dd, ${ISSUE_PALETTE[i % ISSUE_PALETTE.length]})`, borderRadius: 3, transition: 'width 0.5s ease' }} />
                               {i === 0 && (item.pct / maxPct) * 100 < 85 && (
                                 <span style={{ position: 'absolute', left: `${(item.pct / maxPct) * 100 + 1.5}%`, top: '50%', transform: 'translateY(-50%)', fontSize: 8, color: ISSUE_PALETTE[0], fontWeight: 700, whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{'\u2190'} TOP</span>
@@ -1226,7 +1226,7 @@ export default function ProductionPage() {
                         <div>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 2 }}>
                             {grid.map((cell, i) => (
-                              <div key={i} style={{ width: 24, height: 24, borderRadius: 3, background: cell ? ISSUE_PALETTE[cell.idx % ISSUE_PALETTE.length] + 'cc' : '#f0ede6' }} />
+                              <div key={i} style={{ width: 24, height: 24, borderRadius: 3, background: cell ? ISSUE_PALETTE[cell.idx % ISSUE_PALETTE.length] + 'cc' : '#eef2fa' }} />
                             ))}
                           </div>
                           <p style={{ fontSize: 9, color: '#8a95a0', fontFamily: 'monospace', margin: '6px 0 0' }}>Each square ≈ 1% of fruit</p>
@@ -1275,7 +1275,7 @@ export default function ProductionPage() {
                       <tr
                         key={o.orchard_id || i}
                         onClick={() => setSelectedOrchardId(o.orchard_id)}
-                        style={{ borderBottom: '1px solid #f0ede6', cursor: 'pointer', background: selectedOrchardId === o.orchard_id ? '#f0f4fa' : 'transparent' }}
+                        style={{ borderBottom: '1px solid #eef2fa', cursor: 'pointer', background: selectedOrchardId === o.orchard_id ? '#f0f4fa' : 'transparent' }}
                         onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = selectedOrchardId === o.orchard_id ? '#f0f4fa' : '#fafaf6' }}
                         onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = selectedOrchardId === o.orchard_id ? '#f0f4fa' : 'transparent' }}
                       >
@@ -1304,7 +1304,7 @@ export default function ProductionPage() {
               {topOrchards.length > 0 ? topOrchards.map((o, i) => (
                 <div key={o.orchard_id || i} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '12px 0', borderBottom: '1px solid #f0ede6',
+                  padding: '12px 0', borderBottom: '1px solid #eef2fa',
                 }}>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: '#1a2a3a' }}>{o.name}</div>
@@ -1379,7 +1379,7 @@ export default function ProductionPage() {
                         {byOrder.map((item, i) => (
                           <div key={item.bin_label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                             <span style={{ width: 70, textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#1a2a3a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{item.bin_label}</span>
-                            <div style={{ flex: 1, position: 'relative', height: 22, background: '#f0ede6', borderRadius: 3 }}>
+                            <div style={{ flex: 1, position: 'relative', height: 22, background: '#eef2fa', borderRadius: 3 }}>
                               <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${(item.pct / maxPct) * 100}%`, background: SIZE_PALETTE[i % SIZE_PALETTE.length], borderRadius: 3, transition: 'width 0.4s ease' }} />
                             </div>
                             <span style={{ fontSize: 12, fontWeight: 700, color: SIZE_PALETTE[i % SIZE_PALETTE.length], fontFamily: 'monospace', width: 40, textAlign: 'right', flexShrink: 0 }}>{item.pct}%</span>
@@ -1423,7 +1423,7 @@ export default function ProductionPage() {
                         {sorted.map((item, i) => (
                           <div key={item.pest_id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                             <span style={{ width: 85, textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#1a2a3a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{item.pest_name}</span>
-                            <div style={{ flex: 1, position: 'relative', height: 22, background: '#f0ede6', borderRadius: 3 }}>
+                            <div style={{ flex: 1, position: 'relative', height: 22, background: '#eef2fa', borderRadius: 3 }}>
                               <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${(item.pct / maxPct) * 100}%`, background: ISSUE_PALETTE[i % ISSUE_PALETTE.length], borderRadius: 3, transition: 'width 0.4s ease' }} />
                             </div>
                             <span style={{ fontSize: 12, fontWeight: 700, color: ISSUE_PALETTE[i % ISSUE_PALETTE.length], fontFamily: 'monospace', width: 40, textAlign: 'right', flexShrink: 0 }}>{item.pct}%</span>
@@ -1496,8 +1496,8 @@ export default function ProductionPage() {
 
       <style>{`
         .prod-tooltip {
-          background: #1a2a3a !important;
-          color: #e8f0e0 !important;
+          background: #1a4ba0 !important;
+          color: #e0ecf8 !important;
           border: none !important;
           border-radius: 6px !important;
           padding: 6px 10px !important;

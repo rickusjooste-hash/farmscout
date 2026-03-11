@@ -264,7 +264,7 @@ export default function ScoutProductivityTable({
             color: #8a95a0;
             text-transform: uppercase;
             letter-spacing: 0.03em;
-            border-bottom: 2px solid #f0ede6;
+            border-bottom: 2px solid #eef2fa;
             white-space: nowrap;
           }
           .spt-table td {
@@ -349,7 +349,7 @@ export default function ScoutProductivityTable({
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <div style={{
-                        flex: 1, height: 8, background: '#f0ede6', borderRadius: 4,
+                        flex: 1, height: 8, background: '#eef2fa', borderRadius: 4,
                         overflow: 'hidden', minWidth: 40, maxWidth: 80,
                       }}>
                         <div style={{
@@ -427,7 +427,7 @@ export default function ScoutProductivityTable({
           color: #8a95a0;
           text-transform: uppercase;
           letter-spacing: 0.03em;
-          border-bottom: 2px solid #f0ede6;
+          border-bottom: 2px solid #eef2fa;
           white-space: nowrap;
         }
         .spt-table td {

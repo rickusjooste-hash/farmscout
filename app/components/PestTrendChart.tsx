@@ -210,7 +210,7 @@ export default function PestTrendChart() {
     if (!active || !payload?.length) return null
     return (
       <div style={{
-        background: '#1a2a3a', borderRadius: 10, padding: '12px 16px',
+        background: '#1a4ba0', borderRadius: 10, padding: '12px 16px',
         boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
       }}>
         <div style={{ color: '#a0c4f0', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>{label} · {season}</div>
@@ -241,7 +241,7 @@ export default function PestTrendChart() {
       `}</style>
       {/* Header row — title + season buttons */}
       <div className="ptc-header" style={{
-        padding: '20px 24px 14px', borderBottom: '1px solid #f0ede6',
+        padding: '20px 24px 14px', borderBottom: '1px solid #eef2fa',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
       }}>
         <div style={{ fontSize: 17, fontWeight: 600, color: '#1a2a3a' }}>
@@ -269,7 +269,7 @@ export default function PestTrendChart() {
       {/* Filter row — farm + commodity pills */}
       {(farms.length > 0 || commodities.length > 0) && (
         <div className="ptc-filters" style={{
-          padding: '10px 24px', borderBottom: '1px solid #f0ede6',
+          padding: '10px 24px', borderBottom: '1px solid #eef2fa',
           display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
         }}>
           {farms.length > 0 && (
@@ -310,7 +310,7 @@ export default function PestTrendChart() {
 
       {/* Pest toggles */}
       {pestNames.length > 0 && (
-        <div className="ptc-pest-toggles" style={{ padding: '10px 24px', borderBottom: '1px solid #f0ede6', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className="ptc-pest-toggles" style={{ padding: '10px 24px', borderBottom: '1px solid #eef2fa', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {pestNames.map((name, i) => (
             <button key={name} onClick={() => togglePest(name)} style={{
               padding: '4px 12px', borderRadius: 20,
@@ -341,12 +341,12 @@ export default function PestTrendChart() {
         {!loading && !error && chartData.length > 0 && (
           <ResponsiveContainer width="100%" height={320}>
             <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#eef2fa" />
               <XAxis
                 dataKey="week"
                 tick={{ fontSize: 11, fill: '#8a95a0', fontFamily: 'Inter' }}
                 tickLine={false}
-                axisLine={{ stroke: '#f0ede6' }}
+                axisLine={{ stroke: '#eef2fa' }}
                 interval="preserveStartEnd"
               />
               <YAxis

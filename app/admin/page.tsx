@@ -205,7 +205,7 @@ export default function AdminPage() {
         body { font-family: 'DM Sans', sans-serif; background: #f4f1eb; color: #1a1a1a; }
         .app { display: flex; min-height: 100vh; }
         .sidebar {
-          width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto; background: #1a2a3a;
+          width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto; background: linear-gradient(180deg, #2176d9, #1148a8);
           padding: 32px 20px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
         }
         .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a0c4f0; margin-bottom: 32px; }
@@ -215,9 +215,9 @@ export default function AdminPage() {
           border-radius: 8px; color: #7a8fa0; font-size: 13.5px; font-weight: 500;
           cursor: pointer; transition: all 0.15s; text-decoration: none;
         }
-        .nav-item:hover { background: #1a4a7a; color: #fff; }
-        .nav-item.active { background: #1a4a7a; color: #a0c4f0; }
-        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #1a4a7a; font-size: 12px; color: #5a7a8a; }
+        .nav-item:hover { background: #1a5fb8; color: #fff; }
+        .nav-item.active { background: #1a5fb8; color: #a0c4f0; }
+        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #1a5fb8; font-size: 12px; color: #5a7a8a; }
         .main { flex: 1; padding: 40px; max-width: 700px; }
         .page-title { font-family: 'DM Serif Display', serif; font-size: 28px; color: #1a2a3a; margin-bottom: 6px; }
         .page-sub { font-size: 14px; color: #7a8a9a; margin-bottom: 32px; }
@@ -227,7 +227,7 @@ export default function AdminPage() {
           cursor: pointer; border: none; font-family: 'DM Sans', sans-serif;
           color: #6a7a70; background: transparent; transition: all 0.15s;
         }
-        .tab.active { background: #1a2a3a; color: #a0c4f0; }
+        .tab.active { background: #1a4ba0; color: #a0c4f0; }
         .form-card { background: #fff; border-radius: 14px; border: 1px solid #e8e4dc; padding: 32px; }
         label { display: block; font-size: 12px; font-weight: 600; color: #6a7a70; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
         input, select {
@@ -240,19 +240,19 @@ export default function AdminPage() {
         .two-col-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .btn-submit {
           width: 100%; padding: 12px; border-radius: 10px; border: none;
-          background: #1a2a3a; color: #a0c4f0; font-size: 15px; font-weight: 600;
+          background: #1a4ba0; color: #a0c4f0; font-size: 15px; font-weight: 600;
           cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background 0.15s;
           margin-top: 8px;
         }
-        .btn-submit:hover { background: #1a4a7a; }
+        .btn-submit:hover { background: #1a5fb8; }
         .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
         .error { background: #fdf0ee; border: 1px solid #f5c5be; color: #c0392b; border-radius: 8px; padding: 12px 16px; font-size: 13px; margin-bottom: 20px; }
         .success { background: #f0f4fa; border: 1px solid #a0c4f0; color: #1c5c2a; border-radius: 8px; padding: 12px 16px; font-size: 13px; margin-bottom: 20px; }
-        .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #8a95a0; font-weight: 600; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #f0ede6; }
+        .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #8a95a0; font-weight: 600; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #eef2fa; }
         .farm-checkboxes { display: flex; flex-direction: column; gap: 8px; }
         .farm-check { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; border: 1.5px solid #e0ddd6; cursor: pointer; transition: all 0.15s; }
         .farm-check:hover { border-color: #2176d9; }
-        .farm-check.checked { border-color: #1a2a3a; background: #f0f4fa; }
+        .farm-check.checked { border-color: #1a4ba0; background: #f0f4fa; }
         .farm-check input[type=checkbox] { width: auto; }
         .farm-check-label { font-size: 13px; color: #1a2a3a; font-weight: 500; }
         .farm-check-code { font-size: 11px; color: #8a95a0; margin-left: auto; }
@@ -276,7 +276,7 @@ export default function AdminPage() {
               await supabase.auth.signOut()
               window.location.href = '/login'
             }} style={{
-              marginTop: 10, background: 'none', border: '1px solid #1a4a7a',
+              marginTop: 10, background: 'none', border: '1px solid #1a5fb8',
               color: '#6a9fd4', borderRadius: 6, padding: '4px 10px',
               fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif'
             }}>

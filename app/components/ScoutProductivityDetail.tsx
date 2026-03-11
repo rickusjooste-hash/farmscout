@@ -391,12 +391,12 @@ export default function ScoutProductivityDetail({
           <div className="spd-card-title">Inspection Speed Distribution</div>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={speedHistogram} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#eef2fa" />
               <XAxis
                 dataKey="label"
                 tick={{ fontSize: 10, fill: '#8a95a0' }}
                 tickLine={false}
-                axisLine={{ stroke: '#f0ede6' }}
+                axisLine={{ stroke: '#eef2fa' }}
               />
               <YAxis
                 tick={{ fontSize: 10, fill: '#8a95a0' }}
@@ -404,7 +404,7 @@ export default function ScoutProductivityDetail({
                 axisLine={false}
               />
               <Tooltip
-                contentStyle={{ background: '#1a2a3a', border: 'none', borderRadius: 8, color: '#e8e8d8', fontSize: 12 }}
+                contentStyle={{ background: '#1a4ba0', border: 'none', borderRadius: 8, color: '#e8e8d8', fontSize: 12 }}
                 labelStyle={{ color: '#a0c4f0' }}
               />
               <Bar dataKey="count" fill="#2176d9" radius={[3, 3, 0, 0]} />
@@ -429,12 +429,12 @@ export default function ScoutProductivityDetail({
           {weeklyChartData.length > 1 ? (
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={weeklyChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#eef2fa" />
                 <XAxis
                   dataKey="week"
                   tick={{ fontSize: 11, fill: '#8a95a0', fontFamily: 'Inter' }}
                   tickLine={false}
-                  axisLine={{ stroke: '#f0ede6' }}
+                  axisLine={{ stroke: '#eef2fa' }}
                 />
                 <YAxis
                   tick={{ fontSize: 11, fill: '#8a95a0', fontFamily: 'Inter' }}
@@ -442,7 +442,7 @@ export default function ScoutProductivityDetail({
                   axisLine={false}
                 />
                 <Tooltip
-                  contentStyle={{ background: '#1a2a3a', border: 'none', borderRadius: 10, color: '#e8e8d8', fontSize: 12 }}
+                  contentStyle={{ background: '#1a4ba0', border: 'none', borderRadius: 10, color: '#e8e8d8', fontSize: 12 }}
                   labelStyle={{ color: '#a0c4f0' }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -516,7 +516,7 @@ export default function ScoutProductivityDetail({
           font-size: 13px;
           font-weight: 600;
           color: #1a2a3a;
-          border-bottom: 1px solid #f0ede6;
+          border-bottom: 1px solid #eef2fa;
         }
         .spd-map {
           height: 340px;
@@ -525,7 +525,7 @@ export default function ScoutProductivityDetail({
         .spd-tabs {
           display: flex;
           gap: 0;
-          border-bottom: 2px solid #f0ede6;
+          border-bottom: 2px solid #eef2fa;
         }
         .spd-tab {
           padding: 8px 16px;
@@ -561,7 +561,7 @@ export default function ScoutProductivityDetail({
         .spd-timeline-bar {
           position: relative;
           height: 24px;
-          background: #f0ede6;
+          background: #eef2fa;
           border-radius: 12px;
           margin-bottom: 6px;
         }
@@ -614,7 +614,7 @@ export default function ScoutProductivityDetail({
           margin-right: 3px;
         }
         .spd-tooltip-wrap {
-          background: #1a2a3a !important;
+          background: #1a4ba0 !important;
           border: none !important;
           border-radius: 8px !important;
           color: #e8e8d8 !important;

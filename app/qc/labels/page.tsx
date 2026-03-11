@@ -113,7 +113,7 @@ export default function QcLabelsPage() {
       `}</style>
 
       {/* ── Header (no-print) ── */}
-      <div className="no-print" style={{ background: '#1a2a3a', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="no-print" style={{ background: '#1a4ba0', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <div style={{ color: '#a0c4f0', fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>QC System</div>
           <div style={{ color: '#fff', fontSize: 22, fontWeight: 700 }}>QR Label Generator</div>
@@ -143,7 +143,7 @@ export default function QcLabelsPage() {
         {labels.length > 0 && <>
           <button
             onClick={() => window.print()}
-            style={{ padding: '10px 28px', background: '#1a2a3a', color: '#fff', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ padding: '10px 28px', background: '#1a4ba0', color: '#fff', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             🖨️ Print {labels.length} labels
           </button>

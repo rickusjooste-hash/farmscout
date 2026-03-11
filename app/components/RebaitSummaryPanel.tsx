@@ -140,7 +140,7 @@ export default function RebaitSummaryPanel({ orgId, farmId, farmName }: Props) {
 
       {panelExpanded && <>
       {/* Purchase List */}
-      <div style={{ borderBottom: '1px solid #f0ede6' }}>
+      <div style={{ borderBottom: '1px solid #eef2fa' }}>
         <button
           onClick={() => setPurchaseExpanded(e => !e)}
           style={{
@@ -165,7 +165,7 @@ export default function RebaitSummaryPanel({ orgId, farmId, farmName }: Props) {
       </div>
 
       {/* Trap Schedule */}
-      <div style={{ borderBottom: '1px solid #f0ede6' }}>
+      <div style={{ borderBottom: '1px solid #eef2fa' }}>
         <button
           onClick={() => setScheduleExpanded(e => !e)}
           style={{
@@ -211,7 +211,7 @@ export default function RebaitSummaryPanel({ orgId, farmId, farmName }: Props) {
           disabled={sendStatus === 'sending'}
           style={{
             padding: '7px 16px', borderRadius: 8, border: 'none',
-            background: '#1a2a3a', color: '#a0c4f0',
+            background: '#1a4ba0', color: '#a0c4f0',
             fontSize: 13, fontWeight: 500, cursor: sendStatus === 'sending' ? 'not-allowed' : 'pointer',
             opacity: sendStatus === 'sending' ? 0.7 : 1,
             fontFamily: 'inherit',
