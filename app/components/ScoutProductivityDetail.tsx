@@ -131,6 +131,23 @@ export default function ScoutProductivityDetail({
     const gpsPoints = track.filter(p => p.lat && p.lng)
     if (!gpsPoints.length) return
 
+    // Helper: extract orchard name from label ("Trap #5 - Koelkamer" → "Koelkamer")
+    const orchardOf = (label: string) => {
+      const idx = label.indexOf(' - ')
+      return idx >= 0 ? label.slice(idx + 3) : ''
+    }
+
+    // Helper: bearing between two points (degrees)
+    const bearing = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+      const toRad = (d: number) => d * Math.PI / 180
+      const toDeg = (r: number) => r * 180 / Math.PI
+      const dLng = toRad(lng2 - lng1)
+      const y = Math.sin(dLng) * Math.cos(toRad(lat2))
+      const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2))
+            - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLng)
+      return (toDeg(Math.atan2(y, x)) + 360) % 360
+    }
+
     // Draw segments (solid for active, dashed for breaks)
     for (let i = 1; i < gpsPoints.length; i++) {
       const prev = gpsPoints[i - 1]
@@ -142,6 +159,25 @@ export default function ScoutProductivityDetail({
         dashArray: curr.is_break ? '8 6' : undefined,
         opacity: 0.85,
       }).addTo(group)
+    }
+
+    // Draw directional arrows between orchards (not within)
+    for (let i = 1; i < gpsPoints.length; i++) {
+      const prev = gpsPoints[i - 1]
+      const curr = gpsPoints[i]
+      if (orchardOf(prev.label) === orchardOf(curr.label) && !curr.is_break) continue
+
+      const midLat = (prev.lat! + curr.lat!) / 2
+      const midLng = (prev.lng! + curr.lng!) / 2
+      const angle = bearing(prev.lat!, prev.lng!, curr.lat!, curr.lng!)
+
+      const arrowIcon = L.divIcon({
+        className: 'spd-arrow-icon',
+        html: `<div class="spd-arrow" style="transform:rotate(${angle}deg)">&#9654;</div>`,
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+      })
+      L.marker([midLat, midLng], { icon: arrowIcon, interactive: false }).addTo(group)
     }
 
     // Draw markers
@@ -229,9 +265,11 @@ export default function ScoutProductivityDetail({
 
   // ── Render ────────────────────────────────────────────────────────────
 
-  const minMinute = timelineData.length ? Math.min(...timelineData.map(d => d.minute)) : 0
-  const maxMinute = timelineData.length ? Math.max(...timelineData.map(d => d.minute)) : 1440
-  const timeRange = Math.max(maxMinute - minMinute, 1)
+  // Fixed timeline: 07:30 to 17:30
+  const minMinute = 7 * 60 + 30   // 07:30
+  const maxMinute = 17 * 60 + 30  // 17:30
+  const timeRange = maxMinute - minMinute  // 600 minutes
+  const hourMarks = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
 
   return (
     <div className="spd-detail">
@@ -278,7 +316,18 @@ export default function ScoutProductivityDetail({
           <div className="spd-card-title">Day Timeline</div>
           <div className="spd-timeline">
             <div className="spd-timeline-bar">
-              {timelineData.map((d, i) => (
+              {/* Hour tick marks */}
+              {hourMarks.map(h => (
+                <div
+                  key={`tick-${h}`}
+                  className="spd-timeline-tick"
+                  style={{ left: `${((h * 60 - minMinute) / timeRange) * 100}%` }}
+                />
+              ))}
+              {/* Inspection dots */}
+              {timelineData
+                .filter(d => d.minute >= minMinute && d.minute <= maxMinute)
+                .map((d, i) => (
                 <div
                   key={i}
                   className="spd-timeline-dot"
@@ -291,9 +340,18 @@ export default function ScoutProductivityDetail({
                 />
               ))}
             </div>
-            <div className="spd-timeline-labels">
-              <span>{Math.floor(minMinute / 60).toString().padStart(2, '0')}:{(minMinute % 60).toString().padStart(2, '0')}</span>
-              <span>{Math.floor(maxMinute / 60).toString().padStart(2, '0')}:{(maxMinute % 60).toString().padStart(2, '0')}</span>
+            <div className="spd-timeline-hours">
+              <span className="spd-timeline-edge">07:30</span>
+              {hourMarks.map(h => (
+                <span
+                  key={h}
+                  className="spd-timeline-hour"
+                  style={{ left: `${((h * 60 - minMinute) / timeRange) * 100}%` }}
+                >
+                  {h.toString().padStart(2, '0')}:00
+                </span>
+              ))}
+              <span className="spd-timeline-edge" style={{ right: 0, left: 'auto' }}>17:30</span>
             </div>
             <div className="spd-timeline-legend">
               <span><span style={{ background: '#4caf72' }} className="spd-legend-dot" /> Trap</span>
@@ -517,9 +575,27 @@ export default function ScoutProductivityDetail({
           border: 1px solid #fff;
           cursor: pointer;
         }
-        .spd-timeline-labels {
-          display: flex;
-          justify-content: space-between;
+        .spd-timeline-tick {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          width: 1px;
+          background: #d8d4cc;
+          transform: translateX(-0.5px);
+        }
+        .spd-timeline-hours {
+          position: relative;
+          height: 16px;
+          margin-top: 4px;
+        }
+        .spd-timeline-hour {
+          position: absolute;
+          transform: translateX(-50%);
+          font-size: 10px;
+          color: #9aaa9f;
+        }
+        .spd-timeline-edge {
+          position: absolute;
           font-size: 10px;
           color: #9aaa9f;
         }
@@ -548,6 +624,18 @@ export default function ScoutProductivityDetail({
         }
         .spd-tooltip-wrap::before {
           border-top-color: #1c3a2a !important;
+        }
+        .spd-arrow-icon {
+          background: none !important;
+          border: none !important;
+        }
+        .spd-arrow {
+          font-size: 14px;
+          color: #fff;
+          text-shadow: 0 0 4px rgba(0,0,0,0.6);
+          line-height: 18px;
+          text-align: center;
+          transform-origin: center center;
         }
         @media (max-width: 768px) {
           .spd-map { height: 260px; }
