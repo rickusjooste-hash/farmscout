@@ -38,6 +38,7 @@ export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], 
       <a href="/scouts" className={cls('/scouts')}><span>👷</span> Scouts</a>
       <a href="/scouts/new" className={cls('/scouts/new')} style={{ paddingLeft: 28, fontSize: 13 }}><span>➕</span> New Scout</a>
       <a href="/scouts/sections" className={cls('/scouts/sections')} style={{ paddingLeft: 28, fontSize: 13 }}><span>🗂️</span> Sections</a>
+      <a href="/scouts/productivity" className={cls('/scouts/productivity')} style={{ paddingLeft: 28, fontSize: 13 }}><span>📊</span> Productivity</a>
       <a href="/settings" className={cls('/settings')}><span className="ms-nav-icon">🔔</span> Settings</a>
       {isSuperAdmin && <a href="/admin" className={cls('/admin')}><span>⚙️</span> Admin</a>}
 
