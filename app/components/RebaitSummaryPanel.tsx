@@ -48,8 +48,8 @@ export default function RebaitSummaryPanel({ orgId, farmId, farmName }: Props) {
     return (
       <div style={cardStyle}>
         <div style={{ padding: '20px 24px' }}>
-          <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a', marginBottom: 8 }}>Rebait Reminder{farmName ? <span style={{ fontSize: 13, fontWeight: 400, color: '#7a8a80', marginLeft: 8 }}>{farmName}</span> : null}</div>
-          <div style={{ color: '#9aaa9f', fontSize: 13 }}>Loading…</div>
+          <div style={{ fontSize: 17, fontWeight: 600, color: '#1a2a3a', marginBottom: 8 }}>Rebait Reminder{farmName ? <span style={{ fontSize: 13, fontWeight: 400, color: '#7a8a9a', marginLeft: 8 }}>{farmName}</span> : null}</div>
+          <div style={{ color: '#8a95a0', fontSize: 13 }}>Loading…</div>
         </div>
       </div>
     )
@@ -122,8 +122,8 @@ export default function RebaitSummaryPanel({ orgId, farmId, farmName }: Props) {
         onClick={() => setPanelExpanded(e => !e)}
         style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}
       >
-        <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a', flex: 1 }}>
-          Rebait Reminder{farmName ? <span style={{ fontSize: 13, fontWeight: 400, color: '#7a8a80', marginLeft: 8 }}>{farmName}</span> : null}
+        <div style={{ fontSize: 17, fontWeight: 600, color: '#1a2a3a', flex: 1 }}>
+          Rebait Reminder{farmName ? <span style={{ fontSize: 13, fontWeight: 400, color: '#7a8a9a', marginLeft: 8 }}>{farmName}</span> : null}
         </div>
         {overdueCount > 0 && (
           <span style={{ fontSize: 12, background: '#fdecea', color: '#e85a4a', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>
@@ -135,7 +135,7 @@ export default function RebaitSummaryPanel({ orgId, farmId, farmName }: Props) {
             🟡 {dueSoonCount} due soon
           </span>
         )}
-        <span style={{ fontSize: 13, color: '#7a8a80', display: 'inline-block', transition: 'transform 0.2s', transform: panelExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+        <span style={{ fontSize: 13, color: '#7a8a9a', display: 'inline-block', transition: 'transform 0.2s', transform: panelExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
       </button>
 
       {panelExpanded && <>
@@ -146,7 +146,7 @@ export default function RebaitSummaryPanel({ orgId, farmId, farmName }: Props) {
           style={{
             width: '100%', background: 'none', border: 'none', cursor: 'pointer',
             padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 8,
-            fontSize: 13, fontWeight: 600, color: '#1c3a2a',
+            fontSize: 13, fontWeight: 600, color: '#1a2a3a',
           }}
         >
           <span style={{ display: 'inline-block', transition: 'transform 0.2s', transform: purchaseExpanded ? 'rotate(90deg)' : 'none' }}>▶</span>
@@ -157,7 +157,7 @@ export default function RebaitSummaryPanel({ orgId, farmId, farmName }: Props) {
             {lures.map(l => (
               <div key={l.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 0', fontSize: 13, color: '#3a4a40', borderBottom: '1px solid #faf9f6' }}>
                 <span>{l.name}</span>
-                <span style={{ fontWeight: 600, color: '#1c3a2a' }}>×{l.count}</span>
+                <span style={{ fontWeight: 600, color: '#1a2a3a' }}>×{l.count}</span>
               </div>
             ))}
           </div>
@@ -171,12 +171,12 @@ export default function RebaitSummaryPanel({ orgId, farmId, farmName }: Props) {
           style={{
             width: '100%', background: 'none', border: 'none', cursor: 'pointer',
             padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 8,
-            fontSize: 13, fontWeight: 600, color: '#1c3a2a',
+            fontSize: 13, fontWeight: 600, color: '#1a2a3a',
           }}
         >
           <span style={{ display: 'inline-block', transition: 'transform 0.2s', transform: scheduleExpanded ? 'rotate(90deg)' : 'none' }}>▶</span>
           Trap Schedule
-          <span style={{ fontSize: 11, color: '#9aaa9f', fontWeight: 400 }}>(most overdue first)</span>
+          <span style={{ fontSize: 11, color: '#8a95a0', fontWeight: 400 }}>(most overdue first)</span>
         </button>
         {scheduleExpanded && (
           <div style={{ padding: '0 20px 14px 20px' }}>
@@ -189,14 +189,14 @@ export default function RebaitSummaryPanel({ orgId, farmId, farmName }: Props) {
                   fontSize: 13,
                 }}
               >
-                <span style={{ fontWeight: 600, color: '#1c3a2a', minWidth: 36 }}>
+                <span style={{ fontWeight: 600, color: '#1a2a3a', minWidth: 36 }}>
                   T{row.trap_nr ?? '?'}
                 </span>
                 <span style={{ color: '#3a4a40', flex: 1 }}>
                   {row.orchard_name} · {row.zone_name}
                 </span>
-                <span style={{ color: '#9aaa9f', fontSize: 12, minWidth: 80 }}>{row.lure_type_name}</span>
-                <span style={{ fontSize: 12, color: '#7a8a80', minWidth: 60 }}>{wksLabel(row)}</span>
+                <span style={{ color: '#8a95a0', fontSize: 12, minWidth: 80 }}>{row.lure_type_name}</span>
+                <span style={{ fontSize: 12, color: '#7a8a9a', minWidth: 60 }}>{wksLabel(row)}</span>
                 {statusChip(row)}
               </div>
             ))}
@@ -211,7 +211,7 @@ export default function RebaitSummaryPanel({ orgId, farmId, farmName }: Props) {
           disabled={sendStatus === 'sending'}
           style={{
             padding: '7px 16px', borderRadius: 8, border: 'none',
-            background: '#1c3a2a', color: '#a8d5a2',
+            background: '#1a2a3a', color: '#a0c4f0',
             fontSize: 13, fontWeight: 500, cursor: sendStatus === 'sending' ? 'not-allowed' : 'pointer',
             opacity: sendStatus === 'sending' ? 0.7 : 1,
             fontFamily: 'inherit',
@@ -222,7 +222,7 @@ export default function RebaitSummaryPanel({ orgId, farmId, farmName }: Props) {
         {sendResult && (
           <span style={{
             fontSize: 12, fontWeight: 500,
-            color: sendStatus === 'error' ? '#e85a4a' : '#2a6e45',
+            color: sendStatus === 'error' ? '#e85a4a' : '#2176d9',
           }}>
             {sendStatus === 'sent' ? '✓ ' : ''}{sendResult}
           </span>

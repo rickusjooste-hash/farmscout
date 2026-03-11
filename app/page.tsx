@@ -246,13 +246,13 @@ export default function DashboardPage() {
         .page-title {
           font-family: 'Inter', sans-serif;
           font-size: 32px;
-          color: #1c3a2a;
+          color: #1a2a3a;
           letter-spacing: -0.5px;
           line-height: 1;
         }
         .page-subtitle {
           font-size: 14px;
-          color: #7a8a80;
+          color: #7a8a9a;
           margin-top: 6px;
           font-weight: 300;
         }
@@ -260,8 +260,8 @@ export default function DashboardPage() {
           display: flex;
           align-items: center;
           gap: 6px;
-          background: #1c3a2a;
-          color: #a8d5a2;
+          background: #1a2a3a;
+          color: #a0c4f0;
           padding: 6px 14px;
           border-radius: 20px;
           font-size: 12px;
@@ -312,7 +312,7 @@ export default function DashboardPage() {
           position: absolute;
           top: 0; left: 0; right: 0;
           height: 3px;
-          background: linear-gradient(90deg, #2a6e45, #a8d5a2);
+          background: linear-gradient(90deg, #2176d9, #a0c4f0);
         }
         .week-card-header {
           display: flex;
@@ -323,11 +323,11 @@ export default function DashboardPage() {
         .week-card-title {
           font-family: 'Inter', sans-serif;
           font-size: 18px;
-          color: #1c3a2a;
+          color: #1a2a3a;
         }
         .week-card-meta {
           font-size: 13px;
-          color: #9aaa9f;
+          color: #8a95a0;
         }
         .week-progress-row {
           display: flex;
@@ -345,13 +345,13 @@ export default function DashboardPage() {
         .week-progress-bar-fill {
           height: 100%;
           border-radius: 6px;
-          background: linear-gradient(90deg, #2a6e45, #6abf7a);
+          background: linear-gradient(90deg, #2176d9, #4a9ef0);
           transition: width 0.6s ease;
         }
         .week-progress-label {
           font-size: 14px;
           font-weight: 600;
-          color: #1c3a2a;
+          color: #1a2a3a;
           white-space: nowrap;
         }
         .orchard-pills {
@@ -366,13 +366,13 @@ export default function DashboardPage() {
           font-weight: 500;
         }
         .orchard-pill.done {
-          background: #e8f5ee;
-          color: #2a6e45;
+          background: #e8f0fa;
+          color: #2176d9;
           border: 1px solid #c0e0cc;
         }
         .orchard-pill.pending {
           background: #f4f1eb;
-          color: #9aaa9f;
+          color: #8a95a0;
           border: 1px solid #e0ddd5;
         }
 
@@ -401,7 +401,7 @@ export default function DashboardPage() {
         .scout-count {
           font-size: 13px;
           font-weight: 600;
-          color: #1c3a2a;
+          color: #1a2a3a;
           width: 70px;
           text-align: right;
           flex-shrink: 0;
@@ -427,7 +427,7 @@ export default function DashboardPage() {
           position: absolute;
           top: 0; left: 0; right: 0;
           height: 3px;
-          background: linear-gradient(90deg, #2a6e45, #a8d5a2);
+          background: linear-gradient(90deg, #2176d9, #a0c4f0);
         }
         .stat-card.alert-card::before {
           background: linear-gradient(90deg, #c0392b, #e05c4b);
@@ -436,14 +436,14 @@ export default function DashboardPage() {
           font-size: 11px;
           text-transform: uppercase;
           letter-spacing: 1px;
-          color: #9aaa9f;
+          color: #8a95a0;
           font-weight: 600;
           margin-bottom: 10px;
         }
         .stat-value {
           font-family: 'Inter', sans-serif;
           font-size: 38px;
-          color: #1c3a2a;
+          color: #1a2a3a;
           line-height: 1;
         }
         .stat-value.alert-value { color: #c0392b; }
@@ -477,7 +477,7 @@ export default function DashboardPage() {
           display: flex;
           gap: 14px;
           font-size: 12px;
-          color: #7a8a80;
+          color: #7a8a9a;
           align-items: center;
         }
         .legend-item {
@@ -513,10 +513,10 @@ export default function DashboardPage() {
         .card-title {
           font-family: 'Inter', sans-serif;
           font-size: 17px;
-          color: #1c3a2a;
+          color: #1a2a3a;
         }
         .card-badge {
-          background: #f0f7f2;
+          background: #f0f4fa;
           color: #3a7a52;
           font-size: 11px;
           font-weight: 600;
@@ -554,13 +554,13 @@ export default function DashboardPage() {
         .pest-bar-fill {
           height: 100%;
           border-radius: 4px;
-          background: linear-gradient(90deg, #2a6e45, #6abf7a);
+          background: linear-gradient(90deg, #2176d9, #4a9ef0);
           transition: width 0.6s ease;
         }
         .pest-count {
           font-size: 13px;
           font-weight: 600;
-          color: #1c3a2a;
+          color: #1a2a3a;
           width: 42px;
           text-align: right;
           flex-shrink: 0;
@@ -581,8 +581,8 @@ export default function DashboardPage() {
           border-radius: 50%;
           flex-shrink: 0;
         }
-        .activity-orchard { font-size: 13.5px; font-weight: 500; color: #1c3a2a; }
-        .activity-date { font-size: 12px; color: #9aaa9f; margin-left: auto; }
+        .activity-orchard { font-size: 13.5px; font-weight: 500; color: #1a2a3a; }
+        .activity-date { font-size: 12px; color: #8a95a0; margin-left: auto; }
 
         /* Loading / splash screen */
         .loading {
@@ -737,10 +737,10 @@ export default function DashboardPage() {
             <div className="dash-section-kpi dash-mobile-only">
               {/* Date + week label */}
               <div style={{ padding: '14px 2px 6px', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 20, fontWeight: 700, color: '#1c3a2a', letterSpacing: '-0.3px' }}>
+                <span style={{ fontSize: 20, fontWeight: 700, color: '#1a2a3a', letterSpacing: '-0.3px' }}>
                   {new Date().toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' })}
                 </span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   W{(() => { const d = new Date(); d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7)); const y = new Date(d.getFullYear(), 0, 4); return Math.round(((d.getTime() - y.getTime()) / 86400000 - 3 + ((y.getDay() + 6) % 7)) / 7) + 1 })()}
                 </span>
               </div>
@@ -754,11 +754,11 @@ export default function DashboardPage() {
                     borderLeft: `4px solid ${trapAlertCount > 0 ? '#e85a4a' : '#4caf72'}`,
                   }}
                 >
-                  <div style={{ fontSize: 36, fontWeight: 700, color: trapAlertCount > 0 ? '#e85a4a' : '#1c3a2a', lineHeight: 1 }}>
+                  <div style={{ fontSize: 36, fontWeight: 700, color: trapAlertCount > 0 ? '#e85a4a' : '#1a2a3a', lineHeight: 1 }}>
                     {trapAlertCount}
                   </div>
                   <div style={{ height: 2, background: '#f0ede6', margin: '8px 0' }} />
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a80', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a9a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     Trap Alerts
                   </div>
                 </div>
@@ -770,11 +770,11 @@ export default function DashboardPage() {
                     borderLeft: `4px solid ${treeAlertCount > 0 ? '#e85a4a' : '#4caf72'}`,
                   }}
                 >
-                  <div style={{ fontSize: 36, fontWeight: 700, color: treeAlertCount > 0 ? '#e85a4a' : '#1c3a2a', lineHeight: 1 }}>
+                  <div style={{ fontSize: 36, fontWeight: 700, color: treeAlertCount > 0 ? '#e85a4a' : '#1a2a3a', lineHeight: 1 }}>
                     {treeAlertCount}
                   </div>
                   <div style={{ height: 2, background: '#f0ede6', margin: '8px 0' }} />
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a80', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a9a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     Tree Alerts
                   </div>
                 </div>
@@ -782,25 +782,25 @@ export default function DashboardPage() {
               {/* Progress bars */}
               <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '14px 16px', marginBottom: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a' }}>Trap Inspections</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#1c3a2a' }}>{trapPct}%</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a' }}>Trap Inspections</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#1a2a3a' }}>{trapPct}%</span>
                 </div>
                 <div style={{ height: 8, background: '#f0ede6', borderRadius: 4, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${trapPct}%`, background: 'linear-gradient(90deg, #b36a00, #f0a500)', borderRadius: 4, transition: 'width 0.6s ease' }} />
                 </div>
-                <div style={{ fontSize: 11, color: '#9aaa9f', marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: '#8a95a0', marginTop: 4 }}>
                   {trapWeekData.inspectedTraps} of {trapWeekData.totalTraps} traps this week
                 </div>
               </div>
               <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '14px 16px', marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a' }}>Tree Scouting</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#1c3a2a' }}>{weekPct}%</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a' }}>Tree Scouting</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#1a2a3a' }}>{weekPct}%</span>
                 </div>
                 <div style={{ height: 8, background: '#f0ede6', borderRadius: 4, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${weekPct}%`, background: 'linear-gradient(90deg, #2a6e45, #6abf7a)', borderRadius: 4, transition: 'width 0.6s ease' }} />
+                  <div style={{ height: '100%', width: `${weekPct}%`, background: 'linear-gradient(90deg, #2176d9, #4a9ef0)', borderRadius: 4, transition: 'width 0.6s ease' }} />
                 </div>
-                <div style={{ fontSize: 11, color: '#9aaa9f', marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: '#8a95a0', marginTop: 4 }}>
                   {weekSessions.length} of {totalOrchards} orchards this week
                 </div>
               </div>
@@ -832,7 +832,7 @@ export default function DashboardPage() {
                   style={{
                     marginLeft: 12, background: 'none', border: '1px solid #e0ddd5',
                     borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
-                    fontSize: 13, color: '#7a8a80', transition: 'all 0.15s',
+                    fontSize: 13, color: '#7a8a9a', transition: 'all 0.15s',
                     display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
                   }}
                   title={weekExpanded ? 'Hide orchards' : 'Show orchards'}
@@ -843,7 +843,7 @@ export default function DashboardPage() {
               {weekExpanded && (
                 <div style={{ marginTop: 4 }}>
                   {Object.keys(weekScoutMap).length === 0 ? (
-                    <div style={{ fontSize: 13, color: '#9aaa9f' }}>No tree scouting recorded this week.</div>
+                    <div style={{ fontSize: 13, color: '#8a95a0' }}>No tree scouting recorded this week.</div>
                   ) : (
                     Object.entries(weekScoutMap)
                       .sort((a, b) => b[1].orchardIds.length - a[1].orchardIds.length)
@@ -868,7 +868,7 @@ export default function DashboardPage() {
                               </div>
                               <div className="scout-count">{pct}%</div>
                               <span style={{
-                                fontSize: 11, color: '#7a8a80', transition: 'transform 0.2s',
+                                fontSize: 11, color: '#7a8a9a', transition: 'transform 0.2s',
                                 display: 'inline-block', transform: isScoutExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
                               }}>&#x25BC;</span>
                             </div>
@@ -917,7 +917,7 @@ export default function DashboardPage() {
                   style={{
                     marginLeft: 12, background: 'none', border: '1px solid #e0ddd5',
                     borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
-                    fontSize: 13, color: '#7a8a80', transition: 'all 0.15s',
+                    fontSize: 13, color: '#7a8a9a', transition: 'all 0.15s',
                     display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
                   }}
                   title={trapWeekExpanded ? 'Hide scouts' : 'Show per scout'}
@@ -928,7 +928,7 @@ export default function DashboardPage() {
               {trapWeekExpanded && (
                 <div style={{ marginTop: 4 }}>
                   {trapWeekData.perScout.length === 0 ? (
-                    <div style={{ fontSize: 13, color: '#9aaa9f' }}>No trap inspections recorded this week.</div>
+                    <div style={{ fontSize: 13, color: '#8a95a0' }}>No trap inspections recorded this week.</div>
                   ) : trapWeekData.perScout.map(s => {
                     const pct = s.routeLength > 0 ? (s.count / s.routeLength) * 100 : 0
                     return (
@@ -939,7 +939,7 @@ export default function DashboardPage() {
                           className="pest-bar-fill"
                           style={{
                             width: `${pct}%`,
-                            background: pct >= 100 ? 'linear-gradient(90deg, #2a6e45, #4caf72)' : 'linear-gradient(90deg, #b36a00, #f0a500)',
+                            background: pct >= 100 ? 'linear-gradient(90deg, #2176d9, #4caf72)' : 'linear-gradient(90deg, #b36a00, #f0a500)',
                           }}
                         />
                       </div>

@@ -49,7 +49,7 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     marginBottom: 24,
   },
-  pageTitle: { fontSize: 22, fontWeight: 700, color: '#1c3a2a' },
+  pageTitle: { fontSize: 22, fontWeight: 700, color: '#1a2a3a' },
   pageSub: { fontSize: 13, color: '#7a8a7e', marginTop: 2 },
   badges: { display: 'flex', gap: 8 },
   badgePending: {
@@ -67,8 +67,8 @@ const s: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
   },
   pillActive: {
-    padding: '6px 14px', borderRadius: 20, border: '1.5px solid #2a6e45',
-    background: '#1c3a2a', color: '#fff', fontSize: 12, fontWeight: 600,
+    padding: '6px 14px', borderRadius: 20, border: '1.5px solid #2176d9',
+    background: '#1a2a3a', color: '#fff', fontSize: 12, fontWeight: 600,
     cursor: 'pointer',
   },
   grid: {
@@ -135,11 +135,11 @@ const s: Record<string, React.CSSProperties> = {
     padding: '8px 10px', background: '#fff',
   },
   confirmBtn: {
-    padding: '8px 14px', background: '#1c3a2a', color: '#fff',
+    padding: '8px 14px', background: '#1a2a3a', color: '#fff',
     fontSize: 13, fontWeight: 600, borderRadius: 8, border: 'none',
     cursor: 'pointer',
   },
-  empty: { textAlign: 'center' as const, padding: '80px 0', color: '#9aaa9f' },
+  empty: { textAlign: 'center' as const, padding: '80px 0', color: '#8a95a0' },
 }
 
 export default function QcUnknownsPage() {

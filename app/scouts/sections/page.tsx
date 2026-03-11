@@ -141,28 +141,28 @@ export default function SectionsPage() {
         body { font-family: 'DM Sans', sans-serif; background: #f4f1eb; }
         .app { display: flex; min-height: 100vh; }
         .sidebar {
-          width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto; background: #1c3a2a;
+          width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto; background: #1a2a3a;
           padding: 32px 20px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
         }
-        .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a8d5a2; margin-bottom: 32px; }
+        .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a0c4f0; margin-bottom: 32px; }
         .logo span { color: #fff; }
         .nav-item {
           display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-          border-radius: 8px; color: #8aab96; font-size: 13.5px; font-weight: 500;
+          border-radius: 8px; color: #7a8fa0; font-size: 13.5px; font-weight: 500;
           cursor: pointer; transition: all 0.15s; text-decoration: none;
         }
-        .nav-item:hover { background: #2a4f38; color: #fff; }
-        .nav-item.active { background: #2a4f38; color: #a8d5a2; }
+        .nav-item:hover { background: #1a4a7a; color: #fff; }
+        .nav-item.active { background: #1a4a7a; color: #a0c4f0; }
         .nav-item.sub { padding-left: 32px; font-size: 12.5px; }
-        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #2a4f38; font-size: 12px; color: #4a7a5a; }
+        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #1a4a7a; font-size: 12px; color: #5a7a8a; }
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 100vh; }
         .top-bar {
           padding: 16px 24px; background: #fff; border-bottom: 1px solid #e8e4dc;
           display: flex; align-items: center; gap: 16px; flex-shrink: 0;
         }
-        .page-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: #1c3a2a; }
-        .breadcrumb { font-size: 13px; color: #9aaa9f; }
-        .breadcrumb a { color: #2a6e45; text-decoration: none; }
+        .page-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: #1a2a3a; }
+        .breadcrumb { font-size: 13px; color: #8a95a0; }
+        .breadcrumb a { color: #2176d9; text-decoration: none; }
         .content { flex: 1; padding: 24px; overflow-y: auto; display: flex; gap: 24px; align-items: flex-start; }
         
         /* Left — Unassigned */
@@ -174,8 +174,8 @@ export default function SectionsPage() {
           padding: 16px; border-bottom: 1px solid #e8e4dc;
           background: #f9f7f3;
         }
-        .panel-title { font-size: 13px; font-weight: 700; color: #1c3a2a; text-transform: uppercase; letter-spacing: 0.8px; }
-        .panel-count { font-size: 12px; color: #9aaa9f; margin-top: 2px; }
+        .panel-title { font-size: 13px; font-weight: 700; color: #1a2a3a; text-transform: uppercase; letter-spacing: 0.8px; }
+        .panel-count { font-size: 12px; color: #8a95a0; margin-top: 2px; }
         .orchard-list { max-height: 600px; overflow-y: auto; }
         .orchard-item {
           padding: 12px 16px; border-bottom: 1px solid #f4f1eb;
@@ -184,8 +184,8 @@ export default function SectionsPage() {
         }
         .orchard-item:last-child { border-bottom: none; }
         .orchard-item:hover { background: #f9f7f3; }
-        .orchard-name { font-size: 13px; font-weight: 500; color: #1c3a2a; }
-        .orchard-id { font-size: 11px; color: #9aaa9f; margin-top: 1px; }
+        .orchard-name { font-size: 13px; font-weight: 500; color: #1a2a3a; }
+        .orchard-id { font-size: 11px; color: #8a95a0; margin-top: 1px; }
         .assign-btns { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
         .assign-btn {
           padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;
@@ -193,27 +193,27 @@ export default function SectionsPage() {
           color: #3a4a40; font-family: 'DM Sans', sans-serif; transition: all 0.15s;
           white-space: nowrap;
         }
-        .assign-btn:hover { border-color: #2a6e45; color: #2a6e45; background: #f0f7f2; }
+        .assign-btn:hover { border-color: #2176d9; color: #2176d9; background: #f0f4fa; }
         .assign-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* Right — Sections */
         .sections-area { flex: 1; display: flex; flex-direction: column; gap: 20px; }
         .section-card { background: #fff; border-radius: 12px; border: 1px solid #e8e4dc; overflow: hidden; }
         .section-header {
-          padding: 14px 16px; background: #1c3a2a;
+          padding: 14px 16px; background: #1a2a3a;
           display: flex; align-items: center; justify-content: space-between;
         }
-        .section-name { font-size: 14px; font-weight: 600; color: #a8d5a2; }
-        .section-count { font-size: 12px; color: #6aaa80; }
+        .section-name { font-size: 14px; font-weight: 600; color: #a0c4f0; }
+        .section-count { font-size: 12px; color: #6a9fd4; }
         .section-orchards { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px; min-height: 60px; }
         .section-orchard-tag {
           display: flex; align-items: center; gap: 6px;
-          background: #f0f7f2; border: 1px solid #c8e6d0; border-radius: 20px;
-          padding: 5px 12px; font-size: 12px; font-weight: 500; color: #1c3a2a;
+          background: #f0f4fa; border: 1px solid #c8e6d0; border-radius: 20px;
+          padding: 5px 12px; font-size: 12px; font-weight: 500; color: #1a2a3a;
         }
         .remove-btn {
           width: 16px; height: 16px; border-radius: 50%; background: none;
-          border: none; cursor: pointer; color: #9aaa9f; font-size: 14px;
+          border: none; cursor: pointer; color: #8a95a0; font-size: 14px;
           display: flex; align-items: center; justify-content: center;
           line-height: 1; padding: 0; transition: color 0.1s;
         }
@@ -227,16 +227,16 @@ export default function SectionsPage() {
         }
         .add-section-input {
           flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid #e0ddd6;
-          font-family: 'DM Sans', sans-serif; font-size: 13px; color: #1c3a2a;
+          font-family: 'DM Sans', sans-serif; font-size: 13px; color: #1a2a3a;
           background: #f9f7f3; outline: none;
         }
-        .add-section-input:focus { border-color: #2a6e45; }
+        .add-section-input:focus { border-color: #2176d9; }
         .btn-primary {
-          padding: 8px 16px; border-radius: 8px; background: #1c3a2a; color: #a8d5a2;
+          padding: 8px 16px; border-radius: 8px; background: #1a2a3a; color: #a0c4f0;
           border: none; font-size: 13px; font-weight: 600; cursor: pointer;
           font-family: 'DM Sans', sans-serif;
         }
-        .btn-primary:hover { background: #2a4f38; }
+        .btn-primary:hover { background: #1a4a7a; }
         .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
       `}</style>
 
@@ -253,14 +253,14 @@ export default function SectionsPage() {
           <a href="/scouts/sections" className="nav-item sub active"><span>🗂️</span> Sections</a>
           <div className="sidebar-footer">
             Mouton's Valley Group<br />
-            <span style={{ color: '#2a6e45' }}>●</span> Connected
+            <span style={{ color: '#2176d9' }}>●</span> Connected
             <br />
             <button onClick={async () => {
               await supabase.auth.signOut()
               window.location.href = '/login'
             }} style={{
-              marginTop: 10, background: 'none', border: '1px solid #2a4f38',
-              color: '#6aaa80', borderRadius: 6, padding: '4px 10px',
+              marginTop: 10, background: 'none', border: '1px solid #1a4a7a',
+              color: '#6a9fd4', borderRadius: 6, padding: '4px 10px',
               fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif'
             }}>
               Sign out
@@ -283,7 +283,7 @@ export default function SectionsPage() {
                 style={{
                   marginLeft: 'auto', padding: '8px 12px', borderRadius: 8,
                   border: '1.5px solid #e0ddd6', fontFamily: "'DM Sans', sans-serif",
-                  fontSize: 13, color: '#1c3a2a', background: '#fff', cursor: 'pointer',
+                  fontSize: 13, color: '#1a2a3a', background: '#fff', cursor: 'pointer',
                 }}
               >
                 {farms.map(f => (
@@ -302,7 +302,7 @@ export default function SectionsPage() {
               </div>
               <div className="orchard-list">
                 {unassigned.length === 0 ? (
-                  <div style={{ padding: 24, textAlign: 'center', color: '#9aaa9f', fontSize: 13 }}>
+                  <div style={{ padding: 24, textAlign: 'center', color: '#8a95a0', fontSize: 13 }}>
                     ✅ All orchards assigned!
                   </div>
                 ) : (

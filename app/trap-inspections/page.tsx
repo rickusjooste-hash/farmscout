@@ -417,25 +417,25 @@ export default function TrapInspectionsPage() {
         body { font-family: 'Inter', sans-serif; background: #f4f1ea; }
         .app { display: flex; height: 100vh; overflow: hidden; }
         .sidebar {
-          width: 220px; min-width: 220px; background: #1c3a2a; display: flex;
+          width: 220px; min-width: 220px; background: #1a2a3a; display: flex;
           flex-direction: column; padding: 24px 14px; overflow-y: auto;
         }
-        .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a8d5a2; margin-bottom: 32px; }
+        .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a0c4f0; margin-bottom: 32px; }
         .logo span { color: #fff; }
         .nav-item {
           display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-          border-radius: 8px; color: #8aab96; font-size: 13.5px; font-weight: 500;
+          border-radius: 8px; color: #7a8fa0; font-size: 13.5px; font-weight: 500;
           cursor: pointer; transition: all 0.15s; text-decoration: none;
         }
-        .nav-item:hover { background: #2a4f38; color: #fff; }
-        .nav-item.active { background: #2a4f38; color: #a8d5a2; }
-        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #2a4f38; font-size: 12px; color: #4a7a5a; }
+        .nav-item:hover { background: #1a4a7a; color: #fff; }
+        .nav-item.active { background: #1a4a7a; color: #a0c4f0; }
+        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #1a4a7a; font-size: 12px; color: #5a7a8a; }
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         .top-bar {
           background: #fff; border-bottom: 1px solid #e8e4dc;
           padding: 12px 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
         }
-        .page-title { font-size: 17px; font-weight: 700; color: #1c3a2a; }
+        .page-title { font-size: 17px; font-weight: 700; color: #1a2a3a; }
         .pills-bar {
           background: #fff; border-bottom: 1px solid #f0ede6;
           padding: 8px 20px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 42px;
@@ -446,7 +446,7 @@ export default function TrapInspectionsPage() {
           cursor: pointer; transition: all 0.15s; white-space: nowrap;
         }
         .tri-scout-pill.active, .tri-pest-pill.active {
-          background: #1c3a2a; border-color: #1c3a2a; color: #a8d5a2;
+          background: #1a2a3a; border-color: #1a2a3a; color: #a0c4f0;
         }
         .tri-scout-pill:hover:not(.active), .tri-pest-pill:hover:not(.active) { background: #f4f1ea; }
         .tri-coverage-btn {
@@ -455,7 +455,7 @@ export default function TrapInspectionsPage() {
           cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 5px;
         }
         .tri-coverage-btn.open {
-          background: #eef5f1; border-color: #1c3a2a; color: #1c3a2a;
+          background: #eef5f1; border-color: #1a2a3a; color: #1a2a3a;
         }
         .tri-coverage-btn:hover:not(.open) { background: #f4f1ea; }
         .body-row { flex: 1; display: flex; overflow: hidden; position: relative; }
@@ -478,13 +478,13 @@ export default function TrapInspectionsPage() {
         }
         .tri-panel-close {
           margin-left: auto; background: none; border: none; font-size: 18px;
-          color: #9aaa9f; cursor: pointer; padding: 0 4px; line-height: 1; flex-shrink: 0;
+          color: #8a95a0; cursor: pointer; padding: 0 4px; line-height: 1; flex-shrink: 0;
         }
         .tri-panel-close:hover { color: #3a4a40; }
         .tri-panel-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; flex: 1; }
         .tri-section-label {
           font-size: 10px; font-weight: 700; text-transform: uppercase;
-          letter-spacing: 0.8px; color: #9aaa9f; margin-bottom: 6px;
+          letter-spacing: 0.8px; color: #8a95a0; margin-bottom: 6px;
         }
         .tri-count-row {
           display: flex; align-items: center; gap: 10px; padding: 7px 0;
@@ -515,13 +515,13 @@ export default function TrapInspectionsPage() {
         }
         .tri-coverage-row.header {
           font-size: 10px; font-weight: 700; text-transform: uppercase;
-          letter-spacing: 0.5px; color: #9aaa9f; background: #fafaf8;
+          letter-spacing: 0.5px; color: #8a95a0; background: #fafaf8;
           border-bottom: 1px solid #e8e4dc; position: sticky; top: 0; z-index: 1;
         }
-        .tri-coverage-row.uninspected { color: #9aaa9f; }
+        .tri-coverage-row.uninspected { color: #8a95a0; }
         .tri-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
         .tri-tooltip {
-          background: #1c3a2a !important; color: #fff !important; border: none !important;
+          background: #1a2a3a !important; color: #fff !important; border: none !important;
           border-radius: 6px !important; font-size: 12px !important; font-weight: 500 !important;
           padding: 4px 10px !important; font-family: 'Inter', sans-serif !important;
         }
@@ -572,7 +572,7 @@ export default function TrapInspectionsPage() {
           <a href="/settings" className="nav-item"><span>🔔</span> Settings</a>
           <div className="sidebar-footer">
             Mouton&apos;s Valley Group<br />
-            <span style={{ color: '#2a6e45' }}>●</span> Connected
+            <span style={{ color: '#2176d9' }}>●</span> Connected
           </div>
         </aside>
 
@@ -590,7 +590,7 @@ export default function TrapInspectionsPage() {
                 setWeekYear(p.year)
                 setWeekNum(p.week)
               })}
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a', whiteSpace: 'nowrap', minWidth: 180, textAlign: 'center' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a', whiteSpace: 'nowrap', minWidth: 180, textAlign: 'center' }}>
                 {weekLabel(weekYear, weekNum)}
               </span>
               {arrowBtn('›', () => {
@@ -637,7 +637,7 @@ export default function TrapInspectionsPage() {
               style={{
                 padding: '5px 10px', borderRadius: 8, border: '1.5px solid #d0cdc6',
                 background: selectedOrchardId ? '#eef5f1' : '#fff',
-                color: selectedOrchardId ? '#1c3a2a' : '#6a7a70',
+                color: selectedOrchardId ? '#1a2a3a' : '#6a7a70',
                 fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
                 maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis',
               }}
@@ -651,18 +651,18 @@ export default function TrapInspectionsPage() {
             {/* Stats */}
             <div style={{ marginLeft: 'auto', fontSize: 13, color: '#6a7a70', display: 'flex', alignItems: 'center', gap: 8 }}>
               {loading ? (
-                <span style={{ color: '#9aaa9f' }}>Loading…</span>
+                <span style={{ color: '#8a95a0' }}>Loading…</span>
               ) : (
                 <>
-                  <span><strong style={{ color: '#1c3a2a' }}>{totalInspected}</strong> inspections</span>
+                  <span><strong style={{ color: '#1a2a3a' }}>{totalInspected}</strong> inspections</span>
                   <span style={{ color: '#d0cdc6' }}>·</span>
-                  <span><strong style={{ color: '#1c3a2a' }}>{visibleDots.length}</strong> on map</span>
+                  <span><strong style={{ color: '#1a2a3a' }}>{visibleDots.length}</strong> on map</span>
                   {totalTraps > 0 && (
                     <>
                       <span style={{ color: '#d0cdc6' }}>·</span>
                       <span>
                         <strong style={{ color: inspectedTraps < totalTraps ? '#e85a4a' : '#4caf72' }}>{inspectedTraps}</strong>
-                        <span style={{ color: '#9aaa9f' }}>/{totalTraps} traps checked</span>
+                        <span style={{ color: '#8a95a0' }}>/{totalTraps} traps checked</span>
                       </span>
                     </>
                   )}
@@ -673,12 +673,12 @@ export default function TrapInspectionsPage() {
 
           {/* Loading bar */}
           {loading && (
-            <div style={{ height: 3, background: 'linear-gradient(90deg, #2a6e45, #a8d5a2)', animation: 'shimmer 1s infinite' }} />
+            <div style={{ height: 3, background: 'linear-gradient(90deg, #2176d9, #a0c4f0)', animation: 'shimmer 1s infinite' }} />
           )}
 
           {/* Scout pills row */}
           <div className="pills-bar">
-            <span style={{ fontSize: 11, color: '#9aaa9f', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Scout</span>
+            <span style={{ fontSize: 11, color: '#8a95a0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Scout</span>
             <button
               className={`tri-scout-pill${!selectedScoutId ? ' active' : ''}`}
               onClick={() => setSelectedScoutId(null)}
@@ -694,7 +694,7 @@ export default function TrapInspectionsPage() {
 
           {/* Pest pills row */}
           <div className="pills-bar">
-            <span style={{ fontSize: 11, color: '#9aaa9f', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pest</span>
+            <span style={{ fontSize: 11, color: '#8a95a0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pest</span>
             <button
               className={`tri-pest-pill${!selectedPestId ? ' active' : ''}`}
               onClick={() => setSelectedPestId(null)}
@@ -729,10 +729,10 @@ export default function TrapInspectionsPage() {
               {!loading && dots.length === 0 && mapReady && (
                 <div className="tri-empty-overlay">
                   <div className="tri-empty-card">
-                    <div style={{ fontSize: 15, fontWeight: 600, color: '#1c3a2a', marginBottom: 6 }}>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: '#1a2a3a', marginBottom: 6 }}>
                       No trap inspections with GPS for W{weekNum}
                     </div>
-                    <div style={{ fontSize: 13, color: '#9aaa9f' }}>← Try a previous week</div>
+                    <div style={{ fontSize: 13, color: '#8a95a0' }}>← Try a previous week</div>
                   </div>
                 </div>
               )}
@@ -743,7 +743,7 @@ export default function TrapInspectionsPage() {
               <div className="tri-side-panel">
                 <div className="tri-panel-header">
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: '#1c3a2a' }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a3a' }}>
                       Trap #{selectedDot.trap_nr ?? '?'} · {selectedDot.zone_name}
                     </div>
                     <div style={{ fontSize: 13, color: '#6a7a70', marginTop: 2 }}>
@@ -756,16 +756,16 @@ export default function TrapInspectionsPage() {
                 <div className="tri-panel-body">
                   {/* Pest + lure */}
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#1c3a2a' }}>{selectedDot.pest_name}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#1a2a3a' }}>{selectedDot.pest_name}</div>
                     {selectedDot.lure_name && (
-                      <div style={{ fontSize: 12, color: '#9aaa9f', marginTop: 2 }}>{selectedDot.lure_name}</div>
+                      <div style={{ fontSize: 12, color: '#8a95a0', marginTop: 2 }}>{selectedDot.lure_name}</div>
                     )}
                   </div>
 
                   {/* Scout + timestamp */}
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#3a4a40' }}>{selectedDot.scout_name}</div>
-                    <div style={{ fontSize: 12, color: '#9aaa9f', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: '#8a95a0', marginTop: 2 }}>
                       {new Date(selectedDot.inspected_at).toLocaleString('en-ZA', {
                         weekday: 'short', day: 'numeric', month: 'short',
                         hour: '2-digit', minute: '2-digit',
@@ -797,9 +797,9 @@ export default function TrapInspectionsPage() {
                   <div>
                     <div className="tri-section-label">Pest Counts</div>
                     {loadingDetail ? (
-                      <div style={{ fontSize: 13, color: '#9aaa9f', padding: '8px 0' }}>Loading…</div>
+                      <div style={{ fontSize: 13, color: '#8a95a0', padding: '8px 0' }}>Loading…</div>
                     ) : trapCounts.length === 0 ? (
-                      <div style={{ fontSize: 13, color: '#9aaa9f', padding: '8px 0' }}>No counts recorded.</div>
+                      <div style={{ fontSize: 13, color: '#8a95a0', padding: '8px 0' }}>No counts recorded.</div>
                     ) : (
                       trapCounts.map((tc, i) => {
                         const bgColor = tc.count === 0 ? '#4caf72'
@@ -808,7 +808,7 @@ export default function TrapInspectionsPage() {
                           : '#4caf72'
                         return (
                           <div key={tc.pest_id || i} className="tri-count-row">
-                            <div style={{ flex: 1, fontSize: 13, color: '#1c3a2a', fontWeight: 500 }}>
+                            <div style={{ flex: 1, fontSize: 13, color: '#1a2a3a', fontWeight: 500 }}>
                               {tc.pest_name}
                             </div>
                             <div className="tri-count-badge" style={{ background: bgColor }}>
@@ -828,7 +828,7 @@ export default function TrapInspectionsPage() {
               <div className="tri-side-panel">
                 <div className="tri-panel-header">
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: '#1c3a2a' }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a3a' }}>
                       Coverage · W{weekNum}
                     </div>
                     <div style={{ fontSize: 13, color: '#6a7a70', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -872,7 +872,7 @@ export default function TrapInspectionsPage() {
                           key={c.trap_id}
                           className={`tri-coverage-row${!c.inspected ? ' uninspected' : ''}`}
                         >
-                          <span style={{ fontWeight: 600, color: c.inspected ? '#1c3a2a' : '#c0ccc4' }}>
+                          <span style={{ fontWeight: 600, color: c.inspected ? '#1a2a3a' : '#c0ccc4' }}>
                             {c.trap_nr ?? '?'}
                           </span>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}

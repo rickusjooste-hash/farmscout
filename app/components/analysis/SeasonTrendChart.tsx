@@ -13,7 +13,7 @@ interface Props {
 }
 
 const DEFAULT_COLORS = [
-  '#2a6e45', '#e8924a', '#6b7fa8', '#e8c44a',
+  '#2176d9', '#e8924a', '#6b7fa8', '#e8c44a',
   '#9b6bb5', '#c4744a', '#4a9e6b', '#e85a4a',
 ]
 
@@ -21,11 +21,11 @@ function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
     <div style={{
-      background: '#1c3a2a', color: '#e8f0e0', padding: '10px 14px',
+      background: '#1a2a3a', color: '#e8f0e0', padding: '10px 14px',
       borderRadius: 8, fontSize: 13, fontFamily: 'Inter, sans-serif',
       boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
     }}>
-      <div style={{ fontWeight: 600, marginBottom: 6, color: '#a8d5a2' }}>{label}</div>
+      <div style={{ fontWeight: 600, marginBottom: 6, color: '#a0c4f0' }}>{label}</div>
       {payload.map((p: any) => (
         <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', gap: 20, marginBottom: 2 }}>
           <span style={{ color: p.color, fontSize: 12 }}>{p.name}</span>
@@ -38,7 +38,7 @@ function CustomTooltip({ active, payload, label }: any) {
 
 export default function SeasonTrendChart({ data, commodities, commodityColors, currentWeek }: Props) {
   if (data.length === 0) {
-    return <div style={{ color: '#9aaa9f', fontSize: 13, textAlign: 'center', padding: 40 }}>No weekly production data available</div>
+    return <div style={{ color: '#8a95a0', fontSize: 13, textAlign: 'center', padding: 40 }}>No weekly production data available</div>
   }
 
   return (
@@ -47,13 +47,13 @@ export default function SeasonTrendChart({ data, commodities, commodityColors, c
         <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" />
         <XAxis
           dataKey="week"
-          tick={{ fontSize: 11, fill: '#9aaa9f', fontFamily: 'Inter' }}
+          tick={{ fontSize: 11, fill: '#8a95a0', fontFamily: 'Inter' }}
           tickLine={false}
           axisLine={{ stroke: '#f0ede6' }}
           interval="preserveStartEnd"
         />
         <YAxis
-          tick={{ fontSize: 11, fill: '#9aaa9f', fontFamily: 'Inter' }}
+          tick={{ fontSize: 11, fill: '#8a95a0', fontFamily: 'Inter' }}
           tickLine={false}
           axisLine={false}
         />
@@ -61,10 +61,10 @@ export default function SeasonTrendChart({ data, commodities, commodityColors, c
         {currentWeek && (
           <ReferenceLine
             x={`W${currentWeek}`}
-            stroke="#1c3a2a"
+            stroke="#1a2a3a"
             strokeDasharray="5 3"
             strokeWidth={1.5}
-            label={{ value: 'Now', position: 'insideTopRight', fontSize: 10, fill: '#1c3a2a' }}
+            label={{ value: 'Now', position: 'insideTopRight', fontSize: 10, fill: '#1a2a3a' }}
           />
         )}
         {commodities.map((c, i) => (

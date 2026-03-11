@@ -285,39 +285,39 @@ export default function ScoutsPage() {
         body { font-family: 'DM Sans', sans-serif; background: #f4f1eb; }
         .app { display: flex; min-height: 100vh; }
         .sidebar {
-          width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto; background: #1c3a2a;
+          width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto; background: #1a2a3a;
           padding: 32px 20px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
         }
-        .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a8d5a2; margin-bottom: 32px; }
+        .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a0c4f0; margin-bottom: 32px; }
         .logo span { color: #fff; }
         .nav-item {
           display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-          border-radius: 8px; color: #8aab96; font-size: 13.5px; font-weight: 500;
+          border-radius: 8px; color: #7a8fa0; font-size: 13.5px; font-weight: 500;
           cursor: pointer; transition: all 0.15s; text-decoration: none;
         }
-        .nav-item:hover { background: #2a4f38; color: #fff; }
-        .nav-item.active { background: #2a4f38; color: #a8d5a2; }
-        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #2a4f38; font-size: 12px; color: #4a7a5a; }
+        .nav-item:hover { background: #1a4a7a; color: #fff; }
+        .nav-item.active { background: #1a4a7a; color: #a0c4f0; }
+        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #1a4a7a; font-size: 12px; color: #5a7a8a; }
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 100vh; }
         .top-bar {
           padding: 16px 24px; background: #fff; border-bottom: 1px solid #e8e4dc;
           display: flex; align-items: center; gap: 16px; flex-shrink: 0; flex-wrap: wrap;
         }
-        .page-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: #1c3a2a; }
+        .page-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: #1a2a3a; }
         .divider { width: 1px; height: 24px; background: #e8e4dc; flex-shrink: 0; }
-        .filter-label { font-size: 11px; color: #9aaa9f; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; }
+        .filter-label { font-size: 11px; color: #8a95a0; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; }
         .content { flex: 1; padding: 24px; display: flex; gap: 24px; align-items: flex-start; overflow: visible; }
         .left-panel { flex: 1; min-width: 0; overflow-y: auto; max-height: calc(100vh - 80px); }
         .right-panel { width: 340px; flex-shrink: 0; position: sticky; top: 24px; max-height: calc(100vh - 80px); overflow-y: auto; }
         .panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-        .panel-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: #1c3a2a; }
-        .panel-sub { font-size: 12px; color: #9aaa9f; margin-top: 2px; }
+        .panel-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: #1a2a3a; }
+        .panel-sub { font-size: 12px; color: #8a95a0; margin-top: 2px; }
         .btn {
           padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
           cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; border: none;
         }
-        .btn-primary { background: #1c3a2a; color: #a8d5a2; }
-        .btn-primary:hover { background: #2a4f38; }
+        .btn-primary { background: #1a2a3a; color: #a0c4f0; }
+        .btn-primary:hover { background: #1a4a7a; }
         .btn-danger { background: #fdf0ee; color: #e85a4a; border: 1px solid #f5c5be; }
         .btn-danger:hover { background: #fde0dc; }
         .btn-secondary { background: #f4f1eb; color: #3a4a40; border: 1px solid #e0ddd6; }
@@ -348,8 +348,8 @@ export default function ScoutsPage() {
         .remove-btn:hover { background: #fdecea; color: #e85a4a; }
         .remove-btn:disabled { opacity: 0.3; cursor: not-allowed; }
         .stop-nr {
-          width: 28px; height: 28px; border-radius: 50%; background: #1c3a2a;
-          color: #a8d5a2; display: inline-flex; align-items: center; justify-content: center;
+          width: 28px; height: 28px; border-radius: 50%; background: #1a2a3a;
+          color: #a0c4f0; display: inline-flex; align-items: center; justify-content: center;
           font-size: 11px; font-weight: 700;
         }
         .last-stop-nr {
@@ -359,13 +359,13 @@ export default function ScoutsPage() {
         }
         .available-panel { background: #fff; border-radius: 12px; border: 1px solid #e8e4dc; overflow: hidden; }
         .available-header { padding: 16px; border-bottom: 1px solid #e8e4dc; }
-        .available-title { font-size: 14px; font-weight: 600; color: #1c3a2a; margin-bottom: 8px; }
+        .available-title { font-size: 14px; font-weight: 600; color: #1a2a3a; margin-bottom: 8px; }
         .search-input {
           width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid #e0ddd6;
-          font-family: 'DM Sans', sans-serif; font-size: 13px; color: #1c3a2a;
+          font-family: 'DM Sans', sans-serif; font-size: 13px; color: #1a2a3a;
           background: #f9f7f3; outline: none;
         }
-        .search-input:focus { border-color: #2a6e45; }
+        .search-input:focus { border-color: #2176d9; }
         .available-list { max-height: 500px; overflow-y: auto; }
         .available-item {
           padding: 12px 16px; border-bottom: 1px solid #f4f1eb; cursor: pointer;
@@ -373,20 +373,20 @@ export default function ScoutsPage() {
         }
         .available-item:last-child { border-bottom: none; }
         .available-item:hover { background: #f4f1eb; }
-        .available-item-name { font-size: 13px; font-weight: 600; color: #1c3a2a; }
-        .available-item-sub { font-size: 11px; color: #9aaa9f; margin-top: 2px; }
+        .available-item-name { font-size: 13px; font-weight: 600; color: #1a2a3a; }
+        .available-item-sub { font-size: 11px; color: #8a95a0; margin-top: 2px; }
         .add-btn {
-          width: 24px; height: 24px; border-radius: 50%; background: #1c3a2a;
-          color: #a8d5a2; border: none; cursor: pointer; font-size: 16px;
+          width: 24px; height: 24px; border-radius: 50%; background: #1a2a3a;
+          color: #a0c4f0; border: none; cursor: pointer; font-size: 16px;
           display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
-        .loading { padding: 48px; text-align: center; color: #9aaa9f; font-size: 14px; }
-        .empty { padding: 48px; text-align: center; color: #9aaa9f; font-size: 14px; }
+        .loading { padding: 48px; text-align: center; color: #8a95a0; font-size: 14px; }
+        .empty { padding: 48px; text-align: center; color: #8a95a0; font-size: 14px; }
         .actions { display: flex; gap: 8px; margin-bottom: 16px; }
         .scout-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid #e8e4dc; }
         .scout-table th {
           padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 600;
-          text-transform: uppercase; letter-spacing: 0.8px; color: #9aaa9f;
+          text-transform: uppercase; letter-spacing: 0.8px; color: #8a95a0;
           background: #f9f7f3; border-bottom: 1px solid #e8e4dc;
         }
         .scout-table td { padding: 14px 16px; font-size: 13px; color: #2a3a30; border-bottom: 1px solid #f4f1eb; }
@@ -394,23 +394,23 @@ export default function ScoutsPage() {
         .scout-table tr:hover td { background: #f9f7f3; }
         .section-select {
           padding: 6px 10px; border-radius: 6px; border: 1.5px solid #e0ddd6;
-          font-family: 'DM Sans', sans-serif; font-size: 13px; color: #1c3a2a;
+          font-family: 'DM Sans', sans-serif; font-size: 13px; color: #1a2a3a;
           background: #fff; cursor: pointer; min-width: 140px;
         }
-        .section-select:focus { border-color: #2a6e45; outline: none; }
+        .section-select:focus { border-color: #2176d9; outline: none; }
         .section-select:disabled { opacity: 0.5; cursor: not-allowed; }
         .back-btn {
           display: flex; align-items: center; gap: 6px; background: none; border: none;
-          color: #2a6e45; font-size: 13px; font-weight: 600; cursor: pointer; padding: 0;
+          color: #2176d9; font-size: 13px; font-weight: 600; cursor: pointer; padding: 0;
         }
         .route-badge-set  { color: #4caf72; font-size: 12px; font-weight: 600; }
         .route-badge-none { color: #b0bdb5; font-size: 12px; }
         .farm-select {
           padding: 6px 10px; border-radius: 6px; border: 1.5px solid #e0ddd6;
-          font-family: 'DM Sans', sans-serif; font-size: 13px; color: #1c3a2a;
+          font-family: 'DM Sans', sans-serif; font-size: 13px; color: #1a2a3a;
           background: #fff; cursor: pointer;
         }
-        .farm-select:focus { border-color: #2a6e45; outline: none; }
+        .farm-select:focus { border-color: #2176d9; outline: none; }
       `}</style>
 
       <div className="app">
@@ -427,14 +427,14 @@ export default function ScoutsPage() {
           <a href="/scouts/sections" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>🗂️</span> Sections</a>
           <div className="sidebar-footer">
             Mouton's Valley Group<br />
-            <span style={{ color: '#2a6e45' }}>●</span> Connected
+            <span style={{ color: '#2176d9' }}>●</span> Connected
             <br />
             <button onClick={async () => {
               await supabase.auth.signOut()
               window.location.href = '/login'
             }} style={{
-              marginTop: 10, background: 'none', border: '1px solid #2a4f38',
-              color: '#6aaa80', borderRadius: 6, padding: '4px 10px',
+              marginTop: 10, background: 'none', border: '1px solid #1a4a7a',
+              color: '#6a9fd4', borderRadius: 6, padding: '4px 10px',
               fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif'
             }}>
               Sign out
@@ -464,7 +464,7 @@ export default function ScoutsPage() {
                 <div style={{ marginLeft: 'auto' }}>
                   <a href="/scouts/new" style={{
                     display: 'inline-block', padding: '7px 16px', borderRadius: 8,
-                    background: '#1c3a2a', color: '#a8d5a2', fontSize: 13, fontWeight: 600,
+                    background: '#1a2a3a', color: '#a0c4f0', fontSize: 13, fontWeight: 600,
                     textDecoration: 'none',
                   }}>
                     + New Scout
@@ -492,8 +492,8 @@ export default function ScoutsPage() {
                           <Fragment key={scout.id}>
                           <tr>
                             <td>
-                              <div style={{ fontWeight: 600, color: '#1c3a2a' }}>{scout.full_name}</div>
-                              <div style={{ fontSize: 11, color: '#9aaa9f', marginTop: 2 }}>{scout.email}</div>
+                              <div style={{ fontWeight: 600, color: '#1a2a3a' }}>{scout.full_name}</div>
+                              <div style={{ fontSize: 11, color: '#8a95a0', marginTop: 2 }}>{scout.email}</div>
                             </td>
                             <td>
                               <select
@@ -538,18 +538,18 @@ export default function ScoutsPage() {
                             <tr>
                               <td colSpan={5} style={{ background: '#f9f7f3', padding: '16px 20px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#1c3a2a', fontWeight: 600 }}>
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#1a2a3a', fontWeight: 600 }}>
                                     <input
                                       type="checkbox"
                                       checked={spreadForm.enforce}
                                       onChange={e => setSpreadForm(f => ({ ...f, enforce: e.target.checked }))}
-                                      style={{ width: 18, height: 18, accentColor: '#2a6e45' }}
+                                      style={{ width: 18, height: 18, accentColor: '#2176d9' }}
                                     />
                                     Enforce GPS spread (15m min)
                                   </label>
                                   {spreadForm.enforce && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                      <label style={{ fontSize: 12, color: '#9aaa9f', fontWeight: 600 }}>Override PIN:</label>
+                                      <label style={{ fontSize: 12, color: '#8a95a0', fontWeight: 600 }}>Override PIN:</label>
                                       <input
                                         type="tel"
                                         inputMode="numeric"
@@ -560,7 +560,7 @@ export default function ScoutsPage() {
                                         style={{
                                           width: 80, padding: '6px 10px', borderRadius: 6, border: '1.5px solid #e0ddd6',
                                           fontFamily: 'monospace', fontSize: 14, textAlign: 'center', letterSpacing: '0.2em',
-                                          color: '#1c3a2a', background: '#fff',
+                                          color: '#1a2a3a', background: '#fff',
                                         }}
                                       />
                                     </div>
@@ -643,7 +643,7 @@ export default function ScoutsPage() {
                             <div style={{ width: 28 }} />
                             {['Stop', 'Trap #', 'Zone', 'Pest', 'Lure', ''].map((h, i) => (
                               <div key={i} className={['route-col-stop','route-col-trap','route-col-zone','route-col-pest','route-col-lure','route-col-remove'][i]}
-                                style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#9aaa9f' }}>
+                                style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#8a95a0' }}>
                                 {h}
                               </div>
                             ))}
@@ -670,7 +670,7 @@ export default function ScoutsPage() {
                         <div className="available-title">
                           Available Traps
                           {!loadingAvailable && (
-                            <span style={{ color: '#9aaa9f', fontWeight: 400, marginLeft: 6 }}>
+                            <span style={{ color: '#8a95a0', fontWeight: 400, marginLeft: 6 }}>
                               ({filteredAvailable.length})
                             </span>
                           )}

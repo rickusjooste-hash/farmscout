@@ -38,10 +38,10 @@ export default function ScoutQualityFlags({ flags, scoutName, onClose }: Props) 
     <div className="sqf-panel">
       <div className="sqf-header">
         <div>
-          <div style={{ fontWeight: 700, fontSize: 15, color: '#1c3a2a' }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: '#1a2a3a' }}>
             Quality Flags — {scoutName}
           </div>
-          <div style={{ fontSize: 12, color: '#9aaa9f', marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: '#8a95a0', marginTop: 2 }}>
             {flags.length} flag{flags.length !== 1 ? 's' : ''} detected
           </div>
         </div>
@@ -69,7 +69,7 @@ export default function ScoutQualityFlags({ flags, scoutName, onClose }: Props) 
 
       {/* Flags by type */}
       {Object.entries(grouped).map(([type, items]) => {
-        const meta = FLAG_META[type] || { icon: '⚠️', label: type, color: '#9aaa9f' }
+        const meta = FLAG_META[type] || { icon: '⚠️', label: type, color: '#8a95a0' }
         return (
           <div key={type} className="sqf-flag-group">
             <div className="sqf-flag-header" style={{ borderLeftColor: meta.color }}>
@@ -84,10 +84,10 @@ export default function ScoutQualityFlags({ flags, scoutName, onClose }: Props) 
             </div>
             {items.map((item, i) => (
               <div key={i} className="sqf-flag-detail">
-                <div style={{ fontSize: 11, color: '#9aaa9f' }}>
+                <div style={{ fontSize: 11, color: '#8a95a0' }}>
                   {new Date(item.day).toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })}
                 </div>
-                <div style={{ fontSize: 12, color: '#1c3a2a' }}>{item.flag_detail}</div>
+                <div style={{ fontSize: 12, color: '#1a2a3a' }}>{item.flag_detail}</div>
                 <div style={{ fontSize: 11, color: '#6a7a70' }}>{item.evidence_count} instance{item.evidence_count !== 1 ? 's' : ''}</div>
               </div>
             ))}
@@ -115,11 +115,11 @@ export default function ScoutQualityFlags({ flags, scoutName, onClose }: Props) 
           background: none;
           border: none;
           font-size: 16px;
-          color: #9aaa9f;
+          color: #8a95a0;
           cursor: pointer;
           padding: 4px 8px;
         }
-        .sqf-close:hover { color: #1c3a2a; }
+        .sqf-close:hover { color: #1a2a3a; }
         .sqf-chip {
           display: inline-block;
           padding: 2px 8px;
@@ -138,7 +138,7 @@ export default function ScoutQualityFlags({ flags, scoutName, onClose }: Props) 
           align-items: center;
           gap: 8px;
           padding: 10px 12px;
-          border-left: 3px solid #9aaa9f;
+          border-left: 3px solid #8a95a0;
           font-size: 13px;
         }
         .sqf-flag-detail {

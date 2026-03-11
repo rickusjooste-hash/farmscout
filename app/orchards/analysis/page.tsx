@@ -93,35 +93,35 @@ function isoWeekRange(): { from: Date; to: Date } {
 }
 
 const PALETTE = [
-  '#2a6e45', '#e8924a', '#6b7fa8', '#e8c44a', '#9b6bb5',
+  '#2176d9', '#e8924a', '#6b7fa8', '#e8c44a', '#9b6bb5',
   '#c4744a', '#4a9e6b', '#e85a4a', '#3498db', '#1abc9c',
 ]
 
 // ── Styles ─────────────────────────────────────────────────────────────────
 
 const s: Record<string, React.CSSProperties> = {
-  page:        { display: 'flex', minHeight: '100vh', background: '#f4f1eb', fontFamily: 'Inter, system-ui, sans-serif', color: '#1c3a2a' },
+  page:        { display: 'flex', minHeight: '100vh', background: '#f4f1eb', fontFamily: 'Inter, system-ui, sans-serif', color: '#1a2a3a' },
   main:        { flex: 1, padding: 40, overflowY: 'auto', minWidth: 0, paddingBottom: 100 },
   pageHeader:  { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap' as const, gap: 16 },
-  pageTitle:   { fontSize: 32, fontWeight: 700, color: '#1c3a2a', letterSpacing: '-0.5px', lineHeight: 1 },
-  pageSub:     { fontSize: 14, color: '#9aaa9f', marginTop: 6 },
+  pageTitle:   { fontSize: 32, fontWeight: 700, color: '#1a2a3a', letterSpacing: '-0.5px', lineHeight: 1 },
+  pageSub:     { fontSize: 14, color: '#8a95a0', marginTop: 6 },
   controls:    { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' as const, marginBottom: 28 },
   filterGroup: { display: 'flex', gap: 6, flexWrap: 'wrap' as const },
   pill:        { padding: '6px 14px', borderRadius: 20, border: '1px solid #d4cfca', background: '#fff', color: '#5a6a60', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
-  pillActive:  { padding: '6px 14px', borderRadius: 20, border: '1px solid #2a6e45', background: '#2a6e45', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
-  select:      { padding: '6px 12px', borderRadius: 8, border: '1px solid #d4cfca', background: '#fff', fontSize: 13, fontFamily: 'inherit', color: '#1c3a2a', cursor: 'pointer' },
+  pillActive:  { padding: '6px 14px', borderRadius: 20, border: '1px solid #2176d9', background: '#2176d9', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
+  select:      { padding: '6px 12px', borderRadius: 8, border: '1px solid #d4cfca', background: '#fff', fontSize: 13, fontFamily: 'inherit', color: '#1a2a3a', cursor: 'pointer' },
   divider:     { width: 1, height: 24, background: '#d4cfca' },
   kpiStrip:    { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 28 },
   kpiCard:     { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '20px 24px', position: 'relative' as const, overflow: 'hidden' },
-  kpiAccent:   { position: 'absolute' as const, top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #2a6e45, #a8d5a2)' },
-  kpiLabel:    { fontSize: 12, color: '#9aaa9f', textTransform: 'uppercase' as const, letterSpacing: '0.06em', fontWeight: 600, marginBottom: 8 },
-  kpiValue:    { fontSize: 28, fontWeight: 700, color: '#1c3a2a', lineHeight: 1 },
-  kpiSub:      { fontSize: 12, color: '#9aaa9f', marginTop: 6 },
+  kpiAccent:   { position: 'absolute' as const, top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #2176d9, #a0c4f0)' },
+  kpiLabel:    { fontSize: 12, color: '#8a95a0', textTransform: 'uppercase' as const, letterSpacing: '0.06em', fontWeight: 600, marginBottom: 8 },
+  kpiValue:    { fontSize: 28, fontWeight: 700, color: '#1a2a3a', lineHeight: 1 },
+  kpiSub:      { fontSize: 12, color: '#8a95a0', marginTop: 6 },
   card:        { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 24 },
   cardHeader:  { padding: '20px 24px 16px', borderBottom: '1px solid #f0ede6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 12 },
-  cardTitle:   { fontSize: 17, fontWeight: 600, color: '#1c3a2a' },
+  cardTitle:   { fontSize: 17, fontWeight: 600, color: '#1a2a3a' },
   cardBody:    { padding: '20px 24px' },
-  loading:     { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200, color: '#9aaa9f', fontSize: 14 },
+  loading:     { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200, color: '#8a95a0', fontSize: 14 },
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────
@@ -515,7 +515,7 @@ export default function OrchardAnalysisPage() {
     return pct > 0 ? `+${pct.toFixed(0)}%` : `${pct.toFixed(0)}%`
   }
   function yoyColor(current: number | null, prev: number | null): string {
-    if (current == null || prev == null) return '#9aaa9f'
+    if (current == null || prev == null) return '#8a95a0'
     return current >= prev ? '#4caf72' : '#e85a4a'
   }
 
@@ -526,9 +526,9 @@ export default function OrchardAnalysisPage() {
       onClick={() => setColorMode(mode)}
       style={{
         padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-        border: `1.5px solid ${colorMode === mode ? '#1c3a2a' : '#e0ddd6'}`,
-        background: colorMode === mode ? '#1c3a2a' : '#fff',
-        color: colorMode === mode ? '#a8d5a2' : '#6a7a70',
+        border: `1.5px solid ${colorMode === mode ? '#1a2a3a' : '#e0ddd6'}`,
+        background: colorMode === mode ? '#1a2a3a' : '#fff',
+        color: colorMode === mode ? '#a0c4f0' : '#6a7a70',
         cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
       }}
     >{label}</button>
@@ -565,7 +565,7 @@ export default function OrchardAnalysisPage() {
               <div className="oa-page-title" style={s.pageTitle}>Orchard Analysis</div>
               <div style={s.pageSub}>
                 {orchardAnalysis.length} orchards across {allFarms.length} farm{allFarms.length !== 1 ? 's' : ''}
-                {selectedVariety && <span style={{ color: '#2a6e45', fontWeight: 600 }}> · {selectedVariety}</span>}
+                {selectedVariety && <span style={{ color: '#2176d9', fontWeight: 600 }}> · {selectedVariety}</span>}
               </div>
             </div>
             <select value={season} onChange={e => setSeason(e.target.value)} style={s.select}>
@@ -655,7 +655,7 @@ export default function OrchardAnalysisPage() {
                   style={{
                     width: '100%', padding: '12px 16px', background: '#f9f7f3',
                     border: 'none', borderBottom: '1px solid #e8e4dc',
-                    fontSize: 13, fontWeight: 500, color: '#2a6e45', cursor: 'pointer',
+                    fontSize: 13, fontWeight: 500, color: '#2176d9', cursor: 'pointer',
                     alignItems: 'center', justifyContent: 'center', gap: 6,
                   } as React.CSSProperties}
                 >
@@ -717,7 +717,7 @@ export default function OrchardAnalysisPage() {
                           onClick={() => setSelectedVariety(null)}
                           style={{
                             padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                            border: '1.5px solid #2a6e45', background: '#2a6e45', color: '#fff',
+                            border: '1.5px solid #2176d9', background: '#2176d9', color: '#fff',
                             cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4,
                           }}
                         >
@@ -726,7 +726,7 @@ export default function OrchardAnalysisPage() {
                       )}
                     </div>
                     {selectedVariety && (
-                      <span style={{ fontSize: 11, color: '#9aaa9f' }}>Click variety to filter page</span>
+                      <span style={{ fontSize: 11, color: '#8a95a0' }}>Click variety to filter page</span>
                     )}
                   </div>
                   <div style={s.cardBody}>
@@ -749,7 +749,7 @@ export default function OrchardAnalysisPage() {
                         onClick={() => setSelectedAgeBand(null)}
                         style={{
                           padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                          border: '1.5px solid #2a6e45', background: '#2a6e45', color: '#fff',
+                          border: '1.5px solid #2176d9', background: '#2176d9', color: '#fff',
                           cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4,
                         }}
                       >
@@ -758,7 +758,7 @@ export default function OrchardAnalysisPage() {
                     )}
                   </div>
                   {!selectedAgeBand && (
-                    <span style={{ fontSize: 11, color: '#9aaa9f' }}>Click age band to filter page</span>
+                    <span style={{ fontSize: 11, color: '#8a95a0' }}>Click age band to filter page</span>
                   )}
                 </div>
                 <div style={s.cardBody}>

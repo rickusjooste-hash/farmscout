@@ -97,8 +97,8 @@ function SortablePestRow({
           <span className="pill" style={{ background: catColors.bg, color: catColors.color }}>{row.category}</span>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 500, fontSize: 13, color: '#1c3a2a' }}>{row.display_name || row.pests?.name}</div>
-          {row.display_name && <div style={{ fontSize: 11, color: '#9aaa9f' }}>{row.pests?.name}</div>}
+          <div style={{ fontWeight: 500, fontSize: 13, color: '#1a2a3a' }}>{row.display_name || row.pests?.name}</div>
+          {row.display_name && <div style={{ fontSize: 11, color: '#8a95a0' }}>{row.pests?.name}</div>}
           {row.pests?.scientific_name && <div style={{ fontSize: 11, color: '#b0bdb5', fontStyle: 'italic' }}>{row.pests.scientific_name}</div>}
         </div>
         <div style={{ width: 130, flexShrink: 0 }}>
@@ -118,10 +118,10 @@ function SortablePestRow({
         <div className="edit-row-form">
           {editError && <div className="error-msg">{editError}</div>}
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 10, fontWeight: 600, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 3 }}>Pest</div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a' }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 3 }}>Pest</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a' }}>
               {row.pests?.name}
-              {row.pests?.scientific_name && <span style={{ fontWeight: 400, fontStyle: 'italic', color: '#9aaa9f', marginLeft: 8 }}>{row.pests.scientific_name}</span>}
+              {row.pests?.scientific_name && <span style={{ fontWeight: 400, fontStyle: 'italic', color: '#8a95a0', marginLeft: 8 }}>{row.pests.scientific_name}</span>}
             </div>
           </div>
           <div className="edit-row-grid">
@@ -490,7 +490,7 @@ export default function PestsPage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: "'DM Serif Display', serif", fontSize: 24, color: '#1c3a2a', background: '#f4f1eb' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: "'DM Serif Display', serif", fontSize: 24, color: '#1a2a3a', background: '#f4f1eb' }}>
         Loading…
       </div>
     )
@@ -504,32 +504,32 @@ export default function PestsPage() {
         body { font-family: 'DM Sans', sans-serif; background: #f4f1eb; color: #1a1a1a; }
         .app { display: flex; min-height: 100vh; }
         .sidebar {
-          width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto; background: #1c3a2a;
+          width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto; background: #1a2a3a;
           padding: 32px 20px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
         }
-        .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a8d5a2; margin-bottom: 32px; }
+        .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a0c4f0; margin-bottom: 32px; }
         .logo span { color: #fff; }
         .nav-item {
           display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-          border-radius: 8px; color: #8aab96; font-size: 13.5px; font-weight: 500;
+          border-radius: 8px; color: #7a8fa0; font-size: 13.5px; font-weight: 500;
           cursor: pointer; transition: all 0.15s; text-decoration: none;
         }
-        .nav-item:hover { background: #2a4f38; color: #fff; }
-        .nav-item.active { background: #2a4f38; color: #a8d5a2; }
-        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #2a4f38; font-size: 12px; color: #4a7a5a; }
+        .nav-item:hover { background: #1a4a7a; color: #fff; }
+        .nav-item.active { background: #1a4a7a; color: #a0c4f0; }
+        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #1a4a7a; font-size: 12px; color: #5a7a8a; }
         .main { flex: 1; padding: 40px; overflow: auto; }
-        .page-title { font-family: 'DM Serif Display', serif; font-size: 28px; color: #1c3a2a; margin-bottom: 6px; }
-        .page-sub { font-size: 14px; color: #7a8a80; margin-bottom: 28px; }
+        .page-title { font-family: 'DM Serif Display', serif; font-size: 28px; color: #1a2a3a; margin-bottom: 6px; }
+        .page-sub { font-size: 14px; color: #7a8a9a; margin-bottom: 28px; }
         .tabs { display: flex; gap: 2px; background: #e8e4dc; border-radius: 10px; padding: 3px; width: fit-content; }
         .tab {
           padding: 8px 22px; border-radius: 8px; font-size: 13px; font-weight: 600;
           cursor: pointer; border: none; font-family: 'DM Sans', sans-serif;
           color: #6a7a70; background: transparent; transition: all 0.15s;
         }
-        .tab.active { background: #1c3a2a; color: #a8d5a2; }
+        .tab.active { background: #1a2a3a; color: #a0c4f0; }
         .pest-table { width: 100%; border-collapse: collapse; }
         .pest-table th {
-          text-align: left; font-size: 11px; font-weight: 600; color: #9aaa9f;
+          text-align: left; font-size: 11px; font-weight: 600; color: #8a95a0;
           text-transform: uppercase; letter-spacing: 0.6px; padding: 10px 12px;
           border-bottom: 1px solid #e8e4dc;
         }
@@ -553,7 +553,7 @@ export default function PestsPage() {
           content: ''; position: absolute; top: 3px; width: 16px; height: 16px;
           border-radius: 50%; background: white; transition: left 0.2s;
         }
-        .toggle-btn.on { background: #2a6e45; }
+        .toggle-btn.on { background: #2176d9; }
         .toggle-btn.on::after { left: 21px; }
         .toggle-btn.off { background: #d0cec8; }
         .toggle-btn.off::after { left: 3px; }
@@ -561,54 +561,54 @@ export default function PestsPage() {
           width: 320px; flex-shrink: 0; background: #fff; border-radius: 14px;
           border: 1px solid #e8e4dc; padding: 24px; align-self: flex-start;
         }
-        .panel-title { font-size: 14px; font-weight: 600; color: #1c3a2a; margin-bottom: 20px; }
+        .panel-title { font-size: 14px; font-weight: 600; color: #1a2a3a; margin-bottom: 20px; }
         label { display: block; font-size: 11px; font-weight: 600; color: #6a7a70; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px; }
         input[type=text], input[type=number], select {
           width: 100%; padding: 9px 12px; border-radius: 8px; border: 1.5px solid #e0ddd6;
-          font-family: 'DM Sans', sans-serif; font-size: 13px; color: #1c3a2a;
+          font-family: 'DM Sans', sans-serif; font-size: 13px; color: #1a2a3a;
           background: #fff; outline: none; transition: border-color 0.15s;
         }
-        input[type=text]:focus, input[type=number]:focus, select:focus { border-color: #2a6e45; }
+        input[type=text]:focus, input[type=number]:focus, select:focus { border-color: #2176d9; }
         .field { margin-bottom: 14px; }
         .btn-primary {
           padding: 10px 18px; border-radius: 8px; border: none;
-          background: #1c3a2a; color: #a8d5a2; font-size: 13px; font-weight: 600;
+          background: #1a2a3a; color: #a0c4f0; font-size: 13px; font-weight: 600;
           cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background 0.15s;
         }
-        .btn-primary:hover { background: #2a4f38; }
+        .btn-primary:hover { background: #1a4a7a; }
         .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn-ghost {
           padding: 10px 18px; border-radius: 8px; border: 1.5px solid #e0ddd6;
           background: transparent; color: #6a7a70; font-size: 13px; font-weight: 600;
           cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s;
         }
-        .btn-ghost:hover { border-color: #1c3a2a; color: #1c3a2a; }
+        .btn-ghost:hover { border-color: #1a2a3a; color: #1a2a3a; }
         .error-msg { background: #fdf0ee; border: 1px solid #f5c5be; color: #c0392b; border-radius: 8px; padding: 10px 14px; font-size: 12px; margin-bottom: 12px; }
-        .hint { font-size: 11px; color: #9aaa9f; margin-top: 4px; line-height: 1.4; }
+        .hint { font-size: 11px; color: #8a95a0; margin-top: 4px; line-height: 1.4; }
         .table-card { background: #fff; border-radius: 14px; border: 1px solid #e8e4dc; overflow: hidden; }
         .table-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #f0ede6; }
-        .table-header-title { font-size: 14px; font-weight: 600; color: #1c3a2a; }
+        .table-header-title { font-size: 14px; font-weight: 600; color: #1a2a3a; }
         .edit-row-form { padding: 12px; background: #f7faf8; border-top: 1px solid #e8e4dc; }
         .edit-row-grid { display: grid; grid-template-columns: 120px 1fr 1fr 80px; gap: 10px; align-items: end; }
         .checkbox-row { display: flex; align-items: center; gap: 8px; }
-        input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: #1c3a2a; }
+        input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: #1a2a3a; }
         .edit-actions { display: flex; gap: 8px; margin-top: 10px; }
         .btn-sm {
           padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600;
           cursor: pointer; font-family: 'DM Sans', sans-serif; border: none; transition: all 0.15s;
         }
-        .btn-sm.primary { background: #1c3a2a; color: #a8d5a2; }
-        .btn-sm.primary:hover { background: #2a4f38; }
+        .btn-sm.primary { background: #1a2a3a; color: #a0c4f0; }
+        .btn-sm.primary:hover { background: #1a4a7a; }
         .btn-sm.ghost { background: transparent; border: 1.5px solid #e0ddd6; color: #6a7a70; }
-        .btn-sm.ghost:hover { border-color: #1c3a2a; color: #1c3a2a; }
+        .btn-sm.ghost:hover { border-color: #1a2a3a; color: #1a2a3a; }
         .btn-sm:disabled { opacity: 0.5; cursor: not-allowed; }
         .farm-selector { display: flex; align-items: center; gap: 10px; }
         .farm-selector label { margin: 0; text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 500; color: #6a7a70; }
         .farm-selector select { width: auto; min-width: 160px; }
-        .empty-state { padding: 40px; text-align: center; color: #9aaa9f; font-size: 14px; }
+        .empty-state { padding: 40px; text-align: center; color: #8a95a0; font-size: 14px; }
         .pest-list { width: 100%; }
         .pest-list-header { display: flex; align-items: center; padding: 10px 12px; border-bottom: 1px solid #e8e4dc; }
-        .pest-list-header-cell { font-size: 11px; font-weight: 600; color: #9aaa9f; text-transform: uppercase; letter-spacing: 0.6px; }
+        .pest-list-header-cell { font-size: 11px; font-weight: 600; color: #8a95a0; text-transform: uppercase; letter-spacing: 0.6px; }
         .pest-row { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #f0ede6; }
         .pest-row:last-child { border-bottom: none; }
         .pest-row.clickable-row { cursor: pointer; }
@@ -636,8 +636,8 @@ export default function PestsPage() {
               await supabase.auth.signOut()
               window.location.href = '/login'
             }} style={{
-              marginTop: 10, background: 'none', border: '1px solid #2a4f38',
-              color: '#6aaa80', borderRadius: 6, padding: '4px 10px',
+              marginTop: 10, background: 'none', border: '1px solid #1a4a7a',
+              color: '#6a9fd4', borderRadius: 6, padding: '4px 10px',
               fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
             }}>
               Sign out
@@ -689,7 +689,7 @@ export default function PestsPage() {
                 <div className="table-header">
                   <span className="table-header-title">
                     {activeCommodity} Pests
-                    {configsLoading && <span style={{ color: '#9aaa9f', fontWeight: 400, marginLeft: 8, fontSize: 12 }}>loading…</span>}
+                    {configsLoading && <span style={{ color: '#8a95a0', fontWeight: 400, marginLeft: 8, fontSize: 12 }}>loading…</span>}
                   </span>
                   {isSuperAdmin && (
                     <button
@@ -753,7 +753,7 @@ export default function PestsPage() {
               </div>
 
               {isSuperAdmin && (
-                <div style={{ marginTop: 10, fontSize: 12, color: '#9aaa9f' }}>
+                <div style={{ marginTop: 10, fontSize: 12, color: '#8a95a0' }}>
                   Drag ⠿ to reorder. Click a row to edit its display label, method, or order.
                 </div>
               )}
@@ -770,13 +770,13 @@ export default function PestsPage() {
                     {linkedPest ? (
                       <>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <div style={{ flex: 1, padding: '9px 12px', borderRadius: 8, border: '1.5px solid #2a6e45', background: '#f0f7f3', fontSize: 13, color: '#1c3a2a', fontWeight: 500 }}>
+                          <div style={{ flex: 1, padding: '9px 12px', borderRadius: 8, border: '1.5px solid #2176d9', background: '#f0f7f3', fontSize: 13, color: '#1a2a3a', fontWeight: 500 }}>
                             {linkedPest.name}
                           </div>
                           <button type="button" onClick={() => { setLinkedPest(null); setAddForm(f => ({ ...f, name: '' })) }}
-                            style={{ background: 'none', border: 'none', color: '#9aaa9f', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }} title="Clear — create new pest instead">×</button>
+                            style={{ background: 'none', border: 'none', color: '#8a95a0', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }} title="Clear — create new pest instead">×</button>
                         </div>
-                        <div className="hint" style={{ color: '#2a6e45', marginTop: 5 }}>
+                        <div className="hint" style={{ color: '#2176d9', marginTop: 5 }}>
                           Linking existing pest to this commodity — no duplicate created.
                         </div>
                       </>
@@ -792,7 +792,7 @@ export default function PestsPage() {
                         />
                         {pestSuggestions.length > 0 && (
                           <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1.5px solid #e0ddd6', borderRadius: 8, boxShadow: '0 4px 14px rgba(0,0,0,0.1)', zIndex: 20, overflow: 'hidden', marginTop: 2 }}>
-                            <div style={{ padding: '5px 12px', fontSize: 10, color: '#9aaa9f', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #f0ede6' }}>
+                            <div style={{ padding: '5px 12px', fontSize: 10, color: '#8a95a0', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #f0ede6' }}>
                               Already exists — click to link
                             </div>
                             {pestSuggestions.map(p => (
@@ -800,8 +800,8 @@ export default function PestsPage() {
                                 style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #f0ede6' }}
                                 onMouseEnter={e => (e.currentTarget.style.background = '#f0f7f3')}
                                 onMouseLeave={e => (e.currentTarget.style.background = '')}>
-                                <span style={{ fontWeight: 500, color: '#1c3a2a' }}>{p.name}</span>
-                                {p.scientific_name && <span style={{ fontSize: 11, color: '#9aaa9f', marginLeft: 6, fontStyle: 'italic' }}>{p.scientific_name}</span>}
+                                <span style={{ fontWeight: 500, color: '#1a2a3a' }}>{p.name}</span>
+                                {p.scientific_name && <span style={{ fontSize: 11, color: '#8a95a0', marginLeft: 6, fontStyle: 'italic' }}>{p.scientific_name}</span>}
                               </div>
                             ))}
                           </div>

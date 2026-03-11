@@ -47,7 +47,7 @@ const CURRENT_YEAR = new Date().getFullYear()
 const AGE_BANDS = [
   { key: 'establishing', label: 'Establishing', range: '1–4 yr', min: 0, max: 4, color: '#6b7fa8', desc: 'Not yet in full production' },
   { key: 'young', label: 'Young', range: '5–10 yr', min: 5, max: 10, color: '#4caf72', desc: 'Ramping up to peak' },
-  { key: 'prime', label: 'Prime', range: '11–20 yr', min: 11, max: 20, color: '#2a6e45', desc: 'Peak production years' },
+  { key: 'prime', label: 'Prime', range: '11–20 yr', min: 11, max: 20, color: '#2176d9', desc: 'Peak production years' },
   { key: 'mature', label: 'Mature', range: '21–30 yr', min: 21, max: 30, color: '#f5c842', desc: 'Watch for decline' },
   { key: 'aging', label: 'Aging', range: '30+ yr', min: 31, max: 999, color: '#e85a4a', desc: 'Review for replanting' },
 ]
@@ -143,17 +143,17 @@ function ScatterTooltip({ active, payload }: any) {
   const d = payload[0].payload
   return (
     <div style={{
-      background: '#1c3a2a', color: '#e8f0e0', padding: '10px 14px',
+      background: '#1a2a3a', color: '#e8f0e0', padding: '10px 14px',
       borderRadius: 8, fontSize: 13, fontFamily: 'Inter, sans-serif',
       boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
     }}>
       <div style={{ fontWeight: 700, marginBottom: 4 }}>{d.name}</div>
-      <div style={{ color: '#a8d5a2', fontSize: 11, marginBottom: 6 }}>{d.variety || ''} · {d.commodityName}</div>
+      <div style={{ color: '#a0c4f0', fontSize: 11, marginBottom: 6 }}>{d.variety || ''} · {d.commodityName}</div>
       <div>Age: <strong>{d.age} years</strong></div>
       {d.tonHa != null && d.tonHa > 0 && <div>T/Ha: <strong>{d.tonHa.toFixed(1)}</strong></div>}
       <div>Ha: <strong>{d.ha?.toFixed(1) || '—'}</strong></div>
       {d.bandMedian > 0 && d.tonHa != null && d.tonHa > 0 && (
-        <div style={{ marginTop: 4, fontSize: 11, color: d.tonHa >= d.bandMedian ? '#a8d5a2' : '#f5c842' }}>
+        <div style={{ marginTop: 4, fontSize: 11, color: d.tonHa >= d.bandMedian ? '#a0c4f0' : '#f5c842' }}>
           {d.avgYears || 1}yr avg median: {d.bandMedian.toFixed(1)} t/ha
           ({d.tonHa >= d.bandMedian ? 'above' : `${Math.round((1 - d.tonHa / d.bandMedian) * 100)}% below`})
         </div>
@@ -275,7 +275,7 @@ export default function OrchardAgeAnalysis({
 
   if (withAge.length === 0) {
     return (
-      <div style={{ color: '#9aaa9f', fontSize: 13, textAlign: 'center', padding: 40 }}>
+      <div style={{ color: '#8a95a0', fontSize: 13, textAlign: 'center', padding: 40 }}>
         No orchards with planting year data available
       </div>
     )
@@ -294,14 +294,14 @@ export default function OrchardAgeAnalysis({
   const bandRowStyle = (bandKey: string): React.CSSProperties => ({
     cursor: 'pointer',
     transition: 'background 0.1s',
-    background: selectedAgeBand === bandKey ? '#f0f7f2' : 'transparent',
+    background: selectedAgeBand === bandKey ? '#f0f4fa' : 'transparent',
   })
 
   return (
     <div>
       {/* Age distribution bar */}
       <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
           Age Distribution
         </div>
         <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', height: 28, background: '#f0ede6' }}>
@@ -343,7 +343,7 @@ export default function OrchardAgeAnalysis({
             )
           })}
           {noAgeCount > 0 && (
-            <div style={{ fontSize: 11, color: '#9aaa9f' }}>({noAgeCount} without planting year)</div>
+            <div style={{ fontSize: 11, color: '#8a95a0' }}>({noAgeCount} without planting year)</div>
           )}
         </div>
       </div>
@@ -351,7 +351,7 @@ export default function OrchardAgeAnalysis({
       {/* Scatter: Age vs T/Ha */}
       {hasProduction && scatterData.some(d => d.tonHa > 0) && (
         <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
             Productivity by Age
             <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 8 }}>
               — dots sized by hectares, dashed lines = {avgYears}-season avg median
@@ -362,16 +362,16 @@ export default function OrchardAgeAnalysis({
               <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" />
               <XAxis
                 type="number" dataKey="age" name="Age"
-                tick={{ fontSize: 11, fill: '#9aaa9f', fontFamily: 'Inter' }}
+                tick={{ fontSize: 11, fill: '#8a95a0', fontFamily: 'Inter' }}
                 tickLine={false} axisLine={{ stroke: '#f0ede6' }}
-                label={{ value: 'Orchard Age (years)', position: 'insideBottom', offset: -4, fontSize: 11, fill: '#9aaa9f' }}
+                label={{ value: 'Orchard Age (years)', position: 'insideBottom', offset: -4, fontSize: 11, fill: '#8a95a0' }}
                 domain={[0, 'auto']}
               />
               <YAxis
                 type="number" dataKey="tonHa" name="T/Ha"
-                tick={{ fontSize: 11, fill: '#9aaa9f', fontFamily: 'Inter' }}
+                tick={{ fontSize: 11, fill: '#8a95a0', fontFamily: 'Inter' }}
                 tickLine={false} axisLine={false}
-                label={{ value: 'T/Ha', angle: -90, position: 'insideLeft', fontSize: 11, fill: '#9aaa9f' }}
+                label={{ value: 'T/Ha', angle: -90, position: 'insideLeft', fontSize: 11, fill: '#8a95a0' }}
               />
               <ZAxis type="number" dataKey="ha" range={[40, 300]} name="Ha" />
               <Tooltip content={<ScatterTooltip />} cursor={false} />
@@ -383,7 +383,7 @@ export default function OrchardAgeAnalysis({
                     <Cell
                       key={i}
                       fill={d.isProblem ? '#e85a4a' : d.bandColor}
-                      stroke={sel ? '#1c3a2a' : d.isProblem ? '#c0392b' : 'rgba(255,255,255,0.8)'}
+                      stroke={sel ? '#1a2a3a' : d.isProblem ? '#c0392b' : 'rgba(255,255,255,0.8)'}
                       strokeWidth={sel ? 3 : d.isProblem ? 2 : 1}
                       opacity={dimmed ? 0.15 : 1}
                       style={{ cursor: 'pointer', transition: 'opacity 0.2s' }}
@@ -420,7 +420,7 @@ export default function OrchardAgeAnalysis({
           .oa-age-th {
             position: sticky; top: 0; background: #f9f7f3; text-align: left;
             font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px;
-            color: #9aaa9f; font-weight: 700; padding: 8px 12px;
+            color: #8a95a0; font-weight: 700; padding: 8px 12px;
             border-bottom: 1px solid #f0ede6;
           }
           .oa-age-td { padding: 10px 12px; font-size: 13px; color: #3a4a40; border-bottom: 1px solid #f9f7f3; }
@@ -454,7 +454,7 @@ export default function OrchardAgeAnalysis({
                       <span style={{ width: 10, height: 10, borderRadius: 3, background: b.color, flexShrink: 0 }} />
                       <div>
                         <div style={{ fontWeight: 600 }}>{b.label}</div>
-                        <div style={{ fontSize: 11, color: '#9aaa9f' }}>{b.range}</div>
+                        <div style={{ fontSize: 11, color: '#8a95a0' }}>{b.range}</div>
                       </div>
                     </div>
                   </td>
@@ -468,7 +468,7 @@ export default function OrchardAgeAnalysis({
                   {hasProduction && (
                     <td className="oa-age-td" style={{
                       textAlign: 'right', fontVariantNumeric: 'tabular-nums',
-                      color: s.avgBruising == null ? '#9aaa9f'
+                      color: s.avgBruising == null ? '#8a95a0'
                         : s.avgBruising < 5 ? '#4caf72'
                         : s.avgBruising < 10 ? '#f5c842' : '#e85a4a',
                     }}>
@@ -511,11 +511,11 @@ export default function OrchardAgeAnalysis({
 
         if (chartData.length === 0) return null
 
-        const SEASON_COLORS = ['#d4cfca', '#6b7fa8', '#2a6e45']
+        const SEASON_COLORS = ['#d4cfca', '#6b7fa8', '#2176d9']
 
         return (
           <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
               Median T/Ha by Age Band
               <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 8 }}>
                 — 3 season comparison
@@ -530,16 +530,16 @@ export default function OrchardAgeAnalysis({
                   tickLine={false} axisLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: '#9aaa9f', fontFamily: 'Inter' }}
+                  tick={{ fontSize: 11, fill: '#8a95a0', fontFamily: 'Inter' }}
                   tickLine={false} axisLine={false}
-                  label={{ value: 'T/Ha', angle: -90, position: 'insideLeft', fontSize: 11, fill: '#9aaa9f' }}
+                  label={{ value: 'T/Ha', angle: -90, position: 'insideLeft', fontSize: 11, fill: '#8a95a0' }}
                 />
                 <Tooltip
                   content={({ active, payload, label }: any) => {
                     if (!active || !payload?.length) return null
                     return (
                       <div style={{
-                        background: '#1c3a2a', color: '#e8f0e0', padding: '10px 14px',
+                        background: '#1a2a3a', color: '#e8f0e0', padding: '10px 14px',
                         borderRadius: 8, fontSize: 12, fontFamily: 'Inter, sans-serif',
                         boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
                       }}>
@@ -549,7 +549,7 @@ export default function OrchardAgeAnalysis({
                             <span style={{ width: 8, height: 8, borderRadius: 2, background: p.fill }} />
                             <span>{p.dataKey}:</span>
                             <strong>{p.value > 0 ? `${p.value} t/ha` : '—'}</strong>
-                            {p.dataKey === currentSeason && <span style={{ color: '#a8d5a2', fontSize: 10, marginLeft: 4 }}>current</span>}
+                            {p.dataKey === currentSeason && <span style={{ color: '#a0c4f0', fontSize: 10, marginLeft: 4 }}>current</span>}
                           </div>
                         ))}
                       </div>
@@ -559,7 +559,7 @@ export default function OrchardAgeAnalysis({
                 <Legend
                   verticalAlign="top" height={28}
                   formatter={(value: string) => (
-                    <span style={{ fontSize: 11, color: value === currentSeason ? '#1c3a2a' : '#9aaa9f', fontWeight: value === currentSeason ? 700 : 400 }}>
+                    <span style={{ fontSize: 11, color: value === currentSeason ? '#1a2a3a' : '#8a95a0', fontWeight: value === currentSeason ? 700 : 400 }}>
                       {value}
                     </span>
                   )}
@@ -606,12 +606,12 @@ export default function OrchardAgeAnalysis({
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <div>
-                  <span style={{ fontWeight: 600, color: '#1c3a2a' }}>{p.orchard.name}</span>
-                  <span style={{ color: '#9aaa9f', fontSize: 12, marginLeft: 6 }}>
+                  <span style={{ fontWeight: 600, color: '#1a2a3a' }}>{p.orchard.name}</span>
+                  <span style={{ color: '#8a95a0', fontSize: 12, marginLeft: 6 }}>
                     {p.orchard.variety || ''} · {p.age}yr
                   </span>
                 </div>
-                <div style={{ fontSize: 12, color: '#9aaa9f', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: 12, color: '#8a95a0', textAlign: 'right', whiteSpace: 'nowrap' }}>
                   {p.orchard.tonHa != null && p.orchard.tonHa > 0 && (
                     <span>
                       <strong style={{ color: '#e85a4a' }}>{fmt(p.orchard.tonHa)}</strong>
@@ -631,7 +631,7 @@ export default function OrchardAgeAnalysis({
                   </span>
                 ))}
                 {p.orchard.ha != null && (
-                  <span style={{ fontSize: 10, color: '#9aaa9f' }}>{fmt(p.orchard.ha)} ha</span>
+                  <span style={{ fontSize: 10, color: '#8a95a0' }}>{fmt(p.orchard.ha)} ha</span>
                 )}
               </div>
             </div>
@@ -651,7 +651,7 @@ export default function OrchardAgeAnalysis({
             <button
               onClick={() => setShowAllProblems(false)}
               style={{
-                background: 'none', border: 'none', color: '#9aaa9f', fontSize: 12,
+                background: 'none', border: 'none', color: '#8a95a0', fontSize: 12,
                 cursor: 'pointer', padding: '6px 0', fontFamily: 'inherit',
               }}
             >

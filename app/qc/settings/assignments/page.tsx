@@ -142,7 +142,7 @@ export default function QcAssignmentsPage() {
 
         {/* Current Assignments */}
         <div style={{ ...s.card, padding: 0 }}>
-          <div style={{ padding: '20px 24px 12px', fontSize: 18, fontWeight: 700, color: '#1c3a2a' }}>
+          <div style={{ padding: '20px 24px 12px', fontSize: 18, fontWeight: 700, color: '#1a2a3a' }}>
             Current Assignments
           </div>
 
@@ -162,9 +162,9 @@ export default function QcAssignmentsPage() {
           ) : (
             assignments.map(a => (
               <div key={a.id} style={s.tableRow}>
-                <div style={{ flex: 2, fontWeight: 600, color: '#1c3a2a' }}>{a.runner_name}</div>
+                <div style={{ flex: 2, fontWeight: 600, color: '#1a2a3a' }}>{a.runner_name}</div>
                 <div style={{ flex: 2, color: '#5a6a60' }}>{a.qc_worker_name}</div>
-                <div style={{ flex: 1, color: '#9aaa9f', fontSize: 13 }}>
+                <div style={{ flex: 1, color: '#8a95a0', fontSize: 13 }}>
                   {a.created_at ? new Date(a.created_at).toLocaleDateString('en-ZA') : '—'}
                 </div>
                 <div style={{ width: 80, textAlign: 'right' }}>
@@ -243,19 +243,19 @@ export default function QcAssignmentsPage() {
 const s: Record<string, React.CSSProperties> = {
   page:       { display: 'flex', minHeight: '100vh', background: '#f4f1eb', fontFamily: 'Inter, sans-serif' },
   main:       { flex: 1, padding: 40, overflowY: 'auto' },
-  title:      { fontSize: 28, fontWeight: 700, color: '#1c3a2a', letterSpacing: '-0.5px' },
-  subtitle:   { fontSize: 14, color: '#9aaa9f', marginTop: 4 },
+  title:      { fontSize: 28, fontWeight: 700, color: '#1a2a3a', letterSpacing: '-0.5px' },
+  subtitle:   { fontSize: 14, color: '#8a95a0', marginTop: 4 },
   card:       { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: 24, marginBottom: 24 },
-  cardTitle:  { fontSize: 18, fontWeight: 700, color: '#1c3a2a', marginBottom: 16 },
-  tableHead:  { display: 'flex', padding: '10px 16px', background: '#f7f5f0', borderBottom: '1px solid #e8e4dc', fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase' as const, letterSpacing: '0.06em' },
+  cardTitle:  { fontSize: 18, fontWeight: 700, color: '#1a2a3a', marginBottom: 16 },
+  tableHead:  { display: 'flex', padding: '10px 16px', background: '#f7f5f0', borderBottom: '1px solid #e8e4dc', fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase' as const, letterSpacing: '0.06em' },
   tableRow:   { display: 'flex', padding: '12px 16px', borderBottom: '1px solid #f0ede6', alignItems: 'center', fontSize: 14 },
   formRow:    { display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center' },
   label:      { fontSize: 13, fontWeight: 600, color: '#5a6a60', width: 110, flexShrink: 0 },
   select:     { flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid #d4cfca', fontSize: 14, fontFamily: 'inherit', outline: 'none', background: '#fff' },
-  btn:        { padding: '10px 24px', borderRadius: 8, border: 'none', background: '#2a6e45', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
+  btn:        { padding: '10px 24px', borderRadius: 8, border: 'none', background: '#2176d9', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
   btnDisabled:{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#c4cfc8', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'not-allowed', fontFamily: 'inherit' },
   removeBtn:  { padding: '4px 12px', borderRadius: 6, border: '1px solid #e85a4a', background: '#fff', color: '#e85a4a', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 },
   success:    { padding: '10px 16px', borderRadius: 8, background: '#e8f5e9', color: '#2e7d32', fontSize: 14, marginTop: 12, fontWeight: 500 },
   error:      { padding: '10px 16px', borderRadius: 8, background: '#fff5f4', color: '#c62828', fontSize: 14, marginTop: 12, fontWeight: 500 },
-  empty:      { padding: '32px 16px', textAlign: 'center' as const, color: '#9aaa9f', fontSize: 14 },
+  empty:      { padding: '32px 16px', textAlign: 'center' as const, color: '#8a95a0', fontSize: 14 },
 }

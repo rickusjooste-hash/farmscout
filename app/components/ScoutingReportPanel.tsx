@@ -58,10 +58,10 @@ export default function ScoutingReportPanel({ orgId: _orgId, farmId, farmName }:
     return (
       <div style={cardStyle}>
         <div style={{ padding: '20px 24px' }}>
-          <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a' }}>
-            Trap Report{farmName ? <span style={{ fontSize: 13, fontWeight: 400, color: '#7a8a80', marginLeft: 8 }}>{farmName}</span> : null}
+          <div style={{ fontSize: 17, fontWeight: 600, color: '#1a2a3a' }}>
+            Trap Report{farmName ? <span style={{ fontSize: 13, fontWeight: 400, color: '#7a8a9a', marginLeft: 8 }}>{farmName}</span> : null}
           </div>
-          <div style={{ color: '#9aaa9f', fontSize: 13, marginTop: 4 }}>Loading…</div>
+          <div style={{ color: '#8a95a0', fontSize: 13, marginTop: 4 }}>Loading…</div>
         </div>
       </div>
     )
@@ -85,7 +85,7 @@ export default function ScoutingReportPanel({ orgId: _orgId, farmId, farmName }:
   const alertOrchards = orchards.filter(o => o.alertCount > 0).length
   const weekNr = getISOWeekNumber(new Date())
 
-  const topBorderColor = alertOrchards > 0 ? '#e85a4a' : '#2a6e45'
+  const topBorderColor = alertOrchards > 0 ? '#e85a4a' : '#2176d9'
 
   async function handleSendReport() {
     setSendStatus('sending')
@@ -117,13 +117,13 @@ export default function ScoutingReportPanel({ orgId: _orgId, farmId, farmName }:
         onClick={() => setPanelExpanded(e => !e)}
         style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}
       >
-        <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a', flex: 1 }}>
-          Trap Report{farmName ? <span style={{ fontSize: 13, fontWeight: 400, color: '#7a8a80', marginLeft: 8 }}>{farmName}</span> : null}
+        <div style={{ fontSize: 17, fontWeight: 600, color: '#1a2a3a', flex: 1 }}>
+          Trap Report{farmName ? <span style={{ fontSize: 13, fontWeight: 400, color: '#7a8a9a', marginLeft: 8 }}>{farmName}</span> : null}
         </div>
-        <span style={{ fontSize: 12, background: '#f4f1eb', color: '#7a8a80', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>
+        <span style={{ fontSize: 12, background: '#f4f1eb', color: '#7a8a9a', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>
           W{weekNr} · {orchards.length} orchards
         </span>
-        <span style={{ fontSize: 12, background: '#f4f1eb', color: '#7a8a80', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>
+        <span style={{ fontSize: 12, background: '#f4f1eb', color: '#7a8a9a', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>
           {totalCatch} caught
         </span>
         {alertOrchards > 0 && (
@@ -131,7 +131,7 @@ export default function ScoutingReportPanel({ orgId: _orgId, farmId, farmName }:
             {alertOrchards} alerts
           </span>
         )}
-        <span style={{ fontSize: 13, color: '#7a8a80', display: 'inline-block', transition: 'transform 0.2s', transform: panelExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+        <span style={{ fontSize: 13, color: '#7a8a9a', display: 'inline-block', transition: 'transform 0.2s', transform: panelExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
       </button>
 
       {panelExpanded && <>
@@ -139,10 +139,10 @@ export default function ScoutingReportPanel({ orgId: _orgId, farmId, farmName }:
         <div style={{ borderTop: '1px solid #f0ede6', padding: '12px 20px 4px' }}>
           {orchards.slice(0, 5).map(o => (
             <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid #faf9f6', fontSize: 13 }}>
-              <div style={{ flex: 1, color: '#1c3a2a' }}>{o.display}</div>
+              <div style={{ flex: 1, color: '#1a2a3a' }}>{o.display}</div>
               <div style={{
                 fontWeight: 600, minWidth: 40, textAlign: 'right',
-                color: o.total === 0 ? '#9aaa9f' : o.alertCount > 0 ? '#e85a4a' : '#c49a00',
+                color: o.total === 0 ? '#8a95a0' : o.alertCount > 0 ? '#e85a4a' : '#c49a00',
               }}>
                 {o.total}
               </div>
@@ -152,7 +152,7 @@ export default function ScoutingReportPanel({ orgId: _orgId, farmId, farmName }:
             </div>
           ))}
           {orchards.length > 5 && (
-            <div style={{ fontSize: 12, color: '#9aaa9f', padding: '6px 0' }}>
+            <div style={{ fontSize: 12, color: '#8a95a0', padding: '6px 0' }}>
               +{orchards.length - 5} more orchards
             </div>
           )}
@@ -165,7 +165,7 @@ export default function ScoutingReportPanel({ orgId: _orgId, farmId, farmName }:
             disabled={sendStatus === 'sending'}
             style={{
               padding: '7px 16px', borderRadius: 8, border: 'none',
-              background: '#1c3a2a', color: '#a8d5a2',
+              background: '#1a2a3a', color: '#a0c4f0',
               fontSize: 13, fontWeight: 500, cursor: sendStatus === 'sending' ? 'not-allowed' : 'pointer',
               opacity: sendStatus === 'sending' ? 0.7 : 1,
               fontFamily: 'inherit',
@@ -176,7 +176,7 @@ export default function ScoutingReportPanel({ orgId: _orgId, farmId, farmName }:
           {sendResult && (
             <span style={{
               fontSize: 12, fontWeight: 500,
-              color: sendStatus === 'error' ? '#e85a4a' : '#2a6e45',
+              color: sendStatus === 'error' ? '#e85a4a' : '#2176d9',
             }}>
               {sendStatus === 'sent' ? '✓ ' : ''}{sendResult}
             </span>

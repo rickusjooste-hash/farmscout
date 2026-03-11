@@ -525,25 +525,25 @@ export default function InspectionsPage() {
         body { font-family: 'Inter', sans-serif; background: #f4f1ea; }
         .app { display: flex; height: 100vh; overflow: hidden; }
         .sidebar {
-          width: 220px; min-width: 220px; background: #1c3a2a; display: flex;
+          width: 220px; min-width: 220px; background: #1a2a3a; display: flex;
           flex-direction: column; padding: 24px 14px; overflow-y: auto;
         }
-        .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a8d5a2; margin-bottom: 32px; }
+        .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a0c4f0; margin-bottom: 32px; }
         .logo span { color: #fff; }
         .nav-item {
           display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-          border-radius: 8px; color: #8aab96; font-size: 13.5px; font-weight: 500;
+          border-radius: 8px; color: #7a8fa0; font-size: 13.5px; font-weight: 500;
           cursor: pointer; transition: all 0.15s; text-decoration: none;
         }
-        .nav-item:hover { background: #2a4f38; color: #fff; }
-        .nav-item.active { background: #2a4f38; color: #a8d5a2; }
-        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #2a4f38; font-size: 12px; color: #4a7a5a; }
+        .nav-item:hover { background: #1a4a7a; color: #fff; }
+        .nav-item.active { background: #1a4a7a; color: #a0c4f0; }
+        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #1a4a7a; font-size: 12px; color: #5a7a8a; }
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         .top-bar {
           background: #fff; border-bottom: 1px solid #e8e4dc;
           padding: 12px 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
         }
-        .page-title { font-size: 17px; font-weight: 700; color: #1c3a2a; }
+        .page-title { font-size: 17px; font-weight: 700; color: #1a2a3a; }
         .scout-pills-bar {
           background: #fff; border-bottom: 1px solid #f0ede6;
           padding: 8px 20px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 44px;
@@ -554,7 +554,7 @@ export default function InspectionsPage() {
           cursor: pointer; transition: all 0.15s; white-space: nowrap;
         }
         .tim-scout-pill.active {
-          background: #1c3a2a; border-color: #1c3a2a; color: #a8d5a2;
+          background: #1a2a3a; border-color: #1a2a3a; color: #a0c4f0;
         }
         .tim-scout-pill:hover:not(.active) { background: #f4f1ea; }
         .body-row { flex: 1; display: flex; overflow: hidden; position: relative; }
@@ -577,13 +577,13 @@ export default function InspectionsPage() {
         }
         .tim-panel-close {
           margin-left: auto; background: none; border: none; font-size: 18px;
-          color: #9aaa9f; cursor: pointer; padding: 0 4px; line-height: 1; flex-shrink: 0;
+          color: #8a95a0; cursor: pointer; padding: 0 4px; line-height: 1; flex-shrink: 0;
         }
         .tim-panel-close:hover { color: #3a4a40; }
         .tim-panel-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
         .tim-section-label {
           font-size: 10px; font-weight: 700; text-transform: uppercase;
-          letter-spacing: 0.8px; color: #9aaa9f; margin-bottom: 4px;
+          letter-spacing: 0.8px; color: #8a95a0; margin-bottom: 4px;
         }
         .tim-obs-row {
           display: flex; align-items: center; gap: 10px; padding: 8px 0;
@@ -596,7 +596,7 @@ export default function InspectionsPage() {
           color: #fff; flex-shrink: 0;
         }
         .tim-tooltip {
-          background: #1c3a2a !important; color: #fff !important; border: none !important;
+          background: #1a2a3a !important; color: #fff !important; border: none !important;
           border-radius: 6px !important; font-size: 12px !important; font-weight: 500 !important;
           padding: 4px 10px !important; font-family: 'Inter', sans-serif !important;
         }
@@ -646,7 +646,7 @@ export default function InspectionsPage() {
           <a href="/settings" className="nav-item"><span>🔔</span> Settings</a>
           <div className="sidebar-footer">
             Mouton&apos;s Valley Group<br />
-            <span style={{ color: '#2a6e45' }}>●</span> Connected
+            <span style={{ color: '#2176d9' }}>●</span> Connected
           </div>
         </aside>
 
@@ -667,8 +667,8 @@ export default function InspectionsPage() {
                   style={{
                     padding: '4px 14px', borderRadius: 18, border: 'none', fontSize: 12, fontWeight: 600,
                     cursor: 'pointer', transition: 'all 0.15s',
-                    background: dateMode === 'today' ? '#1c3a2a' : 'transparent',
-                    color: dateMode === 'today' ? '#a8d5a2' : '#6a7a70',
+                    background: dateMode === 'today' ? '#1a2a3a' : 'transparent',
+                    color: dateMode === 'today' ? '#a0c4f0' : '#6a7a70',
                   }}
                 >Today</button>
                 <button
@@ -676,8 +676,8 @@ export default function InspectionsPage() {
                   style={{
                     padding: '4px 14px', borderRadius: 18, border: 'none', fontSize: 12, fontWeight: 600,
                     cursor: 'pointer', transition: 'all 0.15s',
-                    background: dateMode === 'week' ? '#1c3a2a' : 'transparent',
-                    color: dateMode === 'week' ? '#a8d5a2' : '#6a7a70',
+                    background: dateMode === 'week' ? '#1a2a3a' : 'transparent',
+                    color: dateMode === 'week' ? '#a0c4f0' : '#6a7a70',
                   }}
                 >This Week</button>
               </div>
@@ -687,7 +687,7 @@ export default function InspectionsPage() {
                 {dateMode === 'today' ? (
                   <>
                     <NavArrow dir="‹" onClick={() => selectedDate && setSelectedDate(prevDay(selectedDate))} />
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a', whiteSpace: 'nowrap', minWidth: 140, textAlign: 'center' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a', whiteSpace: 'nowrap', minWidth: 140, textAlign: 'center' }}>
                       {selectedDate ? (isToday(selectedDate) ? 'Today · ' : '') + dayLabel(selectedDate) : '…'}
                     </span>
                     <NavArrow dir="›" onClick={() => { if (canGoForwardDay && selectedDate) setSelectedDate(nextDay(selectedDate)) }} disabled={!canGoForwardDay} />
@@ -699,7 +699,7 @@ export default function InspectionsPage() {
                       setWeekYear(p.year)
                       setWeekNum(p.week)
                     }} />
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a', whiteSpace: 'nowrap', minWidth: 180, textAlign: 'center' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a', whiteSpace: 'nowrap', minWidth: 180, textAlign: 'center' }}>
                       {weekLabel(weekYear, weekNum)}
                     </span>
                     <NavArrow dir="›" onClick={() => {
@@ -727,18 +727,18 @@ export default function InspectionsPage() {
             {/* Stats */}
             <div style={{ marginLeft: 'auto', fontSize: 13, color: '#6a7a70', display: 'flex', alignItems: 'center', gap: 8 }}>
               {loading ? (
-                <span style={{ color: '#9aaa9f' }}>Loading…</span>
+                <span style={{ color: '#8a95a0' }}>Loading…</span>
               ) : (
                 <>
-                  <span><strong style={{ color: '#1c3a2a' }}>{allFilteredDots.length}</strong> trees</span>
+                  <span><strong style={{ color: '#1a2a3a' }}>{allFilteredDots.length}</strong> trees</span>
                   <span style={{ color: '#d0cdc6' }}>·</span>
-                  <span><strong style={{ color: treesWithPests > 0 ? '#e85a4a' : '#1c3a2a' }}>{treesWithPests}</strong> with pests</span>
+                  <span><strong style={{ color: treesWithPests > 0 ? '#e85a4a' : '#1a2a3a' }}>{treesWithPests}</strong> with pests</span>
                   <span style={{ color: '#d0cdc6' }}>·</span>
-                  <span><strong style={{ color: '#1c3a2a' }}>{uniqueScouts.length}</strong> scouts</span>
+                  <span><strong style={{ color: '#1a2a3a' }}>{uniqueScouts.length}</strong> scouts</span>
                   {noGpsCount > 0 && (
                     <>
                       <span style={{ color: '#d0cdc6' }}>·</span>
-                      <span style={{ color: '#9aaa9f' }}>{noGpsCount} without GPS</span>
+                      <span style={{ color: '#8a95a0' }}>{noGpsCount} without GPS</span>
                     </>
                   )}
                 </>
@@ -748,12 +748,12 @@ export default function InspectionsPage() {
 
           {/* Loading bar */}
           {loading && (
-            <div style={{ height: 3, background: 'linear-gradient(90deg, #2a6e45, #a8d5a2)', animation: 'shimmer 1s infinite' }} />
+            <div style={{ height: 3, background: 'linear-gradient(90deg, #2176d9, #a0c4f0)', animation: 'shimmer 1s infinite' }} />
           )}
 
           {/* Scout pills bar */}
           <div className="scout-pills-bar">
-            <span style={{ fontSize: 11, color: '#9aaa9f', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Scout</span>
+            <span style={{ fontSize: 11, color: '#8a95a0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Scout</span>
             <button
               className={`tim-scout-pill${!selectedScoutId ? ' active' : ''}`}
               onClick={() => setSelectedScoutId(null)}
@@ -789,7 +789,7 @@ export default function InspectionsPage() {
                   <span>High load (5+)</span>
                 </div>
                 <div className="tim-legend-row">
-                  <div className="tim-legend-dot" style={{ background: 'transparent', border: '2px dashed #9aaa9f' }} />
+                  <div className="tim-legend-dot" style={{ background: 'transparent', border: '2px dashed #8a95a0' }} />
                   <span>No GPS (centroid)</span>
                 </div>
               </div>
@@ -798,12 +798,12 @@ export default function InspectionsPage() {
               {!loading && dots.length === 0 && mapReady && (
                 <div className="tim-empty-overlay">
                   <div className="tim-empty-card">
-                    <div style={{ fontSize: 15, fontWeight: 600, color: '#1c3a2a', marginBottom: 6 }}>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: '#1a2a3a', marginBottom: 6 }}>
                       {dateMode === 'today'
                         ? `No tree inspections recorded for ${selectedDate ? dayLabel(selectedDate) : 'today'}`
                         : `No tree inspections recorded for W${weekNum}`}
                     </div>
-                    <div style={{ fontSize: 13, color: '#9aaa9f' }}>
+                    <div style={{ fontSize: 13, color: '#8a95a0' }}>
                       {dateMode === 'today' ? '← Go to a previous day' : '← Go to a previous week'}
                     </div>
                   </div>
@@ -826,10 +826,10 @@ export default function InspectionsPage() {
                       padding: '8px 16px', background: 'none', border: 'none', cursor: 'pointer',
                     }}
                   >
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#1c3a2a' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#1a2a3a' }}>
                       {noGpsCount} tree{noGpsCount !== 1 ? 's' : ''} without GPS
                     </span>
-                    <span style={{ fontSize: 14, color: '#9aaa9f', transform: noGpsExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                    <span style={{ fontSize: 14, color: '#8a95a0', transform: noGpsExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
                       ▲
                     </span>
                   </button>
@@ -855,7 +855,7 @@ export default function InspectionsPage() {
                                 background: selectedTree?.tree_id === d.tree_id ? '#e8f5e9' : undefined,
                               }}
                             >
-                              <td style={{ padding: '7px 12px', fontWeight: 600, color: '#1c3a2a' }}>#{d.tree_nr}</td>
+                              <td style={{ padding: '7px 12px', fontWeight: 600, color: '#1a2a3a' }}>#{d.tree_nr}</td>
                               <td style={{ padding: '7px 12px', color: '#3a4a40' }}>{d.orchard_name}</td>
                               <td style={{ padding: '7px 12px', color: '#6a7a70' }}>{d.zone_name}</td>
                               <td style={{ padding: '7px 12px', color: '#6a7a70' }}>{d.scout_name}</td>
@@ -881,7 +881,7 @@ export default function InspectionsPage() {
               <div className="tim-side-panel">
                 <div className="tim-panel-header">
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: '#1c3a2a' }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a3a' }}>
                       Tree #{selectedTree.tree_nr} · {selectedTree.zone_name}
                     </div>
                     <div style={{ fontSize: 13, color: '#6a7a70', marginTop: 2 }}>
@@ -897,7 +897,7 @@ export default function InspectionsPage() {
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#3a4a40' }}>
                       {selectedTree.scout_name}
                     </div>
-                    <div style={{ fontSize: 12, color: '#9aaa9f' }}>
+                    <div style={{ fontSize: 12, color: '#8a95a0' }}>
                       {new Date(selectedTree.inspected_at).toLocaleString('en-ZA', {
                         weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
                       })}
@@ -927,16 +927,16 @@ export default function InspectionsPage() {
                   <div>
                     <div className="tim-section-label">Observations</div>
                     {loadingDetail ? (
-                      <div style={{ fontSize: 13, color: '#9aaa9f', padding: '8px 0' }}>Loading…</div>
+                      <div style={{ fontSize: 13, color: '#8a95a0', padding: '8px 0' }}>Loading…</div>
                     ) : observations.length === 0 ? (
-                      <div style={{ fontSize: 13, color: '#9aaa9f', padding: '8px 0' }}>No observations recorded.</div>
+                      <div style={{ fontSize: 13, color: '#8a95a0', padding: '8px 0' }}>No observations recorded.</div>
                     ) : (
                       observations.map((obs, i) => (
                         <div key={i} className="tim-obs-row">
                           <div className="tim-obs-names">
-                            <div style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a' }}>{obs.pest_name}</div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a' }}>{obs.pest_name}</div>
                             {obs.scientific_name && (
-                              <div style={{ fontSize: 11, color: '#9aaa9f', fontStyle: 'italic' }}>{obs.scientific_name}</div>
+                              <div style={{ fontSize: 11, color: '#8a95a0', fontStyle: 'italic' }}>{obs.scientific_name}</div>
                             )}
                             {obs.observation_method && (
                               <div style={{ fontSize: 11, color: '#b0bdb5' }}>{obs.observation_method}</div>
@@ -970,7 +970,7 @@ export default function InspectionsPage() {
                           onChange={e => setSelectedZoneId(e.target.value)}
                           style={{
                             width: '100%', padding: '8px 10px', borderRadius: 8,
-                            border: '1.5px solid #e0ddd6', fontSize: 13, color: '#1c3a2a',
+                            border: '1.5px solid #e0ddd6', fontSize: 13, color: '#1a2a3a',
                           }}
                         >
                           <option value="">Select zone…</option>
@@ -986,7 +986,7 @@ export default function InspectionsPage() {
                             onClick={() => handleReassign('tree')}
                             style={{
                               flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
-                              background: selectedZoneId ? '#2a6e45' : '#ccc',
+                              background: selectedZoneId ? '#2176d9' : '#ccc',
                               color: '#fff', fontSize: 12, fontWeight: 600, cursor: selectedZoneId ? 'pointer' : 'default',
                             }}
                           >{savingReassign ? 'Saving…' : 'This Tree'}</button>
@@ -995,7 +995,7 @@ export default function InspectionsPage() {
                             onClick={() => handleReassign('session')}
                             style={{
                               flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
-                              background: selectedZoneId ? '#1c3a2a' : '#ccc',
+                              background: selectedZoneId ? '#1a2a3a' : '#ccc',
                               color: '#fff', fontSize: 12, fontWeight: 600, cursor: selectedZoneId ? 'pointer' : 'default',
                             }}
                           >{savingReassign ? 'Saving…' : 'All Trees'}</button>
@@ -1003,7 +1003,7 @@ export default function InspectionsPage() {
                         <button
                           onClick={() => setEditing(false)}
                           style={{
-                            background: 'none', border: 'none', color: '#9aaa9f',
+                            background: 'none', border: 'none', color: '#8a95a0',
                             fontSize: 12, cursor: 'pointer', padding: '4px 0',
                           }}
                         >Cancel</button>

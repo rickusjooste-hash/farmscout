@@ -36,29 +36,29 @@ const TYPE_BADGE: Record<BinType, { label: string; bg: string; color: string }> 
 
 const s: Record<string, React.CSSProperties> = {
   page:      { display: 'flex', minHeight: '100vh', background: '#f4f1eb', fontFamily: 'Inter, sans-serif' },
-  sidebar:   { width: 220, flexShrink: 0, background: '#1c3a2a', padding: '32px 20px', display: 'flex', flexDirection: 'column', gap: 8, position: 'sticky', top: 0, height: '100vh', overflowY: 'auto' },
-  logo:      { fontSize: 22, color: '#a8d5a2', marginBottom: 32, letterSpacing: '-0.5px' },
-  navItem:   { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, color: '#8aab96', fontSize: 13.5, fontWeight: 500, cursor: 'pointer', textDecoration: 'none' },
-  navLabel:  { fontSize: 10, color: '#5a7a6a', padding: '16px 16px 4px', textTransform: 'uppercase' as const, letterSpacing: '0.08em' },
+  sidebar:   { width: 220, flexShrink: 0, background: '#1a2a3a', padding: '32px 20px', display: 'flex', flexDirection: 'column', gap: 8, position: 'sticky', top: 0, height: '100vh', overflowY: 'auto' },
+  logo:      { fontSize: 22, color: '#a0c4f0', marginBottom: 32, letterSpacing: '-0.5px' },
+  navItem:   { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, color: '#7a8fa0', fontSize: 13.5, fontWeight: 500, cursor: 'pointer', textDecoration: 'none' },
+  navLabel:  { fontSize: 10, color: '#5a7a8a', padding: '16px 16px 4px', textTransform: 'uppercase' as const, letterSpacing: '0.08em' },
   main:      { flex: 1, padding: 40, overflowY: 'auto' },
   header:    { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 },
-  title:     { fontSize: 28, fontWeight: 700, color: '#1c3a2a', letterSpacing: '-0.5px' },
+  title:     { fontSize: 28, fontWeight: 700, color: '#1a2a3a', letterSpacing: '-0.5px' },
   pills:     { display: 'flex', gap: 8, flexWrap: 'wrap' as const },
   pill:      { padding: '6px 14px', borderRadius: 20, border: '1px solid #d4cfca', background: '#fff', color: '#5a6a60', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
-  pillActive:{ padding: '6px 14px', borderRadius: 20, border: '1px solid #2a6e45', background: '#2a6e45', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
+  pillActive:{ padding: '6px 14px', borderRadius: 20, border: '1px solid #2176d9', background: '#2176d9', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
   card:      { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 24 },
   COLS:      { gridTemplateColumns: '1fr 100px 100px 60px 60px 130px' } as React.CSSProperties,
-  tableHead: { display: 'grid', gap: 8, padding: '10px 16px', background: '#f7f5f0', borderBottom: '1px solid #e8e4dc', fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase' as const, letterSpacing: '0.06em', alignItems: 'center' },
+  tableHead: { display: 'grid', gap: 8, padding: '10px 16px', background: '#f7f5f0', borderBottom: '1px solid #e8e4dc', fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase' as const, letterSpacing: '0.06em', alignItems: 'center' },
   tableRow:  { display: 'grid', gap: 8, padding: '10px 16px', borderBottom: '1px solid #f0ede6', alignItems: 'center' },
-  input:     { border: '1px solid #e0ddd5', borderRadius: 6, padding: '5px 8px', fontSize: 13, color: '#1c3a2a', fontFamily: 'inherit', width: '100%', outline: 'none', boxSizing: 'border-box' as const },
+  input:     { border: '1px solid #e0ddd5', borderRadius: 6, padding: '5px 8px', fontSize: 13, color: '#1a2a3a', fontFamily: 'inherit', width: '100%', outline: 'none', boxSizing: 'border-box' as const },
   inputDisabled: { border: '1px solid #eee', borderRadius: 6, padding: '5px 8px', fontSize: 13, color: '#aaa', fontFamily: 'inherit', width: '100%', background: '#f7f7f7', boxSizing: 'border-box' as const },
-  saveBtn:   { padding: '5px 10px', borderRadius: 6, border: '1px solid #2a6e45', background: '#2a6e45', color: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' },
+  saveBtn:   { padding: '5px 10px', borderRadius: 6, border: '1px solid #2176d9', background: '#2176d9', color: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' },
   deleteBtn: { padding: '5px 8px', borderRadius: 6, border: '1px solid #e85a4a', background: '#fff5f4', color: '#e85a4a', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' },
   addSection:{ borderTop: '2px dashed #e8e4dc', background: '#fafaf8', padding: '14px 16px' },
-  addBtn:    { padding: '6px 14px', borderRadius: 6, border: '1px solid #2a6e45', background: '#f0f7f2', color: '#2a6e45', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 },
+  addBtn:    { padding: '6px 14px', borderRadius: 6, border: '1px solid #2176d9', background: '#f0f4fa', color: '#2176d9', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 },
   typeSeg:   { display: 'flex', borderRadius: 6, overflow: 'hidden', border: '1px solid #d4cfca' },
   checkbox:  { width: 16, height: 16, cursor: 'pointer' },
-  empty:     { padding: '40px 24px', textAlign: 'center' as const, color: '#9aaa9f', fontSize: 14 },
+  empty:     { padding: '40px 24px', textAlign: 'center' as const, color: '#8a95a0', fontSize: 14 },
   badge:     { padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700, marginLeft: 6, whiteSpace: 'nowrap' as const },
 }
 
@@ -186,11 +186,11 @@ export default function SizeBinsPage() {
   }
 
   // Segment button style
-  function segStyle(active: boolean, color = '#2a6e45'): React.CSSProperties {
+  function segStyle(active: boolean, color = '#2176d9'): React.CSSProperties {
     return {
       padding: '5px 10px', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', border: 'none',
       background: active ? color : '#fff',
-      color: active ? '#fff' : '#7a8a80',
+      color: active ? '#fff' : '#7a8a9a',
       fontWeight: active ? 700 : 400,
       transition: 'all 0.12s',
     }
@@ -213,7 +213,7 @@ export default function SizeBinsPage() {
         <a href="/qc/dashboard" style={s.navItem}><span>⚖️</span> QC Dashboard</a>
         <a href="/qc/unknowns" style={s.navItem}><span>📷</span> Unknown Issues</a>
         <a href="/qc/settings/issues" style={s.navItem}><span>🐛</span> Issue Setup</a>
-        <a href="/qc/settings/size-bins" style={{ ...s.navItem, background: '#2a4f38', color: '#a8d5a2' }}><span>📏</span> Size Bins</a>
+        <a href="/qc/settings/size-bins" style={{ ...s.navItem, background: '#1a4a7a', color: '#a0c4f0' }}><span>📏</span> Size Bins</a>
       </aside>
 
       {/* Main */}
@@ -221,7 +221,7 @@ export default function SizeBinsPage() {
         <div style={s.header}>
           <div>
             <div style={s.title}>Size Bins</div>
-            <div style={{ fontSize: 14, color: '#9aaa9f', marginTop: 4 }}>Weight ranges per commodity · Oversize = no upper limit · Undersize = no lower limit</div>
+            <div style={{ fontSize: 14, color: '#8a95a0', marginTop: 4 }}>Weight ranges per commodity · Oversize = no upper limit · Undersize = no lower limit</div>
           </div>
         </div>
 
@@ -334,7 +334,7 @@ export default function SizeBinsPage() {
 
           {/* Add section */}
           <div style={s.addSection}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Add bin</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Add bin</div>
 
             {/* Type segmented control */}
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' as const }}>
@@ -350,7 +350,7 @@ export default function SizeBinsPage() {
             {/* Add form fields */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 100px 70px 100px', gap: 8, alignItems: 'end' }}>
               <div>
-                <div style={{ fontSize: 11, color: '#9aaa9f', marginBottom: 4 }}>Label</div>
+                <div style={{ fontSize: 11, color: '#8a95a0', marginBottom: 4 }}>Label</div>
                 <input
                   style={s.input}
                   placeholder={newType === 'oversize' ? 'Oversize' : newType === 'undersize' ? 'Undersize' : 'e.g. Count 72'}
@@ -359,7 +359,7 @@ export default function SizeBinsPage() {
                 />
               </div>
               <div>
-                <div style={{ fontSize: 11, color: '#9aaa9f', marginBottom: 4 }}>Min (g)</div>
+                <div style={{ fontSize: 11, color: '#8a95a0', marginBottom: 4 }}>Min (g)</div>
                 {newType === 'undersize' ? (
                   <div style={s.inputDisabled}>0</div>
                 ) : (
@@ -373,7 +373,7 @@ export default function SizeBinsPage() {
                 )}
               </div>
               <div>
-                <div style={{ fontSize: 11, color: '#9aaa9f', marginBottom: 4 }}>Max (g)</div>
+                <div style={{ fontSize: 11, color: '#8a95a0', marginBottom: 4 }}>Max (g)</div>
                 {newType === 'oversize' ? (
                   <div style={s.inputDisabled}>∞</div>
                 ) : (
@@ -387,7 +387,7 @@ export default function SizeBinsPage() {
                 )}
               </div>
               <div>
-                <div style={{ fontSize: 11, color: '#9aaa9f', marginBottom: 4 }}>Order</div>
+                <div style={{ fontSize: 11, color: '#8a95a0', marginBottom: 4 }}>Order</div>
                 <input
                   style={s.input}
                   type="number"

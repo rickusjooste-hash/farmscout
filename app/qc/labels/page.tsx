@@ -113,13 +113,13 @@ export default function QcLabelsPage() {
       `}</style>
 
       {/* ── Header (no-print) ── */}
-      <div className="no-print" style={{ background: '#1c3a2a', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="no-print" style={{ background: '#1a2a3a', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ color: '#a8d5a2', fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>QC System</div>
+          <div style={{ color: '#a0c4f0', fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>QC System</div>
           <div style={{ color: '#fff', fontSize: 22, fontWeight: 700 }}>QR Label Generator</div>
-          <div style={{ color: '#5a8a6a', fontSize: 12, marginTop: 2 }}>Zebra ZT230 · 100 × 50 mm</div>
+          <div style={{ color: '#5a7a8a', fontSize: 12, marginTop: 2 }}>Zebra ZT230 · 100 × 50 mm</div>
         </div>
-        <a href="/qc/dashboard" style={{ color: '#a8d5a2', fontSize: 13, textDecoration: 'none' }}>← QC Dashboard</a>
+        <a href="/qc/dashboard" style={{ color: '#a0c4f0', fontSize: 13, textDecoration: 'none' }}>← QC Dashboard</a>
       </div>
 
       {/* ── Controls (no-print) ── */}
@@ -136,24 +136,24 @@ export default function QcLabelsPage() {
         </div>
         <button
           onClick={generate} disabled={generating}
-          style={{ padding: '10px 28px', background: '#2a6e45', color: '#fff', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: generating ? 'wait' : 'pointer', opacity: generating ? 0.7 : 1, fontFamily: 'inherit' }}
+          style={{ padding: '10px 28px', background: '#2176d9', color: '#fff', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: generating ? 'wait' : 'pointer', opacity: generating ? 0.7 : 1, fontFamily: 'inherit' }}
         >
           {generating ? 'Generating…' : '⚡ Generate'}
         </button>
         {labels.length > 0 && <>
           <button
             onClick={() => window.print()}
-            style={{ padding: '10px 28px', background: '#1c3a2a', color: '#fff', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ padding: '10px 28px', background: '#1a2a3a', color: '#fff', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             🖨️ Print {labels.length} labels
           </button>
           <button
             onClick={downloadCsv}
-            style={{ padding: '10px 20px', background: '#fff', color: '#2a6e45', border: '1.5px solid #2a6e45', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ padding: '10px 20px', background: '#fff', color: '#2176d9', border: '1.5px solid #2176d9', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             ⬇ CSV for Zebra Designer
           </button>
-          <div style={{ fontSize: 13, color: '#9aaa9f', alignSelf: 'center' }}>
+          <div style={{ fontSize: 13, color: '#8a95a0', alignSelf: 'center' }}>
             {labels.length} labels · {batchDate}
           </div>
         </>}
@@ -161,7 +161,7 @@ export default function QcLabelsPage() {
 
       {/* ── Empty state (no-print) ── */}
       {labels.length === 0 && (
-        <div className="no-print" style={{ padding: '64px 32px', textAlign: 'center', color: '#9aaa9f', background: '#f4f1eb', minHeight: 'calc(100vh - 140px)' }}>
+        <div className="no-print" style={{ padding: '64px 32px', textAlign: 'center', color: '#8a95a0', background: '#f4f1eb', minHeight: 'calc(100vh - 140px)' }}>
           <div style={{ fontSize: 52, marginBottom: 16 }}>🏷️</div>
           <div style={{ fontSize: 17, fontWeight: 600, color: '#5a6a60', marginBottom: 8 }}>Ready to generate</div>
           <div style={{ fontSize: 14, maxWidth: 460, margin: '0 auto', lineHeight: 1.6 }}>

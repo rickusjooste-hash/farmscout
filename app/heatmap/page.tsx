@@ -382,8 +382,8 @@ export default function HeatmapPage() {
   ]
   const navStyle = (href: string): React.CSSProperties => ({
     display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8,
-    background: href === '/heatmap' ? '#2a4f38' : 'transparent',
-    color: href === '/heatmap' ? '#a8d5a2' : '#8aab96',
+    background: href === '/heatmap' ? '#1a4a7a' : 'transparent',
+    color: href === '/heatmap' ? '#a0c4f0' : '#7a8fa0',
     fontSize: 13.5, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s', textDecoration: 'none',
   })
 
@@ -393,9 +393,9 @@ export default function HeatmapPage() {
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { overflow: hidden; }
-        .hm-sb:hover { background: #2a4f38 !important; color: #fff !important; }
+        .hm-sb:hover { background: #1a4a7a !important; color: #fff !important; }
         .hm-tooltip {
-          background: #1c3a2a !important; color: #fff !important; border: none !important;
+          background: #1a2a3a !important; color: #fff !important; border: none !important;
           border-radius: 6px !important; font-size: 12px !important; font-weight: 500 !important;
           padding: 5px 10px !important; font-family: 'Inter', sans-serif !important; line-height: 1.5 !important;
         }
@@ -414,10 +414,10 @@ export default function HeatmapPage() {
 
       {/* Sidebar */}
       <aside className="hm-sidebar" style={{
-        width: 220, height: '100vh', overflowY: 'auto', background: '#1c3a2a',
+        width: 220, height: '100vh', overflowY: 'auto', background: '#1a2a3a',
         padding: '32px 20px', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0,
       }}>
-        <div style={{ fontSize: 22, color: '#a8d5a2', marginBottom: 32, letterSpacing: '-0.5px', fontWeight: 700 }}>
+        <div style={{ fontSize: 22, color: '#a0c4f0', marginBottom: 32, letterSpacing: '-0.5px', fontWeight: 700 }}>
           <span style={{ color: '#fff' }}>Farm</span>Scout
         </div>
         {navLinks.map(([href, icon, label]) => (
@@ -429,9 +429,9 @@ export default function HeatmapPage() {
         <a href="/scouts/sections" className="hm-sb" style={{ ...navStyle('/scouts/sections'), paddingLeft: 28, fontSize: 13 }}>
           <span>🗂️</span> Sections
         </a>
-        <div style={{ marginTop: 'auto', paddingTop: 24, borderTop: '1px solid #2a4f38', fontSize: 12, color: '#4a7a5a' }}>
+        <div style={{ marginTop: 'auto', paddingTop: 24, borderTop: '1px solid #1a4a7a', fontSize: 12, color: '#5a7a8a' }}>
           Mouton&apos;s Valley Group<br />
-          <span style={{ color: '#2a6e45' }}>●</span> Connected
+          <span style={{ color: '#2176d9' }}>●</span> Connected
         </div>
       </aside>
 
@@ -440,7 +440,7 @@ export default function HeatmapPage() {
 
         {/* Toolbar */}
         <div className="hm-toolbar" style={{
-          padding: '10px 20px', background: '#1c3a2a', borderBottom: '1px solid #2a4f38',
+          padding: '10px 20px', background: '#1a2a3a', borderBottom: '1px solid #1a4a7a',
           display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', flexShrink: 0,
         }}>
           <span style={{ fontSize: 15, fontWeight: 600, color: '#fff', flexShrink: 0 }}>Pest Heat Map</span>
@@ -455,7 +455,7 @@ export default function HeatmapPage() {
             {(weekYear !== curYear || weekNum !== curWeek) && (
               <button onClick={() => { setWeekYear(curYear); setWeekNum(curWeek) }} style={{
                 padding: '3px 10px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.2)',
-                background: 'rgba(255,255,255,0.08)', color: '#a8d5a2', fontSize: 11, fontWeight: 500, cursor: 'pointer',
+                background: 'rgba(255,255,255,0.08)', color: '#a0c4f0', fontSize: 11, fontWeight: 500, cursor: 'pointer',
               }}>This week</button>
             )}
           </div>
@@ -466,7 +466,7 @@ export default function HeatmapPage() {
               <button key={m} className="hm-mode" onClick={() => setMode(m)} style={{
                 padding: '4px 16px', borderRadius: 6,
                 background: mode === m ? '#fff' : 'transparent',
-                color: mode === m ? '#1c3a2a' : '#8aab96',
+                color: mode === m ? '#1a2a3a' : '#7a8fa0',
                 fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none', transition: 'all 0.15s',
               }}>{m === 'trap' ? 'Trap' : 'Tree'}</button>
             ))}
@@ -474,13 +474,13 @@ export default function HeatmapPage() {
 
           {/* Pest pills */}
           <div className="hm-pills-row" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginLeft: 'auto' }}>
-            {loading && <span style={{ fontSize: 11, color: '#6aaa80', marginRight: 4 }}>Loading…</span>}
+            {loading && <span style={{ fontSize: 11, color: '#6a9fd4', marginRight: 4 }}>Loading…</span>}
             {pests.map(p => (
               <button key={p.id} className="hm-pill" onClick={() => setSelectedPestId(p.id)} style={{
                 padding: '3px 12px', borderRadius: 20,
-                border: `1.5px solid ${selectedPestId === p.id ? '#a8d5a2' : 'rgba(255,255,255,0.2)'}`,
-                background: selectedPestId === p.id ? '#a8d5a2' : 'transparent',
-                color: selectedPestId === p.id ? '#1c3a2a' : '#8aab96',
+                border: `1.5px solid ${selectedPestId === p.id ? '#a0c4f0' : 'rgba(255,255,255,0.2)'}`,
+                background: selectedPestId === p.id ? '#a0c4f0' : 'transparent',
+                color: selectedPestId === p.id ? '#1a2a3a' : '#7a8fa0',
                 fontSize: 12, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s',
               }}>{p.name}</button>
             ))}
@@ -493,7 +493,7 @@ export default function HeatmapPage() {
             <style>{`@keyframes hm-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }`}</style>
             <div style={{
               height: 3, flexShrink: 0,
-              background: 'linear-gradient(90deg,#2a6e45,#a8d5a2,#2a6e45)',
+              background: 'linear-gradient(90deg,#2176d9,#a0c4f0,#2176d9)',
               backgroundSize: '200% 100%', animation: 'hm-shimmer 1.4s linear infinite',
             }} />
           </>
@@ -509,14 +509,14 @@ export default function HeatmapPage() {
             background: 'rgba(28,58,42,0.93)', borderRadius: 10, padding: '12px 16px',
             boxShadow: '0 2px 14px rgba(0,0,0,0.3)',
           }}>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#a8d5a2', marginBottom: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#a0c4f0', marginBottom: 8 }}>
               {mode === 'trap' ? 'Trap Catches' : 'Trees Affected'}
             </div>
             <div style={{
               width: 120, height: 12, borderRadius: 6, marginBottom: 4,
               background: 'linear-gradient(to right, #4caf72, #f5c842, #e8924a, #e85a4a)',
             }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#8aab96' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#7a8fa0' }}>
               <span>Low</span><span>High</span>
             </div>
           </div>
@@ -528,8 +528,8 @@ export default function HeatmapPage() {
               background: 'rgba(28,58,42,0.88)', borderRadius: 12, padding: '20px 32px',
               zIndex: 999, textAlign: 'center',
             }}>
-              <div style={{ fontSize: 14, color: '#a8d5a2', fontWeight: 600 }}>No data this week</div>
-              <div style={{ fontSize: 12, color: '#6aaa80', marginTop: 4 }}>
+              <div style={{ fontSize: 14, color: '#a0c4f0', fontWeight: 600 }}>No data this week</div>
+              <div style={{ fontSize: 12, color: '#6a9fd4', marginTop: 4 }}>
                 Try a different pest or navigate to a previous week.
               </div>
             </div>

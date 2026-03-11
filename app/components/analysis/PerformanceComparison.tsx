@@ -25,7 +25,7 @@ type ViewMode = 'farm' | 'variety'
 type Metric = 'tonHa' | 'tons' | 'bins'
 
 const BAR_COLORS = [
-  '#2a6e45', '#4caf72', '#6b9e80', '#e8924a', '#6b7fa8',
+  '#2176d9', '#4caf72', '#6b9e80', '#e8924a', '#6b7fa8',
   '#9b6bb5', '#e8c44a', '#c4744a', '#3498db', '#1abc9c',
 ]
 
@@ -34,12 +34,12 @@ function CustomTooltip({ active, payload }: any) {
   const d = payload[0].payload
   return (
     <div style={{
-      background: '#1c3a2a', color: '#e8f0e0', padding: '10px 14px',
+      background: '#1a2a3a', color: '#e8f0e0', padding: '10px 14px',
       borderRadius: 8, fontSize: 13, fontFamily: 'Inter, sans-serif',
     }}>
       <div style={{ fontWeight: 600, marginBottom: 4 }}>{d.name}</div>
       <div>{payload[0].name}: <strong>{typeof d.value === 'number' ? d.value.toLocaleString('en-ZA', { maximumFractionDigits: 1 }) : d.value}</strong></div>
-      {d.count != null && <div style={{ fontSize: 11, color: '#a8d5a2', marginTop: 2 }}>{d.count} orchards</div>}
+      {d.count != null && <div style={{ fontSize: 11, color: '#a0c4f0', marginTop: 2 }}>{d.count} orchards</div>}
     </div>
   )
 }
@@ -93,14 +93,14 @@ export default function PerformanceComparison({ orchards, farms }: Props) {
 
   const pillStyle = (active: boolean): React.CSSProperties => ({
     padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 500, cursor: 'pointer',
-    border: `1.5px solid ${active ? '#1c3a2a' : '#e0ddd6'}`,
-    background: active ? '#1c3a2a' : '#fff',
-    color: active ? '#a8d5a2' : '#6a7a70',
+    border: `1.5px solid ${active ? '#1a2a3a' : '#e0ddd6'}`,
+    background: active ? '#1a2a3a' : '#fff',
+    color: active ? '#a0c4f0' : '#6a7a70',
     fontFamily: 'inherit', transition: 'all 0.15s',
   })
 
   if (orchards.length === 0) {
-    return <div style={{ color: '#9aaa9f', fontSize: 13, textAlign: 'center', padding: 40 }}>No production data available</div>
+    return <div style={{ color: '#8a95a0', fontSize: 13, textAlign: 'center', padding: 40 }}>No production data available</div>
   }
 
   return (
@@ -115,7 +115,7 @@ export default function PerformanceComparison({ orchards, farms }: Props) {
       </div>
       <ResponsiveContainer width="100%" height={Math.max(data.length * 36 + 20, 120)}>
         <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
-          <XAxis type="number" tick={{ fontSize: 11, fill: '#9aaa9f' }} tickLine={false} axisLine={{ stroke: '#f0ede6' }} />
+          <XAxis type="number" tick={{ fontSize: 11, fill: '#8a95a0' }} tickLine={false} axisLine={{ stroke: '#f0ede6' }} />
           <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 12, fill: '#3a4a40' }} tickLine={false} axisLine={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(42,110,69,0.06)' }} />
           <Bar dataKey="value" name={metricLabel} radius={[0, 4, 4, 0]} barSize={22}>

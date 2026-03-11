@@ -472,31 +472,31 @@ export default function OrchardsPage() {
         .app { display: flex; height: 100vh; overflow: hidden; }
         .sidebar {
           width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto;
-          background: #1c3a2a; padding: 32px 20px;
+          background: #1a2a3a; padding: 32px 20px;
           display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
         }
-        .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a8d5a2; margin-bottom: 32px; }
+        .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a0c4f0; margin-bottom: 32px; }
         .logo span { color: #fff; }
         .nav-item {
           display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-          border-radius: 8px; color: #8aab96; font-size: 13.5px; font-weight: 500;
+          border-radius: 8px; color: #7a8fa0; font-size: 13.5px; font-weight: 500;
           cursor: pointer; transition: all 0.15s; text-decoration: none;
         }
-        .nav-item:hover { background: #2a4f38; color: #fff; }
-        .nav-item.active { background: #2a4f38; color: #a8d5a2; }
-        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #2a4f38; font-size: 12px; color: #4a7a5a; }
+        .nav-item:hover { background: #1a4a7a; color: #fff; }
+        .nav-item.active { background: #1a4a7a; color: #a0c4f0; }
+        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #1a4a7a; font-size: 12px; color: #5a7a8a; }
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         .top-bar {
           padding: 12px 24px; background: #fff; border-bottom: 1px solid #e8e4dc;
           display: flex; align-items: center; gap: 16px; flex-shrink: 0;
         }
-        .page-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: #1c3a2a; }
+        .page-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: #1a2a3a; }
         .btn-primary {
-          margin-left: auto; padding: 8px 18px; background: #1c3a2a; color: #a8d5a2;
+          margin-left: auto; padding: 8px 18px; background: #1a2a3a; color: #a0c4f0;
           border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
           cursor: pointer; font-family: 'DM Sans', sans-serif;
         }
-        .btn-primary:hover { background: #2a4f38; }
+        .btn-primary:hover { background: #1a4a7a; }
         .btn-cancel {
           padding: 8px 18px; background: none; color: #6a7a70;
           border: 1.5px solid #e0ddd6; border-radius: 8px; font-size: 13px; font-weight: 600;
@@ -504,20 +504,20 @@ export default function OrchardsPage() {
         }
         .btn-cancel:hover { background: #f4f1eb; }
         .btn-save {
-          padding: 8px 20px; background: #2a6e45; color: #fff;
+          padding: 8px 20px; background: #2176d9; color: #fff;
           border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
           cursor: pointer; font-family: 'DM Sans', sans-serif;
         }
         .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
         .btn-edit {
-          width: 100%; margin-top: 16px; padding: 9px; background: #f0f7f2; color: #2a6e45;
-          border: 1.5px solid #c8e6c9; border-radius: 8px; font-size: 13px; font-weight: 600;
+          width: 100%; margin-top: 16px; padding: 9px; background: #f0f4fa; color: #2176d9;
+          border: 1.5px solid #c8d8f0; border-radius: 8px; font-size: 13px; font-weight: 600;
           cursor: pointer; font-family: 'DM Sans', sans-serif;
         }
         .btn-edit:hover { background: #e0f0e4; }
         .farm-select {
           padding: 6px 10px; border-radius: 8px; border: 1.5px solid #e0ddd6;
-          font-family: 'DM Sans', sans-serif; font-size: 13px; color: #1c3a2a;
+          font-family: 'DM Sans', sans-serif; font-size: 13px; color: #1a2a3a;
           background: #fff; cursor: pointer; outline: none;
         }
         .content { flex: 1; display: flex; overflow: hidden; }
@@ -525,19 +525,19 @@ export default function OrchardsPage() {
           width: 340px; flex-shrink: 0; background: #fff; border-right: 1px solid #e8e4dc;
           overflow-y: auto; padding: 24px 20px; display: flex; flex-direction: column; gap: 14px;
         }
-        .field-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.7px; color: #9aaa9f; margin-bottom: 4px; }
+        .field-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.7px; color: #8a95a0; margin-bottom: 4px; }
         .field-input {
           width: 100%; padding: 8px 10px; border: 1.5px solid #e0ddd6; border-radius: 8px;
-          font-family: 'DM Sans', sans-serif; font-size: 13px; color: #1c3a2a; background: #fff; outline: none;
+          font-family: 'DM Sans', sans-serif; font-size: 13px; color: #1a2a3a; background: #fff; outline: none;
         }
-        .field-input:focus { border-color: #2a6e45; }
+        .field-input:focus { border-color: #2176d9; }
         .field-row { display: flex; gap: 10px; }
         .field-row .field-wrap { flex: 1; }
         .field-wrap { display: flex; flex-direction: column; }
         .required { color: #e85a4a; }
         .save-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
         .save-err { font-size: 12px; color: #e85a4a; }
-        .save-ok  { font-size: 12px; color: #2a6e45; font-weight: 600; }
+        .save-ok  { font-size: 12px; color: #2176d9; font-weight: 600; }
         .map-wrap { flex: 1; position: relative; }
         #orchards-map { width: 100%; height: 100%; }
         .info-panel {
@@ -546,20 +546,20 @@ export default function OrchardsPage() {
           padding: 20px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); z-index: 1000;
           max-height: calc(100vh - 80px); overflow-y: auto;
         }
-        .info-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: #1c3a2a; margin-bottom: 2px; }
-        .info-sub { font-size: 12px; color: #9aaa9f; margin-bottom: 14px; }
+        .info-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: #1a2a3a; margin-bottom: 2px; }
+        .info-sub { font-size: 12px; color: #8a95a0; margin-bottom: 14px; }
         .info-divider { height: 1px; background: #f0ede6; margin: 12px 0; }
         .info-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 13px; }
-        .info-label { color: #9aaa9f; }
-        .info-value { font-weight: 500; color: #1c3a2a; }
-        .placeholder-panel { color: #9aaa9f; font-size: 13px; font-style: italic; text-align: center; padding-top: 8px; }
+        .info-label { color: #8a95a0; }
+        .info-value { font-weight: 500; color: #1a2a3a; }
+        .placeholder-panel { color: #8a95a0; font-size: 13px; font-style: italic; text-align: center; padding-top: 8px; }
         .boundary-badge {
           position: absolute; top: 16px; left: 16px; z-index: 1100;
-          background: #1c3a2a; color: #a8d5a2; padding: 6px 14px;
+          background: #1a2a3a; color: #a0c4f0; padding: 6px 14px;
           border-radius: 20px; font-size: 12px; font-weight: 600; font-family: 'DM Sans', sans-serif;
         }
         .orchard-tooltip {
-          background: #1c3a2a !important; color: #fff !important; border: none !important;
+          background: #1a2a3a !important; color: #fff !important; border: none !important;
           border-radius: 6px !important; font-family: 'DM Sans', sans-serif !important;
           font-size: 12px !important; font-weight: 500 !important; padding: 4px 10px !important;
         }
@@ -571,7 +571,7 @@ export default function OrchardsPage() {
         }
         .orchard-list-header {
           padding: 14px 16px 10px; font-size: 11px; font-weight: 600;
-          text-transform: uppercase; letter-spacing: 0.7px; color: #9aaa9f;
+          text-transform: uppercase; letter-spacing: 0.7px; color: #8a95a0;
           border-bottom: 1px solid #f0ede6; flex-shrink: 0;
         }
         .orchard-list-item {
@@ -580,15 +580,15 @@ export default function OrchardsPage() {
           cursor: pointer; transition: background 0.1s;
         }
         .orchard-list-item:hover { background: #f7f5f0; }
-        .orchard-list-item.selected { background: #f0f7f2; }
-        .orchard-list-name { flex: 1; font-size: 13px; color: #1c3a2a; font-weight: 500; line-height: 1.3; }
+        .orchard-list-item.selected { background: #f0f4fa; }
+        .orchard-list-name { flex: 1; font-size: 13px; color: #1a2a3a; font-weight: 500; line-height: 1.3; }
         .orchard-list-no-boundary { font-size: 10px; color: #bbb; display: block; }
         .orchard-list-edit {
           flex-shrink: 0; padding: 3px 9px; font-size: 11px; font-weight: 600;
           background: none; border: 1.5px solid #e0ddd6; border-radius: 6px;
           color: #6a7a70; cursor: pointer; font-family: 'DM Sans', sans-serif;
         }
-        .orchard-list-edit:hover { background: #f0f7f2; border-color: #c8e6c9; color: #2a6e45; }
+        .orchard-list-edit:hover { background: #f0f4fa; border-color: #c8d8f0; color: #2176d9; }
 
         /* ── Mobile responsive ─────────────────────────────────── */
         @media (max-width: 768px) {
@@ -676,9 +676,9 @@ export default function OrchardsPage() {
           <a href="/scouts/sections" className="nav-item"><span>🗂️</span> Sections</a>
           <div className="sidebar-footer">
             Mouton's Valley Group<br />
-            <span style={{ color: '#2a6e45' }}>●</span> Connected<br />
+            <span style={{ color: '#2176d9' }}>●</span> Connected<br />
             <button onClick={async () => { await supabase.auth.signOut(); window.location.href = '/login' }}
-              style={{ marginTop: 10, background: 'none', border: '1px solid #2a4f38', color: '#6aaa80',
+              style={{ marginTop: 10, background: 'none', border: '1px solid #1a4a7a', color: '#6a9fd4',
                 borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
               Sign out
             </button>
@@ -870,21 +870,21 @@ export default function OrchardsPage() {
 
                       {/* Zones section */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.7px', color: '#9aaa9f' }}>Zones</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.7px', color: '#8a95a0' }}>Zones</span>
                         <button
                           onClick={handleGenerateZones}
                           disabled={!o.ha || zonesLoading}
                           title={o.ha ? `Auto-generate ${Math.ceil(o.ha / 2)} zones from ${o.ha} ha` : 'Set hectares first'}
                           style={{
                             padding: '3px 9px', fontSize: 11, fontWeight: 600, cursor: o.ha ? 'pointer' : 'not-allowed',
-                            background: o.ha ? '#1c3a2a' : '#e0e0e0', color: o.ha ? '#a8d5a2' : '#999',
+                            background: o.ha ? '#1a2a3a' : '#e0e0e0', color: o.ha ? '#a0c4f0' : '#999',
                             border: 'none', borderRadius: 6, fontFamily: 'DM Sans, sans-serif', opacity: zonesLoading ? 0.6 : 1,
                           }}>
                           ⚡ Auto-generate
                         </button>
                       </div>
 
-                      {zonesLoading && <div style={{ fontSize: 12, color: '#9aaa9f', marginBottom: 6 }}>Loading…</div>}
+                      {zonesLoading && <div style={{ fontSize: 12, color: '#8a95a0', marginBottom: 6 }}>Loading…</div>}
 
                       {!zonesLoading && orchardZones.map(zone => (
                         <div key={zone.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: '1px solid #f0ede6' }}>
@@ -895,18 +895,18 @@ export default function OrchardsPage() {
                                 value={editingZoneName}
                                 onChange={e => setEditingZoneName(e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter') handleRenameZone(zone.id, editingZoneName); if (e.key === 'Escape') setEditingZoneId(null) }}
-                                style={{ flex: 1, padding: '3px 6px', fontSize: 12, border: '1.5px solid #2a6e45', borderRadius: 5, fontFamily: 'DM Sans, sans-serif', color: '#1c3a2a' }}
+                                style={{ flex: 1, padding: '3px 6px', fontSize: 12, border: '1.5px solid #2176d9', borderRadius: 5, fontFamily: 'DM Sans, sans-serif', color: '#1a2a3a' }}
                               />
                               <button onClick={() => handleRenameZone(zone.id, editingZoneName)}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2a6e45', fontSize: 14, padding: '0 2px' }} title="Save">✓</button>
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2176d9', fontSize: 14, padding: '0 2px' }} title="Save">✓</button>
                               <button onClick={() => setEditingZoneId(null)}
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: 14, padding: '0 2px' }} title="Cancel">✗</button>
                             </>
                           ) : (
                             <>
-                              <span style={{ flex: 1, fontSize: 13, color: '#1c3a2a' }}>{zone.name}</span>
+                              <span style={{ flex: 1, fontSize: 13, color: '#1a2a3a' }}>{zone.name}</span>
                               <button onClick={() => { setEditingZoneId(zone.id); setEditingZoneName(zone.name) }}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9aaa9f', fontSize: 13, padding: '0 2px' }} title="Rename">✏️</button>
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8a95a0', fontSize: 13, padding: '0 2px' }} title="Rename">✏️</button>
                               <button onClick={() => handleDeleteZone(zone.id)}
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e85a4a', fontSize: 13, padding: '0 2px' }} title="Delete">×</button>
                             </>
@@ -915,12 +915,12 @@ export default function OrchardsPage() {
                       ))}
 
                       {!zonesLoading && orchardZones.length === 0 && (
-                        <div style={{ fontSize: 12, color: '#9aaa9f', fontStyle: 'italic', marginBottom: 4 }}>No zones — use Auto-generate or add manually</div>
+                        <div style={{ fontSize: 12, color: '#8a95a0', fontStyle: 'italic', marginBottom: 4 }}>No zones — use Auto-generate or add manually</div>
                       )}
 
                       <button onClick={handleAddZone} disabled={zonesLoading}
                         style={{
-                          marginTop: 6, background: 'none', border: 'none', color: '#2a6e45',
+                          marginTop: 6, background: 'none', border: 'none', color: '#2176d9',
                           fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'DM Sans, sans-serif',
                         }}>
                         + Add zone
@@ -928,7 +928,7 @@ export default function OrchardsPage() {
 
                       <div className="info-divider" />
                       {!boundaryMapRef.current[o.id] && (
-                        <div style={{ fontSize: 12, color: '#9aaa9f', fontStyle: 'italic', marginBottom: 8 }}>
+                        <div style={{ fontSize: 12, color: '#8a95a0', fontStyle: 'italic', marginBottom: 8 }}>
                           No boundary drawn — click Edit to draw one
                         </div>
                       )}

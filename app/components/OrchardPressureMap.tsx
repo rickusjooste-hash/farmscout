@@ -9,7 +9,7 @@ import {
 } from 'recharts'
 
 const LINE_COLORS = [
-  '#2a6e45', '#e8924a', '#6b7fa8', '#e8c44a',
+  '#2176d9', '#e8924a', '#6b7fa8', '#e8c44a',
   '#9b6bb5', '#c4744a', '#4a9e6b', '#e85a4a',
 ]
 
@@ -401,7 +401,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
     <>
       <style>{`
         .opm-tooltip {
-          background: #1c3a2a !important; color: #fff !important; border: none !important;
+          background: #1a2a3a !important; color: #fff !important; border: none !important;
           border-radius: 6px !important; font-size: 12px !important; font-weight: 500 !important;
           padding: 4px 10px !important; font-family: 'Inter', sans-serif !important;
         }
@@ -430,13 +430,13 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
         .opm-th {
           position: sticky; top: 0; background: #f9f7f3; text-align: left;
           font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px;
-          color: #9aaa9f; font-weight: 700; padding: 8px 14px;
+          color: #8a95a0; font-weight: 700; padding: 8px 14px;
           border-bottom: 1px solid #f0ede6;
         }
         .opm-td { padding: 9px 14px; font-size: 13px; color: #3a4a40; border-bottom: 1px solid #f9f7f3; }
         .opm-tr-click { cursor: pointer; }
         .opm-tr-click:hover .opm-td { background: #f9f7f3; }
-        .opm-tr-sel .opm-td { background: #f0f7f2; }
+        .opm-tr-sel .opm-td { background: #f0f4fa; }
       `}</style>
 
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 20 }}>
@@ -444,15 +444,15 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
         {/* Card header */}
         <div className="opm-header" style={{ padding: '16px 20px', borderBottom: expanded ? '1px solid #f0ede6' : 'none', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', cursor: 'pointer' }} onClick={() => setExpanded(e => !e)}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-            <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a' }}>Orchard Trap Pressure</div>
-            <span style={{ fontSize: 13, color: '#7a8a80', transition: 'transform 0.2s', display: 'inline-block', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>{'\u25BC'}</span>
+            <div style={{ fontSize: 17, fontWeight: 600, color: '#1a2a3a' }}>Orchard Trap Pressure</div>
+            <span style={{ fontSize: 13, color: '#7a8a9a', transition: 'transform 0.2s', display: 'inline-block', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>{'\u25BC'}</span>
           </div>
 
           {expanded && <>
           {/* Week navigation */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={e => e.stopPropagation()}>
             {arrowBtn('‹', () => { const p = prevWeek(weekYear, weekNum); setWeekYear(p.year); setWeekNum(p.week) })}
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a', whiteSpace: 'nowrap', minWidth: 170, textAlign: 'center' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a', whiteSpace: 'nowrap', minWidth: 170, textAlign: 'center' }}>
               {weekLabel(weekYear, weekNum)}
             </span>
             {arrowBtn('›', () => { if (canGoForward) { const n = nextWeek(weekYear, weekNum); setWeekYear(n.year); setWeekNum(n.week) } }, !canGoForward)}
@@ -466,13 +466,13 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
 
           {/* Pest pills */}
           <div className="opm-pills" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginLeft: 'auto' }} onClick={e => e.stopPropagation()}>
-            <span style={{ fontSize: 11, color: '#9aaa9f', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', flexShrink: 0 }}>Pest</span>
+            <span style={{ fontSize: 11, color: '#8a95a0', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', flexShrink: 0 }}>Pest</span>
             {pests.map(p => (
               <button key={p.id} onClick={() => setSelectedPest(p)} style={{
                 padding: '3px 10px', borderRadius: 20,
-                border: `1.5px solid ${selectedPest?.id === p.id ? '#1c3a2a' : '#e0ddd6'}`,
-                background: selectedPest?.id === p.id ? '#1c3a2a' : '#fff',
-                color: selectedPest?.id === p.id ? '#a8d5a2' : '#6a7a70',
+                border: `1.5px solid ${selectedPest?.id === p.id ? '#1a2a3a' : '#e0ddd6'}`,
+                background: selectedPest?.id === p.id ? '#1a2a3a' : '#fff',
+                color: selectedPest?.id === p.id ? '#a0c4f0' : '#6a7a70',
                 fontSize: 12, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s',
               }}>{p.name}</button>
             ))}
@@ -483,7 +483,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
         {expanded && <>
         {/* Loading bar */}
         {loading && (
-          <div style={{ height: 3, background: 'linear-gradient(90deg, #2a6e45, #a8d5a2)', animation: 'shimmer 1s infinite' }} />
+          <div style={{ height: 3, background: 'linear-gradient(90deg, #2176d9, #a0c4f0)', animation: 'shimmer 1s infinite' }} />
         )}
 
         {/* Body: map + table */}
@@ -496,7 +496,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
             style={{
               width: '100%', padding: '12px 16px', background: '#f9f7f3',
               border: 'none', borderBottom: '1px solid #e8e4dc',
-              fontSize: 13, fontWeight: 500, color: '#2a6e45', cursor: 'pointer',
+              fontSize: 13, fontWeight: 500, color: '#2176d9', cursor: 'pointer',
               alignItems: 'center', justifyContent: 'center', gap: 6,
             } as CSSProperties}
           >
@@ -512,7 +512,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
               borderRadius: 8, border: '1px solid #e8e4dc', padding: '10px 14px', zIndex: 1000,
               boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
             }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#9aaa9f', marginBottom: 7 }}>Threshold</div>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#8a95a0', marginBottom: 7 }}>Threshold</div>
               {Object.entries(STATUS_COLORS).map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: '#3a4a40', marginBottom: 4 }}>
                   <div style={{ width: 10, height: 10, borderRadius: 3, background: v.fill, flexShrink: 0 }} />
@@ -528,14 +528,14 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
             <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0ede6', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
               {selectedOrchardId ? (
                 <>
-                  <button onClick={() => setSelectedOrchardId(null)} style={{ fontSize: 12, color: '#2a6e45', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, padding: 0 }}>‹ All orchards</button>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a' }}>{selectedOrchard?.name}</span>
-                  <span style={{ fontSize: 12, color: '#9aaa9f', marginLeft: 'auto' }}>{trapDetail.length} traps</span>
+                  <button onClick={() => setSelectedOrchardId(null)} style={{ fontSize: 12, color: '#2176d9', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, padding: 0 }}>‹ All orchards</button>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a' }}>{selectedOrchard?.name}</span>
+                  <span style={{ fontSize: 12, color: '#8a95a0', marginLeft: 'auto' }}>{trapDetail.length} traps</span>
                 </>
               ) : (
                 <>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a' }}>{selectedPest?.name || '—'}</span>
-                  <span style={{ fontSize: 12, color: '#9aaa9f', marginLeft: 'auto' }}>{orchardsSorted.length} orchards</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a' }}>{selectedPest?.name || '—'}</span>
+                  <span style={{ fontSize: 12, color: '#8a95a0', marginLeft: 'auto' }}>{orchardsSorted.length} orchards</span>
                 </>
               )}
             </div>
@@ -550,7 +550,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
                     ))}
                   </div>
                 ) : trapDetail.length === 0 ? (
-                  <div style={{ padding: 32, textAlign: 'center', color: '#9aaa9f', fontSize: 13 }}>No trap data this week.</div>
+                  <div style={{ padding: 32, textAlign: 'center', color: '#8a95a0', fontSize: 13 }}>No trap data this week.</div>
                 ) : (
                   <table className="opm-summary-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead><tr>
@@ -563,8 +563,8 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
                       {trapDetail.map((row, i) => (
                         <tr key={i}>
                           <td className="opm-td">T{row.trap_nr ?? row.trap_seq ?? '—'}</td>
-                          <td className="opm-td" style={{ fontWeight: 600, color: '#1c3a2a' }}>{row.count}</td>
-                          <td className="opm-td" style={{ color: '#9aaa9f' }}>{pressure[selectedOrchardId!]?.threshold ?? 'Not set'}</td>
+                          <td className="opm-td" style={{ fontWeight: 600, color: '#1a2a3a' }}>{row.count}</td>
+                          <td className="opm-td" style={{ color: '#8a95a0' }}>{pressure[selectedOrchardId!]?.threshold ?? 'Not set'}</td>
                           <td className="opm-td" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                             {dot(row.status)}
                             <span style={{ fontSize: 11, color: STATUS_COLORS[row.status as keyof typeof STATUS_COLORS]?.fill }}>{STATUS_COLORS[row.status as keyof typeof STATUS_COLORS]?.label}</span>
@@ -576,7 +576,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
                 )
               ) : (
                 orchardsSorted.length === 0 ? (
-                  <div style={{ padding: 32, textAlign: 'center', color: '#9aaa9f', fontSize: 13 }}>No trap data for this week.</div>
+                  <div style={{ padding: 32, textAlign: 'center', color: '#8a95a0', fontSize: 13 }}>No trap data for this week.</div>
                 ) : (
                   <table className="opm-summary-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead><tr>
@@ -594,20 +594,20 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
                         return (
                           <tr key={o.id} className={`opm-tr-click${selectedOrchardId === o.id ? ' opm-tr-sel' : ''}`}
                             onClick={() => setSelectedOrchardId(o.id)}>
-                            <td className="opm-td" style={{ fontWeight: 500, color: '#1c3a2a' }}>{o.name}</td>
-                            <td className="opm-td" style={{ fontWeight: 600, color: '#1c3a2a' }}>{p.total_count}</td>
+                            <td className="opm-td" style={{ fontWeight: 500, color: '#1a2a3a' }}>{o.name}</td>
+                            <td className="opm-td" style={{ fontWeight: 600, color: '#1a2a3a' }}>{p.total_count}</td>
                             <td className="opm-td">
                               {delta === null ? (
-                                <span style={{ color: '#9aaa9f' }}>—</span>
+                                <span style={{ color: '#8a95a0' }}>—</span>
                               ) : delta === 0 ? (
-                                <span style={{ color: '#9aaa9f' }}>—</span>
+                                <span style={{ color: '#8a95a0' }}>—</span>
                               ) : delta > 0 ? (
                                 <span style={{ color: '#e8924a', fontWeight: 600 }}>+{delta} ↑</span>
                               ) : (
                                 <span style={{ color: '#4caf72', fontWeight: 600 }}>{delta} ↓</span>
                               )}
                             </td>
-                            <td className="opm-td" style={{ color: '#9aaa9f' }}>{p.trap_count}</td>
+                            <td className="opm-td" style={{ color: '#8a95a0' }}>{p.trap_count}</td>
                             <td className="opm-td">{dot(p.status)}</td>
                           </tr>
                         )
@@ -623,7 +623,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
         {/* Season trend chart — full width (hidden on mobile) */}
         {(chartLoading || chartData.length > 0) && (
           <div className="opm-chart-section" style={{ padding: '20px 24px 24px', borderTop: '1px solid #f0ede6' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#9aaa9f', marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#8a95a0', marginBottom: 14 }}>
               Season Trap Counts by Week{selectedPest ? ` · ${selectedPest.name}` : ''}
             </div>
             {chartLoading ? (
@@ -636,22 +636,22 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" />
                   <XAxis
                     dataKey="week"
-                    tick={{ fontSize: 11, fill: '#9aaa9f', fontFamily: 'Inter' }}
+                    tick={{ fontSize: 11, fill: '#8a95a0', fontFamily: 'Inter' }}
                     tickLine={false}
                     axisLine={{ stroke: '#f0ede6' }}
                     interval="preserveStartEnd"
                   />
                   <YAxis
-                    tick={{ fontSize: 11, fill: '#9aaa9f', fontFamily: 'Inter' }}
+                    tick={{ fontSize: 11, fill: '#8a95a0', fontFamily: 'Inter' }}
                     tickLine={false}
                     axisLine={false}
                   />
                   <Tooltip
                     contentStyle={{
-                      background: '#1c3a2a', border: 'none', borderRadius: 10,
+                      background: '#1a2a3a', border: 'none', borderRadius: 10,
                       padding: '10px 14px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
                     }}
-                    labelStyle={{ color: '#a8d5a2', fontSize: 12, fontWeight: 600, marginBottom: 6 }}
+                    labelStyle={{ color: '#a0c4f0', fontSize: 12, fontWeight: 600, marginBottom: 6 }}
                     itemStyle={{ fontSize: 12 }}
                   />
                   {chartPests.map((name, i) => {

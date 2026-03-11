@@ -209,7 +209,7 @@ export default function ScoutProductivityPage() {
   if (!contextLoaded) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'Inter, sans-serif' }}>
-        <div style={{ color: '#9aaa9f' }}>Loading...</div>
+        <div style={{ color: '#8a95a0' }}>Loading...</div>
       </div>
     )
   }
@@ -347,12 +347,12 @@ export default function ScoutProductivityPage() {
         .sprod-title {
           font-size: 22px;
           font-weight: 700;
-          color: #1c3a2a;
+          color: #1a2a3a;
           margin: 0;
         }
         .sprod-link {
           font-size: 13px;
-          color: #2a6e45;
+          color: #2176d9;
           text-decoration: none;
         }
         .sprod-link:hover { text-decoration: underline; }
@@ -369,13 +369,13 @@ export default function ScoutProductivityPage() {
           font-weight: 600;
           border: none;
           background: none;
-          color: #9aaa9f;
+          color: #8a95a0;
           cursor: pointer;
           font-family: 'Inter', sans-serif;
         }
         .sprod-toggle-btn.active {
-          background: #1c3a2a;
-          color: #a8d5a2;
+          background: #1a2a3a;
+          color: #a0c4f0;
         }
         .sprod-nav {
           display: flex;
@@ -390,7 +390,7 @@ export default function ScoutProductivityPage() {
           height: 28px;
           font-size: 16px;
           cursor: pointer;
-          color: #1c3a2a;
+          color: #1a2a3a;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -404,7 +404,7 @@ export default function ScoutProductivityPage() {
         .sprod-nav-label {
           font-size: 13px;
           font-weight: 600;
-          color: #1c3a2a;
+          color: #1a2a3a;
           min-width: 120px;
           text-align: center;
         }
@@ -425,11 +425,11 @@ export default function ScoutProductivityPage() {
           cursor: pointer;
           font-family: 'Inter', sans-serif;
         }
-        .sprod-pill:hover { border-color: #2a6e45; }
+        .sprod-pill:hover { border-color: #2176d9; }
         .sprod-pill.active {
-          background: #1c3a2a;
-          color: #a8d5a2;
-          border-color: #1c3a2a;
+          background: #1a2a3a;
+          color: #a0c4f0;
+          border-color: #1a2a3a;
         }
         .sprod-card {
           background: #fff;
@@ -444,7 +444,7 @@ export default function ScoutProductivityPage() {
           position: absolute;
           top: 0; left: 0; right: 0;
           height: 3px;
-          background: linear-gradient(90deg, #2a6e45, #a8d5a2);
+          background: linear-gradient(90deg, #2176d9, #a0c4f0);
         }
         .sprod-loading {
           display: flex;
@@ -469,7 +469,7 @@ export default function ScoutProductivityPage() {
           background: #fafaf8;
           border-radius: 8px;
           font-size: 11px;
-          color: #9aaa9f;
+          color: #8a95a0;
           line-height: 1.5;
         }
         @media (max-width: 768px) {

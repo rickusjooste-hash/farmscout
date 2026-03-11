@@ -473,7 +473,7 @@ export default function QcBagMapPage() {
           background: #fff; border-bottom: 1px solid #e8e4dc;
           padding: 12px 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
         }
-        .qbm-page-title { font-size: 17px; font-weight: 700; color: #1c3a2a; }
+        .qbm-page-title { font-size: 17px; font-weight: 700; color: #1a2a3a; }
         .qbm-pills-bar {
           background: #fff; border-bottom: 1px solid #f0ede6;
           padding: 8px 20px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 44px;
@@ -483,7 +483,7 @@ export default function QcBagMapPage() {
           background: #fff; color: #6a7a70; font-size: 12px; font-weight: 500;
           cursor: pointer; transition: all 0.15s; white-space: nowrap;
         }
-        .qbm-pill.active { background: #1c3a2a; border-color: #1c3a2a; color: #a8d5a2; }
+        .qbm-pill.active { background: #1a2a3a; border-color: #1a2a3a; color: #a0c4f0; }
         .qbm-pill:hover:not(.active) { background: #f4f1ea; }
         .qbm-body-row { flex: 1; display: flex; overflow: hidden; position: relative; }
         .qbm-map-wrap { flex: 1; position: relative; }
@@ -505,13 +505,13 @@ export default function QcBagMapPage() {
         }
         .qbm-panel-close {
           margin-left: auto; background: none; border: none; font-size: 18px;
-          color: #9aaa9f; cursor: pointer; padding: 0 4px; line-height: 1; flex-shrink: 0;
+          color: #8a95a0; cursor: pointer; padding: 0 4px; line-height: 1; flex-shrink: 0;
         }
         .qbm-panel-close:hover { color: #3a4a40; }
         .qbm-panel-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
         .qbm-section-label {
           font-size: 10px; font-weight: 700; text-transform: uppercase;
-          letter-spacing: 0.8px; color: #9aaa9f; margin-bottom: 4px;
+          letter-spacing: 0.8px; color: #8a95a0; margin-bottom: 4px;
         }
         .qbm-obs-row {
           display: flex; align-items: center; gap: 10px; padding: 8px 0;
@@ -523,7 +523,7 @@ export default function QcBagMapPage() {
           color: #fff; flex-shrink: 0;
         }
         .qbm-tooltip {
-          background: #1c3a2a !important; color: #fff !important; border: none !important;
+          background: #1a2a3a !important; color: #fff !important; border: none !important;
           border-radius: 6px !important; font-size: 12px !important; font-weight: 500 !important;
           padding: 4px 10px !important; font-family: 'Inter', sans-serif !important;
         }
@@ -561,8 +561,8 @@ export default function QcBagMapPage() {
                   style={{
                     padding: '4px 14px', borderRadius: 18, border: 'none', fontSize: 12, fontWeight: 600,
                     cursor: 'pointer', transition: 'all 0.15s',
-                    background: dateMode === 'today' ? '#1c3a2a' : 'transparent',
-                    color: dateMode === 'today' ? '#a8d5a2' : '#6a7a70',
+                    background: dateMode === 'today' ? '#1a2a3a' : 'transparent',
+                    color: dateMode === 'today' ? '#a0c4f0' : '#6a7a70',
                   }}
                 >Today</button>
                 <button
@@ -570,8 +570,8 @@ export default function QcBagMapPage() {
                   style={{
                     padding: '4px 14px', borderRadius: 18, border: 'none', fontSize: 12, fontWeight: 600,
                     cursor: 'pointer', transition: 'all 0.15s',
-                    background: dateMode === 'week' ? '#1c3a2a' : 'transparent',
-                    color: dateMode === 'week' ? '#a8d5a2' : '#6a7a70',
+                    background: dateMode === 'week' ? '#1a2a3a' : 'transparent',
+                    color: dateMode === 'week' ? '#a0c4f0' : '#6a7a70',
                   }}
                 >This Week</button>
               </div>
@@ -581,7 +581,7 @@ export default function QcBagMapPage() {
                 {dateMode === 'today' ? (
                   <>
                     <NavArrow dir={'\u2039'} onClick={() => selectedDate && setSelectedDate(prevDay(selectedDate))} />
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a', whiteSpace: 'nowrap', minWidth: 140, textAlign: 'center' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a', whiteSpace: 'nowrap', minWidth: 140, textAlign: 'center' }}>
                       {selectedDate ? (isToday(selectedDate) ? 'Today \u00b7 ' : '') + dayLabel(selectedDate) : '\u2026'}
                     </span>
                     <NavArrow dir={'\u203a'} onClick={() => { if (canGoForwardDay && selectedDate) setSelectedDate(nextDay(selectedDate)) }} disabled={!canGoForwardDay} />
@@ -592,7 +592,7 @@ export default function QcBagMapPage() {
                       const p = prevWeek(weekYear, weekNum)
                       setWeekYear(p.year); setWeekNum(p.week)
                     }} />
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a', whiteSpace: 'nowrap', minWidth: 180, textAlign: 'center' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a', whiteSpace: 'nowrap', minWidth: 180, textAlign: 'center' }}>
                       {weekLabel(weekYear, weekNum)}
                     </span>
                     <NavArrow dir={'\u203a'} onClick={() => {
@@ -617,16 +617,16 @@ export default function QcBagMapPage() {
             {/* Stats */}
             <div style={{ marginLeft: 'auto', fontSize: 13, color: '#6a7a70', display: 'flex', alignItems: 'center', gap: 8 }}>
               {loading ? (
-                <span style={{ color: '#9aaa9f' }}>Loading\u2026</span>
+                <span style={{ color: '#8a95a0' }}>Loading\u2026</span>
               ) : (
                 <>
-                  <span><strong style={{ color: '#1c3a2a' }}>{dots.length}</strong> bags</span>
+                  <span><strong style={{ color: '#1a2a3a' }}>{dots.length}</strong> bags</span>
                   <span style={{ color: '#d0cdc6' }}>\u00b7</span>
-                  <span><strong style={{ color: withIssues > 0 ? '#e85a4a' : '#1c3a2a' }}>{withIssues}</strong> with issues</span>
+                  <span><strong style={{ color: withIssues > 0 ? '#e85a4a' : '#1a2a3a' }}>{withIssues}</strong> with issues</span>
                   {noGpsCount > 0 && (
                     <>
                       <span style={{ color: '#d0cdc6' }}>\u00b7</span>
-                      <span style={{ color: '#9aaa9f' }}>{noGpsCount} without GPS</span>
+                      <span style={{ color: '#8a95a0' }}>{noGpsCount} without GPS</span>
                     </>
                   )}
                 </>
@@ -636,12 +636,12 @@ export default function QcBagMapPage() {
 
           {/* Loading bar */}
           {loading && (
-            <div style={{ height: 3, background: 'linear-gradient(90deg, #2a6e45, #a8d5a2)', animation: 'qbm-shimmer 1s infinite' }} />
+            <div style={{ height: 3, background: 'linear-gradient(90deg, #2176d9, #a0c4f0)', animation: 'qbm-shimmer 1s infinite' }} />
           )}
 
           {/* Issue pills bar */}
           <div className="qbm-pills-bar">
-            <span style={{ fontSize: 11, color: '#9aaa9f', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Issue</span>
+            <span style={{ fontSize: 11, color: '#8a95a0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Issue</span>
             <button
               className={`qbm-pill${!selectedIssueId ? ' active' : ''}`}
               onClick={() => setSelectedIssueId(null)}
@@ -682,12 +682,12 @@ export default function QcBagMapPage() {
               {!loading && dots.length === 0 && mapReady && (
                 <div className="qbm-empty-overlay">
                   <div className="qbm-empty-card">
-                    <div style={{ fontSize: 15, fontWeight: 600, color: '#1c3a2a', marginBottom: 6 }}>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: '#1a2a3a', marginBottom: 6 }}>
                       {dateMode === 'today'
                         ? `No QC bags recorded for ${selectedDate ? dayLabel(selectedDate) : 'today'}`
                         : `No QC bags recorded for W${weekNum}`}
                     </div>
-                    <div style={{ fontSize: 13, color: '#9aaa9f' }}>
+                    <div style={{ fontSize: 13, color: '#8a95a0' }}>
                       {dateMode === 'today' ? '\u2190 Go to a previous day' : '\u2190 Go to a previous week'}
                     </div>
                   </div>
@@ -700,7 +700,7 @@ export default function QcBagMapPage() {
               <div className="qbm-side-panel">
                 <div className="qbm-panel-header">
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: '#1c3a2a' }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a3a' }}>
                       Bag #{selectedBag.bag_seq ?? '?'}
                     </div>
                     <div style={{ fontSize: 13, color: '#6a7a70', marginTop: 2 }}>
@@ -715,7 +715,7 @@ export default function QcBagMapPage() {
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#3a4a40' }}>
                       {selectedBag.employee_name}
                     </div>
-                    <div style={{ fontSize: 12, color: '#9aaa9f' }}>
+                    <div style={{ fontSize: 12, color: '#8a95a0' }}>
                       {new Date(selectedBag.collected_at).toLocaleString('en-ZA', {
                         weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
                       })}
@@ -725,7 +725,7 @@ export default function QcBagMapPage() {
                         className="qbm-status-badge"
                         style={{
                           background: selectedBag.status === 'sampled' ? '#e8f5e9' : '#fff8e1',
-                          color: selectedBag.status === 'sampled' ? '#2a6e45' : '#7a5c00',
+                          color: selectedBag.status === 'sampled' ? '#2176d9' : '#7a5c00',
                         }}
                       >
                         {selectedBag.status === 'sampled' ? 'Sampled' : 'Collected'}
@@ -751,7 +751,7 @@ export default function QcBagMapPage() {
                               disabled={savingLocation}
                               style={{
                                 flex: 1, padding: '6px 12px', borderRadius: 6, border: 'none',
-                                background: '#2a6e45', color: '#fff', fontSize: 12, fontWeight: 600,
+                                background: '#2176d9', color: '#fff', fontSize: 12, fontWeight: 600,
                                 cursor: savingLocation ? 'wait' : 'pointer',
                               }}
                             >{savingLocation ? 'Saving\u2026' : 'Save location'}</button>
@@ -766,7 +766,7 @@ export default function QcBagMapPage() {
                           </div>
                         </div>
                       ) : (
-                        <div style={{ fontSize: 12, color: '#9aaa9f' }}>
+                        <div style={{ fontSize: 12, color: '#8a95a0' }}>
                           Drag the pin to correct its position
                         </div>
                       )}
@@ -774,7 +774,7 @@ export default function QcBagMapPage() {
                   )}
 
                   {loadingDetail ? (
-                    <div style={{ fontSize: 13, color: '#9aaa9f', padding: '8px 0' }}>Loading\u2026</div>
+                    <div style={{ fontSize: 13, color: '#8a95a0', padding: '8px 0' }}>Loading\u2026</div>
                   ) : bagDetail ? (
                     <>
                       <div>
@@ -782,7 +782,7 @@ export default function QcBagMapPage() {
                         <div style={{ fontSize: 13, color: '#3a4a40' }}>
                           {bagDetail.fruit.length} fruit
                           {bagDetail.fruit.length > 0 && (
-                            <span style={{ color: '#9aaa9f' }}>
+                            <span style={{ color: '#8a95a0' }}>
                               {' '}\u00b7 avg {Math.round(bagDetail.fruit.reduce((s, f) => s + f.weight_g, 0) / bagDetail.fruit.length)}g
                             </span>
                           )}
@@ -791,12 +791,12 @@ export default function QcBagMapPage() {
                       <div>
                         <div className="qbm-section-label">Issues</div>
                         {bagDetail.issues.length === 0 ? (
-                          <div style={{ fontSize: 13, color: '#9aaa9f', padding: '8px 0' }}>No issues recorded.</div>
+                          <div style={{ fontSize: 13, color: '#8a95a0', padding: '8px 0' }}>No issues recorded.</div>
                         ) : (
                           bagDetail.issues.map((iss, i) => (
                             <div key={i} className="qbm-obs-row">
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a' }}>{iss.pest_name}</div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a' }}>{iss.pest_name}</div>
                                 <div style={{ fontSize: 11, color: '#b0bdb5' }}>{iss.category === 'picking_issue' ? 'Picking' : 'QC'}</div>
                               </div>
                               <div

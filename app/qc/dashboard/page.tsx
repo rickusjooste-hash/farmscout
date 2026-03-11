@@ -197,44 +197,44 @@ function issueRateColor(rate: number): string {
 // ── Inline styles ───────────────────────────────────────────────────────────
 
 const s: Record<string, React.CSSProperties> = {
-  page:        { display: 'flex', minHeight: '100vh', background: '#f4f1eb', fontFamily: 'Inter, system-ui, sans-serif', color: '#1c3a2a' },
+  page:        { display: 'flex', minHeight: '100vh', background: '#f4f1eb', fontFamily: 'Inter, system-ui, sans-serif', color: '#1a2a3a' },
   main:        { flex: 1, padding: 40, overflowY: 'auto', minWidth: 0 },
   pageHeader:  { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24 },
-  pageTitle:   { fontSize: 32, fontWeight: 700, color: '#1c3a2a', letterSpacing: '-0.5px', lineHeight: 1 },
-  pageSub:     { fontSize: 14, color: '#9aaa9f', marginTop: 6 },
+  pageTitle:   { fontSize: 32, fontWeight: 700, color: '#1a2a3a', letterSpacing: '-0.5px', lineHeight: 1 },
+  pageSub:     { fontSize: 14, color: '#8a95a0', marginTop: 6 },
   filters:     { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' as const, marginBottom: 28 },
   filterGroup: { display: 'flex', gap: 6 },
   pill:        { padding: '6px 14px', borderRadius: 20, border: '1px solid #d4cfca', background: '#fff', color: '#5a6a60', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
-  pillActive:  { padding: '6px 14px', borderRadius: 20, border: '1px solid #2a6e45', background: '#2a6e45', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
+  pillActive:  { padding: '6px 14px', borderRadius: 20, border: '1px solid #2176d9', background: '#2176d9', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
   divider:     { width: 1, height: 24, background: '#d4cfca' },
   // KPI strip
   kpiStrip:    { display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 16, marginBottom: 28 },
   kpiCard:     { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '20px 24px', position: 'relative', overflow: 'hidden' },
-  kpiAccent:   { position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #2a6e45, #a8d5a2)' },
-  kpiLabel:    { fontSize: 12, color: '#9aaa9f', textTransform: 'uppercase' as const, letterSpacing: '0.06em', fontWeight: 600, marginBottom: 8 },
-  kpiValue:    { fontSize: 36, fontWeight: 700, color: '#1c3a2a', lineHeight: 1 },
-  kpiSub:      { fontSize: 12, color: '#9aaa9f', marginTop: 6 },
+  kpiAccent:   { position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #2176d9, #a0c4f0)' },
+  kpiLabel:    { fontSize: 12, color: '#8a95a0', textTransform: 'uppercase' as const, letterSpacing: '0.06em', fontWeight: 600, marginBottom: 8 },
+  kpiValue:    { fontSize: 36, fontWeight: 700, color: '#1a2a3a', lineHeight: 1 },
+  kpiSub:      { fontSize: 12, color: '#8a95a0', marginTop: 6 },
   // Cards
   card:        { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 24 },
   cardHeader:  { padding: '20px 24px 16px', borderBottom: '1px solid #f0ede6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  cardTitle:   { fontSize: 17, fontWeight: 600, color: '#1c3a2a' },
+  cardTitle:   { fontSize: 17, fontWeight: 600, color: '#1a2a3a' },
   cardBody:    { padding: '20px 24px' },
   // Table
-  tableHead:   { display: 'grid', gap: 8, padding: '10px 16px', background: '#f7f5f0', borderBottom: '1px solid #e8e4dc', fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase' as const, letterSpacing: '0.06em', alignItems: 'center' },
+  tableHead:   { display: 'grid', gap: 8, padding: '10px 16px', background: '#f7f5f0', borderBottom: '1px solid #e8e4dc', fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase' as const, letterSpacing: '0.06em', alignItems: 'center' },
   tableRow:    { display: 'grid', gap: 8, padding: '11px 16px', borderBottom: '1px solid #f0ede6', alignItems: 'center', cursor: 'pointer', transition: 'background 0.1s' },
   // Slide-out panel
   overlay:     { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 100 },
   panel:       { position: 'fixed', right: 0, top: 0, bottom: 0, width: 440, background: '#fff', zIndex: 101, boxShadow: '-4px 0 24px rgba(0,0,0,0.12)', display: 'flex', flexDirection: 'column', overflowY: 'auto' },
   panelHead:   { padding: '20px 24px', borderBottom: '1px solid #e8e4dc', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' },
   panelBody:   { padding: '20px 24px', flex: 1, overflowY: 'auto' },
-  closeBtn:    { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#9aaa9f', lineHeight: 1, padding: 4 },
+  closeBtn:    { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#8a95a0', lineHeight: 1, padding: 4 },
   // Progress bar
   progBg:      { flex: 1, height: 6, background: '#f0ede6', borderRadius: 3, overflow: 'hidden' },
   progFill:    { height: '100%', borderRadius: 3, transition: 'width 0.6s ease' },
   // Issue category badge
   badgePicking:{ padding: '2px 7px', borderRadius: 4, fontSize: 10, fontWeight: 700, background: '#fffbe6', color: '#7a5c00', border: '1px solid #f5c842' },
   badgeQc:     { padding: '2px 7px', borderRadius: 4, fontSize: 10, fontWeight: 700, background: '#fff5f4', color: '#8a2020', border: '1px solid #e85a4a' },
-  loading:     { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200, color: '#9aaa9f', fontSize: 14 },
+  loading:     { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200, color: '#8a95a0', fontSize: 14 },
 }
 
 // ── Custom tooltip ──────────────────────────────────────────────────────────
@@ -242,7 +242,7 @@ const s: Record<string, React.CSSProperties> = {
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
-    <div style={{ background: '#1c3a2a', color: '#e8f0e0', padding: '10px 14px', borderRadius: 8, fontSize: 13 }}>
+    <div style={{ background: '#1a2a3a', color: '#e8f0e0', padding: '10px 14px', borderRadius: 8, fontSize: 13 }}>
       <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i}>{p.name}: <strong>{p.value}</strong></div>
@@ -613,7 +613,7 @@ export default function QcDashboardPage() {
     '#c0392b', '#e74c3c', '#e8604c', '#f0876a',
     '#f5a58a', '#f9c3ab', '#fddecf',
     '#d35400', '#e67e22', '#f39c12', '#f1c40f', '#a8d8a8',
-    '#6b7fa8', '#9aaa9f', '#c8c4bb',
+    '#6b7fa8', '#8a95a0', '#c8c4bb',
   ]
 
   return (
@@ -706,8 +706,8 @@ export default function QcDashboardPage() {
                 value={season}
                 onChange={e => setSeason(e.target.value)}
                 style={{
-                  padding: '5px 10px', borderRadius: 20, border: '1.5px solid #2a6e45',
-                  background: '#2a6e45', color: '#fff',
+                  padding: '5px 10px', borderRadius: 20, border: '1.5px solid #2176d9',
+                  background: '#2176d9', color: '#fff',
                   fontSize: 12, fontWeight: 600, cursor: 'pointer',
                 }}
               >
@@ -722,7 +722,7 @@ export default function QcDashboardPage() {
               onChange={e => { setCustomDate(e.target.value); setDateFilter('custom') }}
               style={{
                 ...s.pill,
-                ...(dateFilter === 'custom' ? { borderColor: '#2a6e45', background: '#e8f5ee', color: '#2a6e45', fontWeight: 600 } : {}),
+                ...(dateFilter === 'custom' ? { borderColor: '#2176d9', background: '#e8f0fa', color: '#2176d9', fontWeight: 600 } : {}),
                 width: 130,
               }}
             />
@@ -781,7 +781,7 @@ export default function QcDashboardPage() {
             onChange={e => setOrchardId(e.target.value || null)}
             style={{
               padding: '6px 12px', borderRadius: 20, border: '1.5px solid #e0ddd6',
-              background: orchardId ? '#1c3a2a' : '#fff',
+              background: orchardId ? '#1a2a3a' : '#fff',
               color: orchardId ? '#fff' : '#3a4a40',
               fontSize: 12, fontWeight: 500, cursor: 'pointer',
               maxWidth: 200,
@@ -852,7 +852,7 @@ export default function QcDashboardPage() {
               <div style={s.kpiCard}>
                 <div style={s.kpiAccent} />
                 <div style={s.kpiLabel}>Avg Weight</div>
-                <div style={s.kpiValue}>{kpis?.avg_weight_g ?? 0}<span style={{ fontSize: 18, fontWeight: 400, color: '#9aaa9f' }}>g</span></div>
+                <div style={s.kpiValue}>{kpis?.avg_weight_g ?? 0}<span style={{ fontSize: 18, fontWeight: 400, color: '#8a95a0' }}>g</span></div>
                 <div style={s.kpiSub}>per fruit</div>
               </div>
 
@@ -861,17 +861,17 @@ export default function QcDashboardPage() {
                 <div style={{ ...s.kpiAccent, background: `linear-gradient(90deg, ${issueRateColor(kpis?.issue_rate_pct ?? 0)}, ${issueRateColor(kpis?.issue_rate_pct ?? 0)}88)` }} />
                 <div style={s.kpiLabel}>Issue Rate</div>
                 <div style={{ ...s.kpiValue, color: issueRateColor(kpis?.issue_rate_pct ?? 0) }}>
-                  {kpis?.issue_rate_pct ?? 0}<span style={{ fontSize: 18, fontWeight: 400, color: '#9aaa9f' }}>%</span>
+                  {kpis?.issue_rate_pct ?? 0}<span style={{ fontSize: 18, fontWeight: 400, color: '#8a95a0' }}>%</span>
                 </div>
                 <div style={s.kpiSub}>bags with ≥1 issue</div>
               </div>
 
               {/* Class 1 */}
               <div style={s.kpiCard}>
-                <div style={{ ...s.kpiAccent, background: `linear-gradient(90deg, #2a6e45, #a8d5a2)` }} />
+                <div style={{ ...s.kpiAccent, background: `linear-gradient(90deg, #2176d9, #a0c4f0)` }} />
                 <div style={s.kpiLabel}>Class 1</div>
                 <div style={{ ...s.kpiValue, color: (kpis?.class_1_pct ?? 0) >= 80 ? '#4caf72' : (kpis?.class_1_pct ?? 0) >= 60 ? '#f5c842' : '#e85a4a' }}>
-                  {kpis?.class_1_pct ?? 0}<span style={{ fontSize: 18, fontWeight: 400, color: '#9aaa9f' }}>%</span>
+                  {kpis?.class_1_pct ?? 0}<span style={{ fontSize: 18, fontWeight: 400, color: '#8a95a0' }}>%</span>
                 </div>
                 <div style={s.kpiSub}>fruit with no issues</div>
               </div>
@@ -883,24 +883,24 @@ export default function QcDashboardPage() {
                 <div style={s.cardTitle}>
                   Size Distribution
                   {commodityId && commodities.find(c => c.id === commodityId) && (
-                    <span style={{ fontSize: 13, fontWeight: 400, color: '#9aaa9f', marginLeft: 10 }}>
+                    <span style={{ fontSize: 13, fontWeight: 400, color: '#8a95a0', marginLeft: 10 }}>
                       — {commodities.find(c => c.id === commodityId)!.name}
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: 13, color: '#9aaa9f' }}>
+                <div style={{ fontSize: 13, color: '#8a95a0' }}>
                   {sizeData.reduce((acc, b) => acc + Number(b.fruit_count), 0).toLocaleString()} fruit
                 </div>
               </div>
               <div style={s.cardBody}>
                 {sizeData.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: '#9aaa9f', padding: '24px 0' }}>No fruit data for this period</div>
+                  <div style={{ textAlign: 'center', color: '#8a95a0', padding: '24px 0' }}>No fruit data for this period</div>
                 ) : (
                   <ResponsiveContainer width="100%" height={280}>
                     <BarChart data={sizeData} margin={{ top: 20, right: 8, bottom: 4, left: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" />
-                      <XAxis dataKey="bin_label" tick={{ fontSize: 11, fill: '#7a8a80' }} />
-                      <YAxis tick={{ fontSize: 11, fill: '#7a8a80' }} tickFormatter={(v: number) => `${v}%`} />
+                      <XAxis dataKey="bin_label" tick={{ fontSize: 11, fill: '#7a8a9a' }} />
+                      <YAxis tick={{ fontSize: 11, fill: '#7a8a9a' }} tickFormatter={(v: number) => `${v}%`} />
                       <Tooltip content={<CustomTooltip />} />
                       <Bar dataKey="pct_of_total" name="%" radius={[4, 4, 0, 0]}>
                         <LabelList
@@ -936,7 +936,7 @@ export default function QcDashboardPage() {
                     <button key={key} onClick={() => setIssueView(key)} style={{
                       padding: '5px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
                       fontSize: 12, fontWeight: 600,
-                      background: issueView === key ? '#1c3a2a' : '#f0ede6',
+                      background: issueView === key ? '#1a2a3a' : '#f0ede6',
                       color: issueView === key ? 'white' : '#6a7a70',
                       transition: 'all 0.15s',
                     }}>{label}</button>
@@ -945,7 +945,7 @@ export default function QcDashboardPage() {
               </div>
               <div style={s.cardBody}>
                 {issueData.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: '#9aaa9f', padding: '24px 0' }}>No issues recorded in this period</div>
+                  <div style={{ textAlign: 'center', color: '#8a95a0', padding: '24px 0' }}>No issues recorded in this period</div>
                 ) : (() => {
                   const sorted = [...issueData].sort((a, b) => Number(b.pct_of_fruit) - Number(a.pct_of_fruit))
                   const totalPct = sorted.reduce((sum, r) => sum + Number(r.pct_of_fruit), 0)
@@ -959,13 +959,13 @@ export default function QcDashboardPage() {
                           background: '#fdf8f3', borderRadius: 10, padding: '14px 18px',
                           borderLeft: `4px solid ${ISSUE_PALETTE[i]}`,
                         }}>
-                          <div style={{ fontSize: 10, color: '#9aaa9f', fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase' }}>
+                          <div style={{ fontSize: 10, color: '#8a95a0', fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase' }}>
                             #{i + 1} Top Issue
                           </div>
                           <div style={{ fontSize: 22, fontWeight: 700, color: ISSUE_PALETTE[i], fontFamily: 'monospace', margin: '4px 0 2px' }}>
                             {Number(issue.pct_of_fruit).toFixed(1)}%
                           </div>
-                          <div style={{ fontSize: 14, color: '#1c3a2a', fontWeight: 600 }}>
+                          <div style={{ fontSize: 14, color: '#1a2a3a', fontWeight: 600 }}>
                             {lang === 'af' ? issue.pest_name_af : issue.pest_name}
                           </div>
                         </div>
@@ -991,7 +991,7 @@ export default function QcDashboardPage() {
                               }}>
                                 <span style={{
                                   textAlign: 'right', fontSize: 12.5,
-                                  fontWeight: i < 3 ? 700 : 400, color: i < 3 ? '#1c3a2a' : '#5a6a60',
+                                  fontWeight: i < 3 ? 700 : 400, color: i < 3 ? '#1a2a3a' : '#5a6a60',
                                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                 }}>
                                   {name}
@@ -1095,7 +1095,7 @@ export default function QcDashboardPage() {
                               )
                             })}
                           </svg>
-                          <div style={{ fontSize: 11, color: '#9aaa9f', fontFamily: 'monospace' }}>
+                          <div style={{ fontSize: 11, color: '#8a95a0', fontFamily: 'monospace' }}>
                             Bubble size {'\u221d'} issue frequency
                           </div>
                         </div>
@@ -1129,7 +1129,7 @@ export default function QcDashboardPage() {
                               }} />
                             ))}
                           </div>
-                          <p style={{ fontSize: 10, color: '#9aaa9f', fontFamily: 'monospace', margin: 0 }}>
+                          <p style={{ fontSize: 10, color: '#8a95a0', fontFamily: 'monospace', margin: 0 }}>
                             Each square {'\u2248'} 1% of total issues
                           </p>
                         </div>
@@ -1140,7 +1140,7 @@ export default function QcDashboardPage() {
                               <div key={issue.pest_id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <div style={{ width: 12, height: 12, borderRadius: 2, background: ISSUE_PALETTE[i % ISSUE_PALETTE.length], flexShrink: 0 }} />
                                 <span style={{ fontSize: 12, color: '#3a4a40' }}>{name}</span>
-                                <span style={{ fontSize: 11, color: '#9aaa9f', fontFamily: 'monospace', marginLeft: 'auto' }}>
+                                <span style={{ fontSize: 11, color: '#8a95a0', fontFamily: 'monospace', marginLeft: 'auto' }}>
                                   {Number(issue.pct_of_fruit).toFixed(1)}%
                                 </span>
                               </div>
@@ -1178,13 +1178,13 @@ export default function QcDashboardPage() {
             <div style={s.card}>
               <div style={{ ...s.cardHeader, cursor: 'pointer' }} onClick={() => setPickerMetricsOpen(v => !v)}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 12, color: '#9aaa9f', transition: 'transform 0.2s', display: 'inline-block', transform: pickerMetricsOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>&#9654;</span>
+                  <span style={{ fontSize: 12, color: '#8a95a0', transition: 'transform 0.2s', display: 'inline-block', transform: pickerMetricsOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>&#9654;</span>
                   <span style={s.cardTitle}>Picker Issue Metrics</span>
                 </div>
-                <div style={{ fontSize: 13, color: '#9aaa9f' }}>{pickerIssueMetrics.length} pickers</div>
+                <div style={{ fontSize: 13, color: '#8a95a0' }}>{pickerIssueMetrics.length} pickers</div>
               </div>
               {!pickerMetricsOpen ? null : pickerIssueMetrics.length === 0 ? (
-                <div style={{ ...s.cardBody, color: '#9aaa9f' }}>No issue data in this period</div>
+                <div style={{ ...s.cardBody, color: '#8a95a0' }}>No issue data in this period</div>
               ) : (
                 <>
                   <div style={{ ...s.tableHead, gridTemplateColumns: '1.5fr 70px 90px 70px' }}>
@@ -1195,7 +1195,7 @@ export default function QcDashboardPage() {
                   </div>
                   {pickerIssueMetrics.map(r => (
                     <div key={r.name} style={{ ...s.tableRow, gridTemplateColumns: '1.5fr 70px 90px 70px', cursor: 'default' }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#1c3a2a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#1a2a3a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
                       <div style={{ fontSize: 14, fontWeight: 700, color: r.totalIssues > 0 ? '#e85a4a' : '#3a4a40' }}>{r.totalIssues}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <div style={{ flex: 1, height: 6, background: '#f0ede6', borderRadius: 3, overflow: 'hidden' }}>
@@ -1215,10 +1215,10 @@ export default function QcDashboardPage() {
               <div style={s.card}>
                 <div style={{ ...s.cardHeader, cursor: 'pointer' }} onClick={() => setTop5Open(v => !v)}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 12, color: '#9aaa9f', transition: 'transform 0.2s', display: 'inline-block', transform: top5Open ? 'rotate(90deg)' : 'rotate(0deg)' }}>&#9654;</span>
+                    <span style={{ fontSize: 12, color: '#8a95a0', transition: 'transform 0.2s', display: 'inline-block', transform: top5Open ? 'rotate(90deg)' : 'rotate(0deg)' }}>&#9654;</span>
                     <span style={s.cardTitle}>Top 5 Worst — Picking Issues</span>
                   </div>
-                  <div style={{ fontSize: 13, color: '#9aaa9f' }}>{top5ByIssue.length} issue types</div>
+                  <div style={{ fontSize: 13, color: '#8a95a0' }}>{top5ByIssue.length} issue types</div>
                 </div>
                 {top5Open && (
                   <div style={s.cardBody}>
@@ -1227,12 +1227,12 @@ export default function QcDashboardPage() {
                         const maxPct = issue.pickers[0]?.pct || 1
                         return (
                           <div key={issue.pest_id}>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: '#1c3a2a', marginBottom: 10, paddingBottom: 8, borderBottom: '2px solid #f5c842' }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: '#1a2a3a', marginBottom: 10, paddingBottom: 8, borderBottom: '2px solid #f5c842' }}>
                               {issue.pest_name}
                             </div>
                             {issue.pickers.map((pk, i) => (
                               <div key={pk.name} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                                <span style={{ width: 18, fontSize: 11, fontWeight: 700, color: i === 0 ? '#e85a4a' : '#9aaa9f', textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
+                                <span style={{ width: 18, fontSize: 11, fontWeight: 700, color: i === 0 ? '#e85a4a' : '#8a95a0', textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
                                 <div style={{ flex: 1, minWidth: 0, position: 'relative', height: 28 }}>
                                   <div style={{
                                     position: 'absolute', top: 0, left: 0, bottom: 0,
@@ -1241,7 +1241,7 @@ export default function QcDashboardPage() {
                                     borderRadius: 4,
                                   }} />
                                   <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '100%', padding: '0 8px' }}>
-                                    <span style={{ fontSize: 13, color: '#1c3a2a', fontWeight: i === 0 ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    <span style={{ fontSize: 13, color: '#1a2a3a', fontWeight: i === 0 ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                       {pk.name}
                                     </span>
                                     <span style={{ fontSize: 13, fontWeight: 700, color: '#e85a4a', flexShrink: 0 }}>{pk.pct.toFixed(1)}%</span>
@@ -1262,13 +1262,13 @@ export default function QcDashboardPage() {
             <div style={s.card}>
               <div style={{ ...s.cardHeader, cursor: 'pointer' }} onClick={() => setPickerOpen(v => !v)}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 12, color: '#9aaa9f', transition: 'transform 0.2s', display: 'inline-block', transform: pickerOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+                  <span style={{ fontSize: 12, color: '#8a95a0', transition: 'transform 0.2s', display: 'inline-block', transform: pickerOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
                   <span style={s.cardTitle}>Picker Performance</span>
                 </div>
-                <div style={{ fontSize: 13, color: '#9aaa9f' }}>{pickerRows.length} pickers</div>
+                <div style={{ fontSize: 13, color: '#8a95a0' }}>{pickerRows.length} pickers</div>
               </div>
               {!pickerOpen ? null : pickerRows.length === 0 ? (
-                <div style={{ ...s.cardBody, color: '#9aaa9f' }}>No data</div>
+                <div style={{ ...s.cardBody, color: '#8a95a0' }}>No data</div>
               ) : (
                 <>
                   <div style={{ ...s.tableHead, gridTemplateColumns: '1.5fr 60px 60px 80px' }}>
@@ -1279,7 +1279,7 @@ export default function QcDashboardPage() {
                   </div>
                   {pickerRows.map(r => (
                     <div key={r.name} style={{ ...s.tableRow, gridTemplateColumns: '1.5fr 60px 60px 80px', cursor: 'default' }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#1c3a2a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#1a2a3a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
                       <div style={{ fontSize: 14, color: '#3a4a40' }}>{r.bags}</div>
                       <div style={{ fontSize: 14, color: '#3a4a40' }}>{r.fruit.toLocaleString()}</div>
                       <div style={{ fontSize: 14, color: '#3a4a40' }}>{r.avgWeight ? `${r.avgWeight}g` : '—'}</div>
@@ -1293,13 +1293,13 @@ export default function QcDashboardPage() {
             <div style={s.card}>
               <div style={{ ...s.cardHeader, cursor: 'pointer' }} onClick={() => setBagListOpen(v => !v)}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 12, color: '#9aaa9f', transition: 'transform 0.2s', display: 'inline-block', transform: bagListOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+                  <span style={{ fontSize: 12, color: '#8a95a0', transition: 'transform 0.2s', display: 'inline-block', transform: bagListOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
                   <span style={s.cardTitle}>Bag List</span>
                 </div>
-                <div style={{ fontSize: 13, color: '#9aaa9f' }}>{bagList.length} bags</div>
+                <div style={{ fontSize: 13, color: '#8a95a0' }}>{bagList.length} bags</div>
               </div>
               {!bagListOpen ? null : bagList.length === 0 ? (
-                <div style={{ ...s.cardBody, color: '#9aaa9f' }}>No bags in this period</div>
+                <div style={{ ...s.cardBody, color: '#8a95a0' }}>No bags in this period</div>
               ) : (
                 <>
                   <div style={{ ...s.tableHead, gridTemplateColumns: '140px 60px 120px 140px 50px 60px 60px 80px' }}>
@@ -1320,8 +1320,8 @@ export default function QcDashboardPage() {
                       onMouseEnter={e => (e.currentTarget.style.background = '#f7f5f0')}
                       onMouseLeave={e => (e.currentTarget.style.background = '')}
                     >
-                      <div style={{ fontSize: 12, color: '#7a8a80' }}>{fmtDate(bag.collected_at)}</div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#1c3a2a' }}>#{bag.bag_seq ?? '?'}</div>
+                      <div style={{ fontSize: 12, color: '#7a8a9a' }}>{fmtDate(bag.collected_at)}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#1a2a3a' }}>#{bag.bag_seq ?? '?'}</div>
                       <div style={{ fontSize: 13, color: '#3a4a40', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bag.orchard_name}</div>
                       <div style={{ fontSize: 13, color: '#3a4a40', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bag.employee_name}</div>
                       <div style={{ fontSize: 13, color: '#3a4a40' }}>{Number(bag.fruit_count)}</div>
@@ -1351,7 +1351,7 @@ export default function QcDashboardPage() {
                       >
                         ← Prev
                       </button>
-                      <span style={{ fontSize: 13, color: '#9aaa9f' }}>
+                      <span style={{ fontSize: 13, color: '#8a95a0' }}>
                         Page {bagPage + 1} of {totalPages}
                       </span>
                       <button
@@ -1379,7 +1379,7 @@ export default function QcDashboardPage() {
               <div>
                 {bagDetail?.session && (
                   <>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: '#1c3a2a', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#1a2a3a', display: 'flex', alignItems: 'center', gap: 8 }}>
                       Bag #{bagDetail.session.bag_seq ?? '?'} — {bagDetail.session.orchard_name}
                       <button
                         style={{ background: 'none', border: '1px solid #d4cfca', borderRadius: 4, fontSize: 11, color: '#5a6a60', padding: '2px 8px', cursor: 'pointer', fontFamily: 'inherit' }}
@@ -1401,7 +1401,7 @@ export default function QcDashboardPage() {
                           ))}
                         </select>
                         <button
-                          style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: newOrchardId ? '#2a6e45' : '#c4cfc8', color: '#fff', fontSize: 13, fontWeight: 600, cursor: newOrchardId ? 'pointer' : 'not-allowed', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                          style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: newOrchardId ? '#2176d9' : '#c4cfc8', color: '#fff', fontSize: 13, fontWeight: 600, cursor: newOrchardId ? 'pointer' : 'not-allowed', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
                           disabled={!newOrchardId || savingOrchard}
                           onClick={saveOrchardChange}
                         >
@@ -1409,7 +1409,7 @@ export default function QcDashboardPage() {
                         </button>
                       </div>
                     )}
-                    <div style={{ fontSize: 13, color: '#9aaa9f', marginTop: 4 }}>
+                    <div style={{ fontSize: 13, color: '#8a95a0', marginTop: 4 }}>
                       {bagDetail.session.employee_name} · {fmtDate(bagDetail.session.collected_at)}
                     </div>
                     {bagDetail.session.collection_lat && bagDetail.session.collection_lng && (
@@ -1417,7 +1417,7 @@ export default function QcDashboardPage() {
                         href={`https://www.google.com/maps?q=${bagDetail.session.collection_lat},${bagDetail.session.collection_lng}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ fontSize: 12, color: '#2a6e45', textDecoration: 'none', marginTop: 4, display: 'inline-block' }}
+                        style={{ fontSize: 12, color: '#2176d9', textDecoration: 'none', marginTop: 4, display: 'inline-block' }}
                       >
                         📍 GPS location
                       </a>
@@ -1443,7 +1443,7 @@ export default function QcDashboardPage() {
                       {bagDetail.session.status}
                     </span>
                     {bagDetail.session.sampled_at && (
-                      <span style={{ marginLeft: 10, fontSize: 12, color: '#9aaa9f' }}>
+                      <span style={{ marginLeft: 10, fontSize: 12, color: '#8a95a0' }}>
                         Sampled {fmtDate(bagDetail.session.sampled_at)}
                       </span>
                     )}
@@ -1452,7 +1452,7 @@ export default function QcDashboardPage() {
                   {/* Fruit size distribution mini chart */}
                   {bagDetail.fruit.length > 0 && (
                     <div style={{ marginBottom: 24 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a', marginBottom: 12 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a', marginBottom: 12 }}>
                         Fruit weights ({bagDetail.fruit.length} pieces)
                       </div>
                       {(() => {
@@ -1466,8 +1466,8 @@ export default function QcDashboardPage() {
                         return (
                           <ResponsiveContainer width="100%" height={140}>
                             <BarChart data={chartData} margin={{ top: 0, right: 0, bottom: 4, left: 0 }}>
-                              <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#7a8a80' }} />
-                              <YAxis tick={{ fontSize: 10, fill: '#7a8a80' }} width={24} />
+                              <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#7a8a9a' }} />
+                              <YAxis tick={{ fontSize: 10, fill: '#7a8a9a' }} width={24} />
                               <Tooltip content={<CustomTooltip />} />
                               <Bar dataKey="count" name="Fruit" radius={[3, 3, 0, 0]}>
                                 {chartData.map((entry, index) => (
@@ -1483,7 +1483,7 @@ export default function QcDashboardPage() {
 
                   {/* Issues */}
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a', marginBottom: 12 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a', marginBottom: 12 }}>
                       Issues ({bagDetail.issues.reduce((acc, i) => acc + i.count, 0)} total)
                     </div>
                     {bagDetail.issues.length === 0 ? (
@@ -1494,7 +1494,7 @@ export default function QcDashboardPage() {
                           <span style={issue.category === 'picking_issue' ? s.badgePicking : s.badgeQc}>
                             {issue.category === 'picking_issue' ? 'Picking' : 'QC'}
                           </span>
-                          <span style={{ flex: 1, fontSize: 14, color: '#1c3a2a' }}>
+                          <span style={{ flex: 1, fontSize: 14, color: '#1a2a3a' }}>
                             {lang === 'af' ? issue.pest_name_af : issue.pest_name}
                           </span>
                           <span style={{ fontSize: 16, fontWeight: 700, color: '#e85a4a' }}>

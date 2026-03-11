@@ -32,9 +32,9 @@ function trendBadge(thisWeek: number, lastWeek: number) {
       }}>New</span>
     )
   }
-  if (lw === 0) return <span style={{ fontSize: 12, color: '#9aaa9f' }}>—</span>
+  if (lw === 0) return <span style={{ fontSize: 12, color: '#8a95a0' }}>—</span>
   const pct = Math.round(((tw - lw) / lw) * 100)
-  if (pct === 0) return <span style={{ fontSize: 12, color: '#9aaa9f' }}>— no change</span>
+  if (pct === 0) return <span style={{ fontSize: 12, color: '#8a95a0' }}>— no change</span>
   if (pct > 0) return <span style={{ fontSize: 12, color: '#e8924a', fontWeight: 600 }}>↑ {pct}%</span>
   return <span style={{ fontSize: 12, color: '#4caf72', fontWeight: 600 }}>↓ {Math.abs(pct)}%</span>
 }
@@ -70,7 +70,7 @@ export default function PestAlertSummary({ farmIds, onPestSelect }: Props) {
           @keyframes pas-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
         `}</style>
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '20px 24px', marginBottom: 20 }}>
-          <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a', marginBottom: 12 }}>Trap Alerts</div>
+          <div style={{ fontSize: 17, fontWeight: 600, color: '#1a2a3a', marginBottom: 12 }}>Trap Alerts</div>
           {[0, 1, 2].map(i => (
             <div key={i} style={{ height: 48, background: '#f4f1eb', borderRadius: 8, marginBottom: 8, animation: 'pas-pulse 1.5s ease infinite' }} />
           ))}
@@ -93,12 +93,12 @@ export default function PestAlertSummary({ farmIds, onPestSelect }: Props) {
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 20 }}>
         <div style={{ padding: '16px 20px', borderBottom: expanded ? '1px solid #f0ede6' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => setExpanded(e => !e)}>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a' }}>Trap Alerts</div>
-            <div style={{ fontSize: 12, color: '#9aaa9f', marginTop: 3 }}>
+            <div style={{ fontSize: 17, fontWeight: 600, color: '#1a2a3a' }}>Trap Alerts</div>
+            <div style={{ fontSize: 12, color: '#8a95a0', marginTop: 3 }}>
               {expanded ? 'This week vs last week — click View to jump to map' : `${rows.length} pest${rows.length !== 1 ? 's' : ''} tracked · ${rows.filter(r => Number(r.red_orchards) > 0).length} with alerts`}
             </div>
           </div>
-          <span style={{ fontSize: 13, color: '#7a8a80', transition: 'transform 0.2s', display: 'inline-block', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+          <span style={{ fontSize: 13, color: '#7a8a9a', transition: 'transform 0.2s', display: 'inline-block', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
         </div>
 
         {expanded && <div>
@@ -123,7 +123,7 @@ export default function PestAlertSummary({ farmIds, onPestSelect }: Props) {
                 {/* Left: name + chips + worst orchard */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: '#1c3a2a' }}>{row.pest_name}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#1a2a3a' }}>{row.pest_name}</span>
                     <div style={{ display: 'flex', gap: 5 }}>
                       {Number(row.red_orchards) > 0 && (
                         <span style={{ fontSize: 12, background: '#fdecea', color: '#e85a4a', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>
@@ -136,14 +136,14 @@ export default function PestAlertSummary({ farmIds, onPestSelect }: Props) {
                         </span>
                       )}
                       {Number(row.green_orchards) > 0 && (
-                        <span style={{ fontSize: 12, background: '#e8f5ee', color: '#2a6e45', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>
+                        <span style={{ fontSize: 12, background: '#e8f0fa', color: '#2176d9', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>
                           🟢 {row.green_orchards}
                         </span>
                       )}
                     </div>
                   </div>
                   {Number(row.red_orchards) > 0 && row.worst_orchard_name && (
-                    <div style={{ fontSize: 12, color: '#9aaa9f', marginTop: 4 }}>
+                    <div style={{ fontSize: 12, color: '#8a95a0', marginTop: 4 }}>
                       Worst: {row.worst_orchard_name} · {Number(row.worst_count).toLocaleString()} catches
                     </div>
                   )}
@@ -151,7 +151,7 @@ export default function PestAlertSummary({ farmIds, onPestSelect }: Props) {
 
                 {/* Right: count + trend + button */}
                 <div className="pas-right" style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a' }}>
                     {Number(row.this_week_total).toLocaleString()} catches
                   </span>
                   {trendBadge(row.this_week_total, row.last_week_total)}

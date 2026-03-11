@@ -56,7 +56,7 @@ function heatmapBg(pct: number): string {
 }
 
 function heatmapText(pct: number): string {
-  return pct >= 10 ? '#fff' : '#1c3a2a'
+  return pct >= 10 ? '#fff' : '#1a2a3a'
 }
 
 const METRIC_LABELS: Record<Metric, string> = {
@@ -219,7 +219,7 @@ export default function BruisingQualityPanel({ bruisingData, bruisingSummary }: 
             const color = qualityColor(value)
             const spark = sparklineData[team.key] || []
             const arrow = trendArrows[team.key] || '─'
-            const arrowColor = arrow === '↑' ? '#e85a4a' : arrow === '↓' ? '#4caf72' : '#9aaa9f'
+            const arrowColor = arrow === '↑' ? '#e85a4a' : arrow === '↓' ? '#4caf72' : '#8a95a0'
             return (
               <div key={team.key} style={{ ...styles.teamCard, borderLeftColor: color }}>
                 <div style={styles.teamName}>{team.name}</div>
@@ -296,7 +296,7 @@ export default function BruisingQualityPanel({ bruisingData, bruisingSummary }: 
                             ...styles.heatmapCell,
                             background: bg,
                             color: textColor,
-                            outline: isHovered ? '2px solid #1c3a2a' : 'none',
+                            outline: isHovered ? '2px solid #1a2a3a' : 'none',
                             zIndex: isHovered ? 2 : undefined,
                             position: 'relative' as const,
                           }}
@@ -358,7 +358,7 @@ const styles: Record<string, React.CSSProperties> = {
   cardTitle: {
     fontSize: 17,
     fontWeight: 600,
-    color: '#1c3a2a',
+    color: '#1a2a3a',
   },
   cardBody: {
     padding: '20px 24px',
@@ -383,8 +383,8 @@ const styles: Record<string, React.CSSProperties> = {
   tabActive: {
     padding: '5px 14px',
     borderRadius: 20,
-    border: '1px solid #2a6e45',
-    background: '#2a6e45',
+    border: '1px solid #2176d9',
+    background: '#2176d9',
     color: '#fff',
     fontSize: 13,
     cursor: 'pointer',
@@ -420,7 +420,7 @@ const styles: Record<string, React.CSSProperties> = {
   teamName: {
     fontSize: 12,
     fontWeight: 700,
-    color: '#1c3a2a',
+    color: '#1a2a3a',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.04em',
     marginBottom: 4,
@@ -446,7 +446,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   teamSub: {
     fontSize: 11,
-    color: '#9aaa9f',
+    color: '#8a95a0',
   },
   sampleChips: {
     display: 'flex',
@@ -484,7 +484,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '8px 6px',
     fontSize: 10,
     fontWeight: 600,
-    color: '#9aaa9f',
+    color: '#8a95a0',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.04em',
     textAlign: 'center',
@@ -497,7 +497,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '8px 10px',
     fontSize: 12,
     fontWeight: 600,
-    color: '#1c3a2a',
+    color: '#1a2a3a',
     whiteSpace: 'nowrap',
     background: '#fff',
     position: 'sticky' as const,
@@ -526,7 +526,7 @@ const styles: Record<string, React.CSSProperties> = {
     bottom: 'calc(100% + 6px)',
     left: '50%',
     transform: 'translateX(-50%)',
-    background: '#1c3a2a',
+    background: '#1a2a3a',
     color: '#e8f0e0',
     padding: '10px 14px',
     borderRadius: 8,

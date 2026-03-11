@@ -133,7 +133,7 @@ function seasonDateRange(season: string): { from: string; to: string } {
 
 function tonHaColor(tonHa: number | null): string {
   if (tonHa == null) return '#aaa'
-  if (tonHa >= 50) return '#2a6e45'
+  if (tonHa >= 50) return '#2176d9'
   if (tonHa >= 30) return '#4caf72'
   if (tonHa >= 15) return '#f5c842'
   return '#e85a4a'
@@ -146,45 +146,45 @@ function qualityColor(pct: number): string {
 }
 
 const SIZE_PALETTE = [
-  '#2a6e45', '#4caf72', '#6b9e80', '#8cc49a', '#a8d5a2',
+  '#2176d9', '#4caf72', '#6b9e80', '#8cc49a', '#a0c4f0',
   '#c4e6c0', '#dff0da', '#f5c842', '#e8924a', '#d35400',
-  '#c0392b', '#e85a4a', '#6b7fa8', '#9aaa9f', '#c8c4bb',
+  '#c0392b', '#e85a4a', '#6b7fa8', '#8a95a0', '#c8c4bb',
 ]
 const ISSUE_PALETTE = [
   '#c0392b', '#e74c3c', '#e8604c', '#f0876a',
   '#f5a58a', '#f9c3ab', '#fddecf',
   '#d35400', '#e67e22', '#f39c12', '#f1c40f', '#a8d8a8',
-  '#6b7fa8', '#9aaa9f', '#c8c4bb',
+  '#6b7fa8', '#8a95a0', '#c8c4bb',
 ]
 
 // ── Inline styles ───────────────────────────────────────────────────────────
 
 const s: Record<string, React.CSSProperties> = {
-  page:        { display: 'flex', minHeight: '100vh', background: '#f4f1eb', fontFamily: 'Inter, system-ui, sans-serif', color: '#1c3a2a' },
+  page:        { display: 'flex', minHeight: '100vh', background: '#f4f1eb', fontFamily: 'Inter, system-ui, sans-serif', color: '#1a2a3a' },
   main:        { flex: 1, padding: 40, overflowY: 'auto', minWidth: 0, paddingBottom: 100 },
   pageHeader:  { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap' as const, gap: 16 },
-  pageTitle:   { fontSize: 32, fontWeight: 700, color: '#1c3a2a', letterSpacing: '-0.5px', lineHeight: 1 },
-  pageSub:     { fontSize: 14, color: '#9aaa9f', marginTop: 6 },
+  pageTitle:   { fontSize: 32, fontWeight: 700, color: '#1a2a3a', letterSpacing: '-0.5px', lineHeight: 1 },
+  pageSub:     { fontSize: 14, color: '#8a95a0', marginTop: 6 },
   controls:    { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' as const, marginBottom: 28 },
   filterGroup: { display: 'flex', gap: 6 },
   pill:        { padding: '6px 14px', borderRadius: 20, border: '1px solid #d4cfca', background: '#fff', color: '#5a6a60', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
-  pillActive:  { padding: '6px 14px', borderRadius: 20, border: '1px solid #2a6e45', background: '#2a6e45', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
+  pillActive:  { padding: '6px 14px', borderRadius: 20, border: '1px solid #2176d9', background: '#2176d9', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
   divider:     { width: 1, height: 24, background: '#d4cfca' },
-  select:      { padding: '6px 12px', borderRadius: 8, border: '1px solid #d4cfca', background: '#fff', fontSize: 13, fontFamily: 'inherit', color: '#1c3a2a', cursor: 'pointer' },
+  select:      { padding: '6px 12px', borderRadius: 8, border: '1px solid #d4cfca', background: '#fff', fontSize: 13, fontFamily: 'inherit', color: '#1a2a3a', cursor: 'pointer' },
   // KPI strip
   kpiStrip:    { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 28 },
   kpiCard:     { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '20px 24px', position: 'relative' as const, overflow: 'hidden' },
-  kpiAccent:   { position: 'absolute' as const, top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #2a6e45, #a8d5a2)' },
-  kpiLabel:    { fontSize: 12, color: '#9aaa9f', textTransform: 'uppercase' as const, letterSpacing: '0.06em', fontWeight: 600, marginBottom: 8 },
-  kpiValue:    { fontSize: 32, fontWeight: 700, color: '#1c3a2a', lineHeight: 1 },
-  kpiSub:      { fontSize: 12, color: '#9aaa9f', marginTop: 6 },
+  kpiAccent:   { position: 'absolute' as const, top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #2176d9, #a0c4f0)' },
+  kpiLabel:    { fontSize: 12, color: '#8a95a0', textTransform: 'uppercase' as const, letterSpacing: '0.06em', fontWeight: 600, marginBottom: 8 },
+  kpiValue:    { fontSize: 32, fontWeight: 700, color: '#1a2a3a', lineHeight: 1 },
+  kpiSub:      { fontSize: 12, color: '#8a95a0', marginTop: 6 },
   // Card
   card:        { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 24 },
   cardHeader:  { padding: '20px 24px 16px', borderBottom: '1px solid #f0ede6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  cardTitle:   { fontSize: 17, fontWeight: 600, color: '#1c3a2a' },
+  cardTitle:   { fontSize: 17, fontWeight: 600, color: '#1a2a3a' },
   cardBody:    { padding: '20px 24px' },
   // Loading
-  loading:     { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200, color: '#9aaa9f', fontSize: 14 },
+  loading:     { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200, color: '#8a95a0', fontSize: 14 },
 }
 
 function circlePack(items: { r: number }[], W: number, H: number, GAP = 4) {
@@ -221,7 +221,7 @@ function circlePack(items: { r: number }[], W: number, H: number, GAP = 4) {
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
-    <div style={{ background: '#1c3a2a', color: '#e8f0e0', padding: '10px 14px', borderRadius: 8, fontSize: 13 }}>
+    <div style={{ background: '#1a2a3a', color: '#e8f0e0', padding: '10px 14px', borderRadius: 8, fontSize: 13 }}>
       <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i}>{p.name}: <strong>{typeof p.value === 'number' ? p.value.toLocaleString('en-ZA', { maximumFractionDigits: 1 }) : p.value}</strong></div>
@@ -815,12 +815,12 @@ export default function ProductionPage() {
         <div className="prod-mobile-only prod-mobile-content">
           {/* Date + week label */}
           <div style={{ padding: '14px 2px 6px', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 20, fontWeight: 700, color: '#1c3a2a', letterSpacing: '-0.3px' }}>
+            <span style={{ fontSize: 20, fontWeight: 700, color: '#1a2a3a', letterSpacing: '-0.3px' }}>
               {dateFilter === 'all'
                 ? `Season ${season}`
                 : new Date(filterDate! + 'T12:00:00').toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' })}
             </span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               {dateFilter !== 'all' && `W${(() => {
                 const d = new Date(filterDate! + 'T12:00:00')
                 d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7))
@@ -861,21 +861,21 @@ export default function ProductionPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
             {/* Total Bins */}
             <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '18px 16px' }}>
-              <div style={{ fontSize: 36, fontWeight: 700, color: '#1c3a2a', lineHeight: 1 }}>
+              <div style={{ fontSize: 36, fontWeight: 700, color: '#1a2a3a', lineHeight: 1 }}>
                 {kpis.totalBins.toLocaleString('en-ZA')}
               </div>
               <div style={{ height: 2, background: '#f0ede6', margin: '8px 0' }} />
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a80', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a9a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Total Bins
               </div>
             </div>
             {/* Total Tons */}
             <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '18px 16px' }}>
-              <div style={{ fontSize: 36, fontWeight: 700, color: '#1c3a2a', lineHeight: 1 }}>
+              <div style={{ fontSize: 36, fontWeight: 700, color: '#1a2a3a', lineHeight: 1 }}>
                 {kpis.totalTons.toLocaleString('en-ZA', { maximumFractionDigits: 1 })}
               </div>
               <div style={{ height: 2, background: '#f0ede6', margin: '8px 0' }} />
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a80', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a9a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Total Tons
               </div>
             </div>
@@ -884,21 +884,21 @@ export default function ProductionPage() {
               background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '18px 16px',
               borderLeft: `4px solid ${avgBruisingData.avg != null ? qualityColor(avgBruisingData.avg) : '#e8e4dc'}`,
             }}>
-              <div style={{ fontSize: 36, fontWeight: 700, color: avgBruisingData.avg != null ? qualityColor(avgBruisingData.avg) : '#1c3a2a', lineHeight: 1 }}>
+              <div style={{ fontSize: 36, fontWeight: 700, color: avgBruisingData.avg != null ? qualityColor(avgBruisingData.avg) : '#1a2a3a', lineHeight: 1 }}>
                 {avgBruisingData.avg != null ? `${avgBruisingData.avg.toFixed(1)}%` : '–'}
               </div>
               <div style={{ height: 2, background: '#f0ede6', margin: '8px 0' }} />
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a80', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a9a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Bruising
               </div>
             </div>
             {/* Class 1 % */}
             <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '18px 16px' }}>
-              <div style={{ fontSize: 36, fontWeight: 700, color: '#1c3a2a', lineHeight: 1 }}>
+              <div style={{ fontSize: 36, fontWeight: 700, color: '#1a2a3a', lineHeight: 1 }}>
                 {class1Data.class1 != null ? `${class1Data.class1}%` : '–'}
               </div>
               <div style={{ height: 2, background: '#f0ede6', margin: '8px 0' }} />
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a80', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a9a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Class 1 %
               </div>
             </div>
@@ -939,7 +939,7 @@ export default function ProductionPage() {
               type="date"
               value={dateFilter === 'custom' ? customDate : ''}
               onChange={e => { setCustomDate(e.target.value); setDateFilter('custom') }}
-              style={{ ...s.pill, ...(dateFilter === 'custom' ? { borderColor: '#2a6e45', background: '#e8f5ee', color: '#2a6e45' } : {}), width: 130 }}
+              style={{ ...s.pill, ...(dateFilter === 'custom' ? { borderColor: '#2176d9', background: '#e8f0fa', color: '#2176d9' } : {}), width: 130 }}
             />
           </div>
         </div>
@@ -954,7 +954,7 @@ export default function ProductionPage() {
           return (
             <div style={{ ...s.controls, marginTop: -8 }} className="prod-filters">
               <div style={s.filterGroup}>
-                <span style={{ fontSize: 11, color: '#9aaa9f', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Group</span>
+                <span style={{ fontSize: 11, color: '#8a95a0', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Group</span>
                 <button style={!selectedVarietyGroup ? s.pillActive : s.pill} onClick={() => { setSelectedVarietyGroup(null); setSelectedOrchardId(null) }}>All</button>
                 {groups.map(g => (
                   <button key={g} style={selectedVarietyGroup === g ? s.pillActive : s.pill} onClick={() => { setSelectedVarietyGroup(g); setSelectedOrchardId(null) }}>{g}</button>
@@ -964,7 +964,7 @@ export default function ProductionPage() {
                 <>
                   <div style={s.divider} />
                   <div style={s.filterGroup}>
-                    <span style={{ fontSize: 11, color: '#9aaa9f', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Orchard</span>
+                    <span style={{ fontSize: 11, color: '#8a95a0', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Orchard</span>
                     <button style={!selectedOrchardId ? s.pillActive : s.pill} onClick={() => setSelectedOrchardId(null)}>All</button>
                     {orchardChoices.map(o => (
                       <button key={o.id} style={selectedOrchardId === o.id ? s.pillActive : s.pill} onClick={() => setSelectedOrchardId(o.id)}>{o.name}</button>
@@ -976,7 +976,7 @@ export default function ProductionPage() {
           )
         })()}
 
-        {loading && <div style={{ textAlign: 'center', padding: '8px 0', fontSize: 13, color: '#9aaa9f' }}>Loading production data...</div>}
+        {loading && <div style={{ textAlign: 'center', padding: '8px 0', fontSize: 13, color: '#8a95a0' }}>Loading production data...</div>}
           <>
             {/* KPI Strip */}
             <div style={s.kpiStrip} className="prod-kpi-strip prod-desktop-only">
@@ -1010,9 +1010,9 @@ export default function ProductionPage() {
                 <div style={{ ...s.card, display: 'flex', flexDirection: 'column' }}>
                   <div style={s.cardHeader}><span style={s.cardTitle}>Orchard Map — Ton/Ha</span></div>
                   <div ref={mapContainerRef} style={{ flex: 1, minHeight: 420, width: '100%' }} />
-                  <div style={{ padding: '6px 12px', display: 'flex', gap: 10, fontSize: 10, color: '#9aaa9f', flexWrap: 'wrap' }}>
+                  <div style={{ padding: '6px 12px', display: 'flex', gap: 10, fontSize: 10, color: '#8a95a0', flexWrap: 'wrap' }}>
                     {[
-                      { color: '#2a6e45', label: '50+ t/ha' },
+                      { color: '#2176d9', label: '50+ t/ha' },
                       { color: '#4caf72', label: '30–50' },
                       { color: '#f5c842', label: '15–30' },
                       { color: '#e85a4a', label: '<15' },
@@ -1037,7 +1037,7 @@ export default function ProductionPage() {
                         <button key={key} onClick={() => setSizeView(key)} style={{
                           padding: '4px 12px', borderRadius: 20, border: 'none', cursor: 'pointer',
                           fontSize: 11, fontWeight: 600,
-                          background: sizeView === key ? '#1c3a2a' : '#f0ede6',
+                          background: sizeView === key ? '#1a2a3a' : '#f0ede6',
                           color: sizeView === key ? 'white' : '#6a7a70',
                         }}>{label}</button>
                       ))}
@@ -1053,9 +1053,9 @@ export default function ProductionPage() {
                         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(top3.length, 3)}, 1fr)`, gap: 10, marginBottom: 16 }}>
                           {top3.map((item, i) => (
                             <div key={item.bin_label} style={{ background: '#f7faf5', borderRadius: 8, padding: '10px 14px', borderLeft: `3px solid ${SIZE_PALETTE[i]}` }}>
-                              <div style={{ fontSize: 9, color: '#9aaa9f', fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase' }}>#{i + 1}</div>
+                              <div style={{ fontSize: 9, color: '#8a95a0', fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase' }}>#{i + 1}</div>
                               <div style={{ fontSize: 18, fontWeight: 700, color: SIZE_PALETTE[i], fontFamily: 'monospace', margin: '2px 0' }}>{item.pct}%</div>
-                              <div style={{ fontSize: 12, color: '#1c3a2a', fontWeight: 600 }}>{item.bin_label}</div>
+                              <div style={{ fontSize: 12, color: '#1a2a3a', fontWeight: 600 }}>{item.bin_label}</div>
                             </div>
                           ))}
                         </div>
@@ -1065,7 +1065,7 @@ export default function ProductionPage() {
                         const maxPct = Math.max(...byOrder.map(b => b.pct), 1)
                         return (<>{kpiCards}<div>{byOrder.map((item, i) => (
                           <div key={item.bin_label} style={{ display: 'grid', gridTemplateColumns: '90px 1fr 48px', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                            <span style={{ textAlign: 'right', fontSize: 11, fontWeight: i < 3 ? 700 : 400, color: i < 3 ? '#1c3a2a' : '#5a6a60', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.bin_label}</span>
+                            <span style={{ textAlign: 'right', fontSize: 11, fontWeight: i < 3 ? 700 : 400, color: i < 3 ? '#1a2a3a' : '#5a6a60', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.bin_label}</span>
                             <div style={{ position: 'relative', height: 20, background: '#f0ede6', borderRadius: 3 }}>
                               <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${(item.pct / maxPct) * 100}%`, background: `linear-gradient(90deg, ${SIZE_PALETTE[i % SIZE_PALETTE.length]}dd, ${SIZE_PALETTE[i % SIZE_PALETTE.length]})`, borderRadius: 3, transition: 'width 0.5s ease' }} />
                             </div>
@@ -1114,14 +1114,14 @@ export default function ProductionPage() {
                               <div key={i} style={{ width: 24, height: 24, borderRadius: 3, background: cell ? SIZE_PALETTE[cell.idx % SIZE_PALETTE.length] + 'cc' : '#f0ede6' }} />
                             ))}
                           </div>
-                          <p style={{ fontSize: 9, color: '#9aaa9f', fontFamily: 'monospace', margin: '6px 0 0' }}>Each square ≈ 1%</p>
+                          <p style={{ fontSize: 9, color: '#8a95a0', fontFamily: 'monospace', margin: '6px 0 0' }}>Each square ≈ 1%</p>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           {byOrder.map((item, i) => (
                             <div key={item.bin_label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               <div style={{ width: 10, height: 10, borderRadius: 2, background: SIZE_PALETTE[i % SIZE_PALETTE.length], flexShrink: 0 }} />
                               <span style={{ fontSize: 11, color: '#3a4a40' }}>{item.bin_label}</span>
-                              <span style={{ fontSize: 10, color: '#9aaa9f', fontFamily: 'monospace', marginLeft: 'auto' }}>{item.pct}%</span>
+                              <span style={{ fontSize: 10, color: '#8a95a0', fontFamily: 'monospace', marginLeft: 'auto' }}>{item.pct}%</span>
                             </div>
                           ))}
                         </div>
@@ -1131,7 +1131,7 @@ export default function ProductionPage() {
                     )}
                   </div>
                   {sizePctData.length > 0 && !qcLoading && (
-                    <div style={{ padding: '2px 24px 12px', fontSize: 11, color: '#9aaa9f' }}>
+                    <div style={{ padding: '2px 24px 12px', fontSize: 11, color: '#8a95a0' }}>
                       {totalFruit.toLocaleString('en-ZA')} fruit sampled
                     </div>
                   )}
@@ -1149,7 +1149,7 @@ export default function ProductionPage() {
                         <button key={key} onClick={() => setIssueView(key)} style={{
                           padding: '4px 12px', borderRadius: 20, border: 'none', cursor: 'pointer',
                           fontSize: 11, fontWeight: 600,
-                          background: issueView === key ? '#1c3a2a' : '#f0ede6',
+                          background: issueView === key ? '#1a2a3a' : '#f0ede6',
                           color: issueView === key ? 'white' : '#6a7a70',
                         }}>{label}</button>
                       ))}
@@ -1165,9 +1165,9 @@ export default function ProductionPage() {
                         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(top3.length, 3)}, 1fr)`, gap: 10, marginBottom: 16 }}>
                           {top3.map((item, i) => (
                             <div key={item.pest_id} style={{ background: '#fdf8f3', borderRadius: 8, padding: '10px 14px', borderLeft: `3px solid ${ISSUE_PALETTE[i]}` }}>
-                              <div style={{ fontSize: 9, color: '#9aaa9f', fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase' }}>#{i + 1} Top Issue</div>
+                              <div style={{ fontSize: 9, color: '#8a95a0', fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase' }}>#{i + 1} Top Issue</div>
                               <div style={{ fontSize: 18, fontWeight: 700, color: ISSUE_PALETTE[i], fontFamily: 'monospace', margin: '2px 0' }}>{item.pct}%</div>
-                              <div style={{ fontSize: 12, color: '#1c3a2a', fontWeight: 600 }}>{item.pest_name}</div>
+                              <div style={{ fontSize: 12, color: '#1a2a3a', fontWeight: 600 }}>{item.pest_name}</div>
                             </div>
                           ))}
                         </div>
@@ -1177,7 +1177,7 @@ export default function ProductionPage() {
                         const maxPct = sorted[0]?.pct || 1
                         return (<>{kpiCards}<div>{sorted.map((item, i) => (
                           <div key={item.pest_id} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 48px', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                            <span style={{ textAlign: 'right', fontSize: 11, fontWeight: i < 3 ? 700 : 400, color: i < 3 ? '#1c3a2a' : '#5a6a60', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.pest_name}</span>
+                            <span style={{ textAlign: 'right', fontSize: 11, fontWeight: i < 3 ? 700 : 400, color: i < 3 ? '#1a2a3a' : '#5a6a60', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.pest_name}</span>
                             <div style={{ position: 'relative', height: 20, background: '#f0ede6', borderRadius: 3 }}>
                               <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${(item.pct / maxPct) * 100}%`, background: `linear-gradient(90deg, ${ISSUE_PALETTE[i % ISSUE_PALETTE.length]}dd, ${ISSUE_PALETTE[i % ISSUE_PALETTE.length]})`, borderRadius: 3, transition: 'width 0.5s ease' }} />
                               {i === 0 && (item.pct / maxPct) * 100 < 85 && (
@@ -1229,14 +1229,14 @@ export default function ProductionPage() {
                               <div key={i} style={{ width: 24, height: 24, borderRadius: 3, background: cell ? ISSUE_PALETTE[cell.idx % ISSUE_PALETTE.length] + 'cc' : '#f0ede6' }} />
                             ))}
                           </div>
-                          <p style={{ fontSize: 9, color: '#9aaa9f', fontFamily: 'monospace', margin: '6px 0 0' }}>Each square ≈ 1% of fruit</p>
+                          <p style={{ fontSize: 9, color: '#8a95a0', fontFamily: 'monospace', margin: '6px 0 0' }}>Each square ≈ 1% of fruit</p>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           {sorted.map((item, i) => (
                             <div key={item.pest_id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               <div style={{ width: 10, height: 10, borderRadius: 2, background: ISSUE_PALETTE[i % ISSUE_PALETTE.length], flexShrink: 0 }} />
                               <span style={{ fontSize: 11, color: '#3a4a40' }}>{item.pest_name}</span>
-                              <span style={{ fontSize: 10, color: '#9aaa9f', fontFamily: 'monospace', marginLeft: 'auto' }}>{item.pct}%</span>
+                              <span style={{ fontSize: 10, color: '#8a95a0', fontFamily: 'monospace', marginLeft: 'auto' }}>{item.pct}%</span>
                             </div>
                           ))}
                         </div>
@@ -1264,7 +1264,7 @@ export default function ProductionPage() {
                         ['bins', 'Bins'], ['juice', 'Juice'], ['total', 'Total'],
                         ['tons', 'Tons'], ['tonHa', 'T/Ha'], ['binWeight', 'Wt (kg)'],
                       ] as [SortKey, string][]).map(([key, label]) => (
-                        <th key={key} onClick={() => handleSort(key)} style={{ padding: '10px 8px', textAlign: key === 'name' || key === 'variety' ? 'left' : 'right', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid #e8e4dc', whiteSpace: 'nowrap', userSelect: 'none' }}>
+                        <th key={key} onClick={() => handleSort(key)} style={{ padding: '10px 8px', textAlign: key === 'name' || key === 'variety' ? 'left' : 'right', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid #e8e4dc', whiteSpace: 'nowrap', userSelect: 'none' }}>
                           {label}{sortIcon(key)}
                         </th>
                       ))}
@@ -1275,9 +1275,9 @@ export default function ProductionPage() {
                       <tr
                         key={o.orchard_id || i}
                         onClick={() => setSelectedOrchardId(o.orchard_id)}
-                        style={{ borderBottom: '1px solid #f0ede6', cursor: 'pointer', background: selectedOrchardId === o.orchard_id ? '#f0f7f2' : 'transparent' }}
-                        onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = selectedOrchardId === o.orchard_id ? '#f0f7f2' : '#fafaf6' }}
-                        onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = selectedOrchardId === o.orchard_id ? '#f0f7f2' : 'transparent' }}
+                        style={{ borderBottom: '1px solid #f0ede6', cursor: 'pointer', background: selectedOrchardId === o.orchard_id ? '#f0f4fa' : 'transparent' }}
+                        onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = selectedOrchardId === o.orchard_id ? '#f0f4fa' : '#fafaf6' }}
+                        onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = selectedOrchardId === o.orchard_id ? '#f0f4fa' : 'transparent' }}
                       >
                         <td style={{ padding: '9px 8px', fontWeight: 500 }}>{o.name}</td>
                         <td style={{ padding: '9px 8px', color: '#6a7a70' }}>{o.variety || '–'}</td>
@@ -1291,7 +1291,7 @@ export default function ProductionPage() {
                       </tr>
                     ))}
                     {sortedOrchards.length === 0 && (
-                      <tr><td colSpan={9} style={{ padding: 24, textAlign: 'center', color: '#9aaa9f' }}>No data for this season</td></tr>
+                      <tr><td colSpan={9} style={{ padding: 24, textAlign: 'center', color: '#8a95a0' }}>No data for this season</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -1300,27 +1300,27 @@ export default function ProductionPage() {
 
             {/* Mobile: Top 5 orchards compact list */}
             <div className="prod-mobile-only" style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#1c3a2a', marginBottom: 10 }}>Top Orchards</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a3a', marginBottom: 10 }}>Top Orchards</div>
               {topOrchards.length > 0 ? topOrchards.map((o, i) => (
                 <div key={o.orchard_id || i} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   padding: '12px 0', borderBottom: '1px solid #f0ede6',
                 }}>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#1c3a2a' }}>{o.name}</div>
-                    <div style={{ fontSize: 11, color: '#9aaa9f' }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#1a2a3a' }}>{o.name}</div>
+                    <div style={{ fontSize: 11, color: '#8a95a0' }}>
                       {[o.variety, o.ha ? `${o.ha.toFixed(1)} ha` : null].filter(Boolean).join(' · ')}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#1c3a2a' }}>{o.total} bins</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#1a2a3a' }}>{o.total} bins</div>
                     {o.tonHa != null && (
                       <div style={{ fontSize: 11, fontWeight: 600, color: tonHaColor(o.tonHa) }}>{o.tonHa.toFixed(1)} t/ha</div>
                     )}
                   </div>
                 </div>
               )) : (
-                <div style={{ fontSize: 13, color: '#9aaa9f', padding: '12px 0' }}>No data</div>
+                <div style={{ fontSize: 13, color: '#8a95a0', padding: '12px 0' }}>No data</div>
               )}
             </div>
 
@@ -1341,8 +1341,8 @@ export default function ProductionPage() {
                   border: '1px solid #e8e4dc', cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
-                <span style={{ fontSize: 15, fontWeight: 700, color: '#1c3a2a' }}>Quality by Team</span>
-                <span style={{ fontSize: 18, color: '#9aaa9f', transform: qualityOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>&#9662;</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: '#1a2a3a' }}>Quality by Team</span>
+                <span style={{ fontSize: 18, color: '#8a95a0', transform: qualityOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>&#9662;</span>
               </button>
               {qualityOpen && (
                 <div style={{ marginTop: 8 }}>
@@ -1362,15 +1362,15 @@ export default function ProductionPage() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 15, fontWeight: 700, color: '#1c3a2a' }}>Size Distribution</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: '#1a2a3a' }}>Size Distribution</span>
                   <span style={{ fontSize: 10, background: '#4caf72', color: 'white', padding: '2px 8px', borderRadius: 20, fontFamily: 'monospace', fontWeight: 700 }}>QC</span>
                 </div>
-                <span style={{ fontSize: 18, color: '#9aaa9f', transform: sizeOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>&#9662;</span>
+                <span style={{ fontSize: 18, color: '#8a95a0', transform: sizeOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>&#9662;</span>
               </button>
               {sizeOpen && (
                 <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', marginTop: 8, padding: '16px' }}>
                   {qcLoading ? (
-                    <div style={{ textAlign: 'center', padding: 16, color: '#9aaa9f', fontSize: 13 }}>Loading QC data...</div>
+                    <div style={{ textAlign: 'center', padding: 16, color: '#8a95a0', fontSize: 13 }}>Loading QC data...</div>
                   ) : sizePctData.length > 0 ? (() => {
                     const byOrder = [...sizePctData].sort((a, b) => a.display_order - b.display_order)
                     const maxPct = Math.max(...byOrder.map(b => b.pct), 1)
@@ -1378,18 +1378,18 @@ export default function ProductionPage() {
                       <div>
                         {byOrder.map((item, i) => (
                           <div key={item.bin_label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                            <span style={{ width: 70, textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#1c3a2a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{item.bin_label}</span>
+                            <span style={{ width: 70, textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#1a2a3a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{item.bin_label}</span>
                             <div style={{ flex: 1, position: 'relative', height: 22, background: '#f0ede6', borderRadius: 3 }}>
                               <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${(item.pct / maxPct) * 100}%`, background: SIZE_PALETTE[i % SIZE_PALETTE.length], borderRadius: 3, transition: 'width 0.4s ease' }} />
                             </div>
                             <span style={{ fontSize: 12, fontWeight: 700, color: SIZE_PALETTE[i % SIZE_PALETTE.length], fontFamily: 'monospace', width: 40, textAlign: 'right', flexShrink: 0 }}>{item.pct}%</span>
                           </div>
                         ))}
-                        <div style={{ fontSize: 11, color: '#9aaa9f', marginTop: 8 }}>{totalFruitSampled.toLocaleString('en-ZA')} fruit sampled</div>
+                        <div style={{ fontSize: 11, color: '#8a95a0', marginTop: 8 }}>{totalFruitSampled.toLocaleString('en-ZA')} fruit sampled</div>
                       </div>
                     )
                   })() : (
-                    <div style={{ textAlign: 'center', padding: 16, color: '#9aaa9f', fontSize: 13 }}>No QC size data</div>
+                    <div style={{ textAlign: 'center', padding: 16, color: '#8a95a0', fontSize: 13 }}>No QC size data</div>
                   )}
                 </div>
               )}
@@ -1406,15 +1406,15 @@ export default function ProductionPage() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 15, fontWeight: 700, color: '#1c3a2a' }}>QC Issues</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: '#1a2a3a' }}>QC Issues</span>
                   <span style={{ fontSize: 10, background: '#e85a4a', color: 'white', padding: '2px 8px', borderRadius: 20, fontFamily: 'monospace', fontWeight: 700 }}>DEFECTS</span>
                 </div>
-                <span style={{ fontSize: 18, color: '#9aaa9f', transform: issuesOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>&#9662;</span>
+                <span style={{ fontSize: 18, color: '#8a95a0', transform: issuesOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>&#9662;</span>
               </button>
               {issuesOpen && (
                 <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', marginTop: 8, padding: '16px' }}>
                   {qcLoading ? (
-                    <div style={{ textAlign: 'center', padding: 16, color: '#9aaa9f', fontSize: 13 }}>Loading QC data...</div>
+                    <div style={{ textAlign: 'center', padding: 16, color: '#8a95a0', fontSize: 13 }}>Loading QC data...</div>
                   ) : issuePctData.length > 0 ? (() => {
                     const sorted = [...issuePctData].sort((a, b) => b.pct - a.pct)
                     const maxPct = sorted[0]?.pct || 1
@@ -1422,7 +1422,7 @@ export default function ProductionPage() {
                       <div>
                         {sorted.map((item, i) => (
                           <div key={item.pest_id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                            <span style={{ width: 85, textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#1c3a2a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{item.pest_name}</span>
+                            <span style={{ width: 85, textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#1a2a3a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{item.pest_name}</span>
                             <div style={{ flex: 1, position: 'relative', height: 22, background: '#f0ede6', borderRadius: 3 }}>
                               <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${(item.pct / maxPct) * 100}%`, background: ISSUE_PALETTE[i % ISSUE_PALETTE.length], borderRadius: 3, transition: 'width 0.4s ease' }} />
                             </div>
@@ -1432,7 +1432,7 @@ export default function ProductionPage() {
                       </div>
                     )
                   })() : (
-                    <div style={{ textAlign: 'center', padding: 16, color: '#9aaa9f', fontSize: 13 }}>No QC issue data</div>
+                    <div style={{ textAlign: 'center', padding: 16, color: '#8a95a0', fontSize: 13 }}>No QC issue data</div>
                   )}
                 </div>
               )}
@@ -1448,7 +1448,7 @@ export default function ProductionPage() {
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={tonHaData} layout="vertical" margin={{ left: 100, right: 30, top: 10, bottom: 10 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e8e4dc" horizontal={false} />
-                        <XAxis type="number" tick={{ fontSize: 11, fill: '#9aaa9f' }} />
+                        <XAxis type="number" tick={{ fontSize: 11, fill: '#8a95a0' }} />
                         <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: '#3a4a40' }} width={90} />
                         <Tooltip content={<CustomTooltip />} />
                         <Bar dataKey="tonHa" name="Ton/Ha" radius={[0, 4, 4, 0]} maxBarSize={20}>
@@ -1473,12 +1473,12 @@ export default function ProductionPage() {
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={weeklyTrend} margin={{ left: 10, right: 30, top: 10, bottom: 10 }} stackOffset="none">
                         <CartesianGrid strokeDasharray="3 3" stroke="#e8e4dc" />
-                        <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#9aaa9f' }} />
-                        <YAxis tick={{ fontSize: 11, fill: '#9aaa9f' }} />
+                        <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#8a95a0' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#8a95a0' }} />
                         <Tooltip content={<CustomTooltip />} />
                         <Legend iconType="square" iconSize={10} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
                         {weekCommodities.map((comm, i) => {
-                          const colors = ['#2a6e45', '#e8924a', '#6b7fa8', '#e8c44a', '#9b6bb5', '#c4744a', '#4a9e6b', '#e85a4a']
+                          const colors = ['#2176d9', '#e8924a', '#6b7fa8', '#e8c44a', '#9b6bb5', '#c4744a', '#4a9e6b', '#e85a4a']
                           const color = colors[i % colors.length]
                           return <Area key={comm} type="monotone" dataKey={comm} name={comm} stroke={color} fill={color} fillOpacity={0.25} stackId="1" />
                         })}
@@ -1496,7 +1496,7 @@ export default function ProductionPage() {
 
       <style>{`
         .prod-tooltip {
-          background: #1c3a2a !important;
+          background: #1a2a3a !important;
           color: #e8f0e0 !important;
           border: none !important;
           border-radius: 6px !important;

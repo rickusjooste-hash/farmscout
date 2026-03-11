@@ -39,7 +39,7 @@ function fmtTime(iso: string): string {
   })
 }
 
-const LINE_COLORS = ['#2a6e45', '#e8924a', '#6b7fa8']
+const LINE_COLORS = ['#2176d9', '#e8924a', '#6b7fa8']
 
 // ── Component ──────────────────────────────────────────────────────────────
 
@@ -188,7 +188,7 @@ export default function ScoutProductivityDetail({
 
       const marker = L.circleMarker([p.lat!, p.lng!], {
         radius: isFirst || isLast ? 7 : 4,
-        fillColor: isFirst ? '#2a6e45' : isLast ? '#e85a4a' : color,
+        fillColor: isFirst ? '#2176d9' : isLast ? '#e85a4a' : color,
         color: '#fff',
         weight: isFirst || isLast ? 2 : 1,
         fillOpacity: 0.9,
@@ -277,8 +277,8 @@ export default function ScoutProductivityDetail({
       <div className="spd-detail-header">
         <button className="spd-back" onClick={onClose}>← All scouts</button>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 17, color: '#1c3a2a' }}>{scoutName}</div>
-          <div style={{ fontSize: 12, color: '#9aaa9f' }}>
+          <div style={{ fontWeight: 700, fontSize: 17, color: '#1a2a3a' }}>{scoutName}</div>
+          <div style={{ fontSize: 12, color: '#8a95a0' }}>
             {new Date(day).toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
         </div>
@@ -376,10 +376,10 @@ export default function ScoutProductivityDetail({
       {activeTab === 'map' && (
         <div className="spd-card">
           <div className="spd-card-title">GPS Route Replay</div>
-          {loadingTrack && <div style={{ padding: 20, color: '#9aaa9f', textAlign: 'center' }}>Loading track...</div>}
+          {loadingTrack && <div style={{ padding: 20, color: '#8a95a0', textAlign: 'center' }}>Loading track...</div>}
           <div ref={mapContainerRef} className="spd-map" />
           {track.length > 0 && !track.some(p => p.lat) && (
-            <div style={{ padding: 12, textAlign: 'center', color: '#9aaa9f', fontSize: 12 }}>
+            <div style={{ padding: 12, textAlign: 'center', color: '#8a95a0', fontSize: 12 }}>
               No GPS data available for this day
             </div>
           )}
@@ -394,20 +394,20 @@ export default function ScoutProductivityDetail({
               <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" />
               <XAxis
                 dataKey="label"
-                tick={{ fontSize: 10, fill: '#9aaa9f' }}
+                tick={{ fontSize: 10, fill: '#8a95a0' }}
                 tickLine={false}
                 axisLine={{ stroke: '#f0ede6' }}
               />
               <YAxis
-                tick={{ fontSize: 10, fill: '#9aaa9f' }}
+                tick={{ fontSize: 10, fill: '#8a95a0' }}
                 tickLine={false}
                 axisLine={false}
               />
               <Tooltip
-                contentStyle={{ background: '#1c3a2a', border: 'none', borderRadius: 8, color: '#e8e8d8', fontSize: 12 }}
-                labelStyle={{ color: '#a8d5a2' }}
+                contentStyle={{ background: '#1a2a3a', border: 'none', borderRadius: 8, color: '#e8e8d8', fontSize: 12 }}
+                labelStyle={{ color: '#a0c4f0' }}
               />
-              <Bar dataKey="count" fill="#2a6e45" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="count" fill="#2176d9" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -432,18 +432,18 @@ export default function ScoutProductivityDetail({
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" />
                 <XAxis
                   dataKey="week"
-                  tick={{ fontSize: 11, fill: '#9aaa9f', fontFamily: 'Inter' }}
+                  tick={{ fontSize: 11, fill: '#8a95a0', fontFamily: 'Inter' }}
                   tickLine={false}
                   axisLine={{ stroke: '#f0ede6' }}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: '#9aaa9f', fontFamily: 'Inter' }}
+                  tick={{ fontSize: 11, fill: '#8a95a0', fontFamily: 'Inter' }}
                   tickLine={false}
                   axisLine={false}
                 />
                 <Tooltip
-                  contentStyle={{ background: '#1c3a2a', border: 'none', borderRadius: 10, color: '#e8e8d8', fontSize: 12 }}
-                  labelStyle={{ color: '#a8d5a2' }}
+                  contentStyle={{ background: '#1a2a3a', border: 'none', borderRadius: 10, color: '#e8e8d8', fontSize: 12 }}
+                  labelStyle={{ color: '#a0c4f0' }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Line dataKey="Traps" stroke={LINE_COLORS[0]} strokeWidth={2} dot={{ r: 3 }} />
@@ -452,7 +452,7 @@ export default function ScoutProductivityDetail({
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <div style={{ padding: 32, textAlign: 'center', color: '#9aaa9f' }}>
+            <div style={{ padding: 32, textAlign: 'center', color: '#8a95a0' }}>
               Not enough weekly data for trend chart
             </div>
           )}
@@ -476,7 +476,7 @@ export default function ScoutProductivityDetail({
           border-radius: 8px;
           padding: 6px 12px;
           font-size: 13px;
-          color: #2a6e45;
+          color: #2176d9;
           cursor: pointer;
           font-family: 'Inter', sans-serif;
           white-space: nowrap;
@@ -498,11 +498,11 @@ export default function ScoutProductivityDetail({
         .spd-kpi-val {
           font-size: 18px;
           font-weight: 700;
-          color: #1c3a2a;
+          color: #1a2a3a;
         }
         .spd-kpi-lbl {
           font-size: 11px;
-          color: #9aaa9f;
+          color: #8a95a0;
           margin-top: 2px;
         }
         .spd-card {
@@ -515,7 +515,7 @@ export default function ScoutProductivityDetail({
           padding: 12px 16px;
           font-size: 13px;
           font-weight: 600;
-          color: #1c3a2a;
+          color: #1a2a3a;
           border-bottom: 1px solid #f0ede6;
         }
         .spd-map {
@@ -531,7 +531,7 @@ export default function ScoutProductivityDetail({
           padding: 8px 16px;
           font-size: 13px;
           font-weight: 500;
-          color: #9aaa9f;
+          color: #8a95a0;
           background: none;
           border: none;
           cursor: pointer;
@@ -540,10 +540,10 @@ export default function ScoutProductivityDetail({
           font-family: 'Inter', sans-serif;
           position: relative;
         }
-        .spd-tab:hover { color: #1c3a2a; }
+        .spd-tab:hover { color: #1a2a3a; }
         .spd-tab.active {
-          color: #2a6e45;
-          border-bottom-color: #2a6e45;
+          color: #2176d9;
+          border-bottom-color: #2176d9;
         }
         .spd-tab-badge {
           display: inline-block;
@@ -592,12 +592,12 @@ export default function ScoutProductivityDetail({
           position: absolute;
           transform: translateX(-50%);
           font-size: 10px;
-          color: #9aaa9f;
+          color: #8a95a0;
         }
         .spd-timeline-edge {
           position: absolute;
           font-size: 10px;
-          color: #9aaa9f;
+          color: #8a95a0;
         }
         .spd-timeline-legend {
           display: flex;
@@ -614,7 +614,7 @@ export default function ScoutProductivityDetail({
           margin-right: 3px;
         }
         .spd-tooltip-wrap {
-          background: #1c3a2a !important;
+          background: #1a2a3a !important;
           border: none !important;
           border-radius: 8px !important;
           color: #e8e8d8 !important;
@@ -623,7 +623,7 @@ export default function ScoutProductivityDetail({
           box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
         }
         .spd-tooltip-wrap::before {
-          border-top-color: #1c3a2a !important;
+          border-top-color: #1a2a3a !important;
         }
         .spd-arrow-icon {
           background: none !important;

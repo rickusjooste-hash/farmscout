@@ -77,9 +77,9 @@ function trendBadge(twSev: number, lwSev: number) {
       }}>New</span>
     )
   }
-  if (lwSev === 0) return <span style={{ fontSize: 12, color: '#9aaa9f' }}>&mdash;</span>
+  if (lwSev === 0) return <span style={{ fontSize: 12, color: '#8a95a0' }}>&mdash;</span>
   const pct = Math.round(((twSev - lwSev) / lwSev) * 100)
-  if (pct === 0) return <span style={{ fontSize: 12, color: '#9aaa9f' }}>&mdash;</span>
+  if (pct === 0) return <span style={{ fontSize: 12, color: '#8a95a0' }}>&mdash;</span>
   if (pct > 0) return <span style={{ fontSize: 12, color: '#e8924a', fontWeight: 600 }}>&uarr; {pct}%</span>
   return <span style={{ fontSize: 12, color: '#4caf72', fontWeight: 600 }}>&darr; {Math.abs(pct)}%</span>
 }
@@ -456,7 +456,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
           @keyframes tsa-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
         `}</style>
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '20px 24px', marginBottom: 20 }}>
-          <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a', marginBottom: 12 }}>Tree Scouting This Week</div>
+          <div style={{ fontSize: 17, fontWeight: 600, color: '#1a2a3a', marginBottom: 12 }}>Tree Scouting This Week</div>
           {[0, 1, 2].map(i => (
             <div key={i} style={{ height: 48, background: '#f4f1eb', borderRadius: 8, marginBottom: 8, animation: 'tsa-pulse 1.5s ease infinite' }} />
           ))}
@@ -473,7 +473,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
     <>
       <style>{`
         .tsa-tooltip {
-          background: #1c3a2a !important; color: #fff !important; border: none !important;
+          background: #1a2a3a !important; color: #fff !important; border: none !important;
           border-radius: 6px !important; font-size: 12px !important; font-weight: 500 !important;
           padding: 4px 10px !important; font-family: 'Inter', sans-serif !important;
         }
@@ -489,13 +489,13 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
         }
         .tsa-detail-close {
           background: none; border: none; cursor: pointer; font-size: 20px;
-          color: #9aaa9f; line-height: 1; padding: 0 0 0 8px; flex-shrink: 0;
+          color: #8a95a0; line-height: 1; padding: 0 0 0 8px; flex-shrink: 0;
         }
-        .tsa-detail-close:hover { color: #1c3a2a; }
+        .tsa-detail-close:hover { color: #1a2a3a; }
         .tsa-detail-body { padding: 16px; flex: 1; }
         .tsa-section-label {
           font-size: 10px; font-weight: 700; text-transform: uppercase;
-          letter-spacing: 0.8px; color: #9aaa9f; margin-bottom: 8px; margin-top: 16px;
+          letter-spacing: 0.8px; color: #8a95a0; margin-bottom: 8px; margin-top: 16px;
         }
         .tsa-severity-badge {
           display: inline-block; padding: 2px 10px; border-radius: 10px;
@@ -523,15 +523,15 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
           onClick={() => { setExpanded(e => !e); setMobileDrilldown(null); setSelectedOrchardId(null) }}
         >
           <div>
-            <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a' }}>Tree Scouting This Week</div>
-            <div style={{ fontSize: 12, color: '#9aaa9f', marginTop: 3 }}>
+            <div style={{ fontSize: 17, fontWeight: 600, color: '#1a2a3a' }}>Tree Scouting This Week</div>
+            <div style={{ fontSize: 12, color: '#8a95a0', marginTop: 3 }}>
               {expanded
                 ? (isMobile ? 'Tap a pest to see orchard detail' : 'Click a pest to see orchard severity on the map')
                 : `${rows.length} pest${rows.length !== 1 ? 's' : ''} observed \u00B7 ${alertCount} with alerts`}
             </div>
           </div>
           <span style={{
-            fontSize: 13, color: '#7a8a80', transition: 'transform 0.2s',
+            fontSize: 13, color: '#7a8a9a', transition: 'transform 0.2s',
             display: 'inline-block', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
           }}>{'\u25BC'}</span>
         </div>
@@ -557,7 +557,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
 
                 {/* Pest name + week nav */}
                 <div style={{ padding: '0 16px 12px' }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#1c3a2a', marginBottom: 10 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#1a2a3a', marginBottom: 10 }}>
                     {mobileDrilldown.pestName}
                   </div>
                   <div style={{
@@ -571,7 +571,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
                         fontFamily: 'Inter, sans-serif',
                       }}
                     >{'\u2039'}</button>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a' }}>
                       {formatWeekLabel(drilldownWeekStart)}
                     </span>
                     <button
@@ -593,9 +593,9 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
 
                 {/* Orchard list */}
                 {drilldownLoading ? (
-                  <div style={{ padding: 20, textAlign: 'center', color: '#9aaa9f', fontSize: 13 }}>Loading...</div>
+                  <div style={{ padding: 20, textAlign: 'center', color: '#8a95a0', fontSize: 13 }}>Loading...</div>
                 ) : drilldownOrchards.length === 0 ? (
-                  <div style={{ padding: 20, textAlign: 'center', color: '#9aaa9f', fontSize: 13 }}>No observations this week</div>
+                  <div style={{ padding: 20, textAlign: 'center', color: '#8a95a0', fontSize: 13 }}>No observations this week</div>
                 ) : (
                   <>
                     {drilldownOrchards.map(o => (
@@ -611,7 +611,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
                           width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
                           background: STATUS_DOT_COLORS[o.status] || '#aaaaaa',
                         }} />
-                        <span style={{ flex: 1, fontSize: 14, fontWeight: 500, color: '#1c3a2a' }}>
+                        <span style={{ flex: 1, fontSize: 14, fontWeight: 500, color: '#1a2a3a' }}>
                           {o.orchard_name}
                         </span>
                         <span style={{ fontSize: 14, fontWeight: 600, color: '#3a4a40' }}>
@@ -621,7 +621,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
                     ))}
                     {/* Summary */}
                     <div style={{
-                      padding: '12px 16px', fontSize: 12, color: '#9aaa9f', fontWeight: 500,
+                      padding: '12px 16px', fontSize: 12, color: '#8a95a0', fontWeight: 500,
                       borderTop: '1px solid #e8e4dc',
                     }}>
                       {drilldownOrchards.length} orchard{drilldownOrchards.length !== 1 ? 's' : ''} affected
@@ -650,24 +650,24 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
                           padding: '12px 16px',
                           borderBottom: '1px solid #f9f7f3',
                           cursor: 'pointer',
-                          background: isSelected && !isMobile ? '#f0f7f2' : 'transparent',
+                          background: isSelected && !isMobile ? '#f0f4fa' : 'transparent',
                           transition: 'background 0.15s',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a' }}>{row.pest_name}</span>
-                          <span style={{ fontSize: 11, color: '#9aaa9f', fontWeight: 500 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a' }}>{row.pest_name}</span>
+                          <span style={{ fontSize: 11, color: '#8a95a0', fontWeight: 500 }}>
                             {METHOD_LABELS[method] || method}
                           </span>
                         </div>
                         {/* Worst orchard label — mobile only */}
                         {row.worst_orchard_name && (
-                          <div className="tsa-worst-label" style={{ fontSize: 11, color: '#9aaa9f', marginTop: 2 }}>
+                          <div className="tsa-worst-label" style={{ fontSize: 11, color: '#8a95a0', marginTop: 2 }}>
                             Worst: {row.worst_orchard_name}
                           </div>
                         )}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#1c3a2a' }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a' }}>
                             {formatSeverity(twSev, method)}
                           </span>
                           {trendBadge(twSev, lwSev)}
@@ -689,7 +689,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
                   }}>
                     <div style={{
                       fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
-                      letterSpacing: '0.8px', color: '#9aaa9f', marginBottom: 5,
+                      letterSpacing: '0.8px', color: '#8a95a0', marginBottom: 5,
                     }}>Severity</div>
                     {MAP_LEGEND.map(item => (
                       <div key={item.status} style={{
@@ -721,13 +721,13 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
                     <div className="tsa-detail-panel">
                       <div className="tsa-detail-header">
                         <div>
-                          <div style={{ fontSize: 15, fontWeight: 700, color: '#1c3a2a' }}>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: '#1a2a3a' }}>
                             {orchardName}
                             <span className="tsa-severity-badge" style={{ background: badgeBg, color: badgeColor }}>
                               {sevStatus === 'red' ? 'High' : sevStatus === 'yellow' ? 'Moderate' : sevStatus === 'green' ? 'Low' : 'No data'}
                             </span>
                           </div>
-                          <div style={{ fontSize: 12, color: '#9aaa9f', marginTop: 2 }}>
+                          <div style={{ fontSize: 12, color: '#8a95a0', marginTop: 2 }}>
                             {formatSeverity(sevValue, method)}
                           </div>
                         </div>
@@ -739,21 +739,21 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
                         <div className="tsa-section-label" style={{ marginTop: 0 }}>
                           {selectedRow?.pest_name || 'Pest'} &middot; This Week
                         </div>
-                        <div style={{ fontSize: 22, fontWeight: 700, color: '#1c3a2a' }}>
+                        <div style={{ fontSize: 22, fontWeight: 700, color: '#1a2a3a' }}>
                           {formatSeverity(sevValue, method)}
                         </div>
-                        <div style={{ fontSize: 11, color: '#9aaa9f', marginTop: 2 }}>
+                        <div style={{ fontSize: 11, color: '#8a95a0', marginTop: 2 }}>
                           {METHOD_LABELS[method] || method}
                         </div>
 
                         {/* Season trend chart */}
                         <div className="tsa-section-label">Season Trend</div>
                         {trendLoading ? (
-                          <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9aaa9f', fontSize: 13 }}>
+                          <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8a95a0', fontSize: 13 }}>
                             Loading...
                           </div>
                         ) : trendData.length === 0 ? (
-                          <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9aaa9f', fontSize: 13 }}>
+                          <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8a95a0', fontSize: 13 }}>
                             No trend data
                           </div>
                         ) : (
@@ -762,22 +762,22 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
                               <CartesianGrid strokeDasharray="3 3" stroke="#e8e4dc" />
                               <XAxis
                                 dataKey="week_label"
-                                tick={{ fontSize: 10, fill: '#9aaa9f' }}
+                                tick={{ fontSize: 10, fill: '#8a95a0' }}
                                 axisLine={{ stroke: '#e8e4dc' }}
                                 tickLine={false}
                               />
                               <YAxis
-                                tick={{ fontSize: 10, fill: '#9aaa9f' }}
+                                tick={{ fontSize: 10, fill: '#8a95a0' }}
                                 axisLine={false}
                                 tickLine={false}
                                 domain={isCountMethod ? ['auto', 'auto'] : [0, (max: number) => Math.max(max, 55)]}
                               />
                               <Tooltip
                                 contentStyle={{
-                                  background: '#1c3a2a', border: 'none', borderRadius: 6,
+                                  background: '#1a2a3a', border: 'none', borderRadius: 6,
                                   fontSize: 12, color: '#fff', padding: '6px 10px',
                                 }}
-                                labelStyle={{ color: '#9aaa9f', fontSize: 11, marginBottom: 4 }}
+                                labelStyle={{ color: '#8a95a0', fontSize: 11, marginBottom: 4 }}
                                 formatter={(value: number | undefined) => [formatSeverity(value ?? 0, method), METHOD_LABELS[method] || method]}
                               />
                               {!isCountMethod && (

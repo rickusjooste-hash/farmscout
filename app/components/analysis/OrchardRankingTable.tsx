@@ -33,7 +33,7 @@ type SortKey = 'name' | 'variety' | 'ha' | 'tons' | 'tonHa' | 'bins' | 'bruising
 
 function tonHaColor(v: number | null): string {
   if (v == null) return '#aaa'
-  if (v >= 50) return '#2a6e45'
+  if (v >= 50) return '#2176d9'
   if (v >= 30) return '#4caf72'
   if (v >= 15) return '#f5c842'
   return '#e85a4a'
@@ -69,15 +69,15 @@ export default function OrchardRankingTable({ orchards, weeklyBins, selectedOrch
         .oa-th {
           position: sticky; top: 0; background: #f9f7f3; text-align: left;
           font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px;
-          color: #9aaa9f; font-weight: 700; padding: 8px 10px;
+          color: #8a95a0; font-weight: 700; padding: 8px 10px;
           border-bottom: 1px solid #f0ede6; cursor: pointer; white-space: nowrap;
           user-select: none;
         }
-        .oa-th:hover { color: #1c3a2a; }
+        .oa-th:hover { color: #1a2a3a; }
         .oa-td { padding: 8px 10px; font-size: 13px; color: #3a4a40; border-bottom: 1px solid #f9f7f3; }
         .oa-tr { cursor: pointer; transition: background 0.1s; }
         .oa-tr:hover .oa-td { background: #f9f7f3; }
-        .oa-tr.oa-sel .oa-td { background: #f0f7f2; }
+        .oa-tr.oa-sel .oa-td { background: #f0f4fa; }
         @media (max-width: 768px) {
           .oa-ranking-table thead { display: none; }
           .oa-ranking-table .oa-tr {
@@ -127,7 +127,7 @@ export default function OrchardRankingTable({ orchards, weeklyBins, selectedOrch
                       {sparkData && sparkData.length > 1 ? (
                         <ResponsiveContainer width={56} height={22}>
                           <LineChart data={sparkData.map((v, i) => ({ w: i, v }))}>
-                            <Line type="monotone" dataKey="v" stroke="#2a6e45" strokeWidth={1.5} dot={false} />
+                            <Line type="monotone" dataKey="v" stroke="#2176d9" strokeWidth={1.5} dot={false} />
                           </LineChart>
                         </ResponsiveContainer>
                       ) : (
@@ -149,7 +149,7 @@ export default function OrchardRankingTable({ orchards, weeklyBins, selectedOrch
             )
           })}
           {sorted.length === 0 && (
-            <tr><td colSpan={hasProduction ? 7 : 4} className="oa-td" style={{ textAlign: 'center', color: '#9aaa9f', padding: 32 }}>No orchards found</td></tr>
+            <tr><td colSpan={hasProduction ? 7 : 4} className="oa-td" style={{ textAlign: 'center', color: '#8a95a0', padding: 32 }}>No orchards found</td></tr>
           )}
         </tbody>
       </table>

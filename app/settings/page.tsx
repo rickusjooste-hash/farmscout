@@ -195,50 +195,50 @@ export default function SettingsPage() {
         .app { display: flex; min-height: 100vh; }
         .sidebar {
           width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto;
-          background: #1c3a2a; padding: 32px 20px; display: flex;
+          background: #1a2a3a; padding: 32px 20px; display: flex;
           flex-direction: column; gap: 8px; flex-shrink: 0;
         }
-        .logo { font-size: 22px; color: #a8d5a2; margin-bottom: 32px; letter-spacing: -0.5px; }
+        .logo { font-size: 22px; color: #a0c4f0; margin-bottom: 32px; letter-spacing: -0.5px; }
         .logo span { color: #fff; }
         .nav-item {
           display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-          border-radius: 8px; color: #8aab96; font-size: 13.5px; font-weight: 500;
+          border-radius: 8px; color: #7a8fa0; font-size: 13.5px; font-weight: 500;
           cursor: pointer; transition: all 0.15s; text-decoration: none;
         }
-        .nav-item:hover { background: #2a4f38; color: #fff; }
-        .nav-item.active { background: #2a4f38; color: #a8d5a2; }
+        .nav-item:hover { background: #1a4a7a; color: #fff; }
+        .nav-item.active { background: #1a4a7a; color: #a0c4f0; }
         .main { flex: 1; padding: 40px; overflow-y: auto; }
-        .page-title { font-size: 32px; color: #1c3a2a; letter-spacing: -0.5px; margin-bottom: 6px; }
-        .page-subtitle { font-size: 14px; color: #7a8a80; font-weight: 300; margin-bottom: 32px; }
-        .section-title { font-size: 20px; color: #1c3a2a; font-weight: 600; margin-bottom: 20px; }
+        .page-title { font-size: 32px; color: #1a2a3a; letter-spacing: -0.5px; margin-bottom: 6px; }
+        .page-subtitle { font-size: 14px; color: #7a8a9a; font-weight: 300; margin-bottom: 32px; }
+        .section-title { font-size: 20px; color: #1a2a3a; font-weight: 600; margin-bottom: 20px; }
         .farm-card { background: #fff; border-radius: 14px; border: 1px solid #e8e4dc; overflow: hidden; margin-bottom: 20px; }
         .farm-card-header { padding: 20px 24px; border-bottom: 1px solid #f0ede6; display: flex; align-items: center; justify-content: space-between; }
-        .farm-name { font-size: 17px; font-weight: 600; color: #1c3a2a; }
+        .farm-name { font-size: 17px; font-weight: 600; color: #1a2a3a; }
         .farm-card-body { padding: 20px 24px; }
         .field-row { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
-        .field-label { font-size: 13px; color: #7a8a80; font-weight: 500; min-width: 100px; }
+        .field-label { font-size: 13px; color: #7a8a9a; font-weight: 500; min-width: 100px; }
         select, input[type="text"], input[type="email"] {
           padding: 7px 12px; border-radius: 8px; border: 1px solid #e0ddd5;
           font-size: 13px; color: #1a1a1a; background: #faf9f6; font-family: inherit;
         }
-        select:focus, input:focus { outline: 2px solid #2a6e45; border-color: transparent; }
+        select:focus, input:focus { outline: 2px solid #2176d9; border-color: transparent; }
         .btn { padding: 7px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: inherit; }
-        .btn-primary { background: #1c3a2a; color: #a8d5a2; }
-        .btn-primary:hover { background: #2a4f38; }
+        .btn-primary { background: #1a2a3a; color: #a0c4f0; }
+        .btn-primary:hover { background: #1a4a7a; }
         .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn-danger { background: #fdecea; color: #e85a4a; border: 1px solid #f5c0bb; }
         .btn-danger:hover { background: #fad3d0; }
         .btn-outline { background: #f4f1eb; color: #3a4a40; border: 1px solid #e0ddd5; }
         .btn-outline:hover { background: #e8e4dc; }
         .btn-outline:disabled { opacity: 0.5; cursor: not-allowed; }
-        .recipients-label { font-size: 12px; color: #9aaa9f; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+        .recipients-label { font-size: 12px; color: #8a95a0; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
         .recipient-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid #f0ede6; border-radius: 8px; margin-bottom: 8px; background: #faf9f6; flex-wrap: wrap; }
-        .recipient-email { font-size: 13px; color: #1c3a2a; font-weight: 500; flex: 1; min-width: 160px; }
-        .recipient-name { font-size: 12px; color: #9aaa9f; }
+        .recipient-email { font-size: 13px; color: #1a2a3a; font-weight: 500; flex: 1; min-width: 160px; }
+        .recipient-name { font-size: 12px; color: #8a95a0; }
         .checkbox-label { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #3a4a40; cursor: pointer; white-space: nowrap; }
         .add-row { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
         .toggle-active { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #3a4a40; }
-        .success-toast { position: fixed; bottom: 24px; right: 24px; background: #1c3a2a; color: #a8d5a2; padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 9999; }
+        .success-toast { position: fixed; bottom: 24px; right: 24px; background: #1a2a3a; color: #a0c4f0; padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 9999; }
       `}</style>
 
       <div className="app">
@@ -260,7 +260,7 @@ export default function SettingsPage() {
 
           <div className="section-title">Rebait Email Notifications</div>
 
-          {loading && <div style={{ color: '#9aaa9f', fontSize: 14 }}>Loading…</div>}
+          {loading && <div style={{ color: '#8a95a0', fontSize: 14 }}>Loading…</div>}
           {error && <div style={{ color: '#e85a4a', fontSize: 14 }}>Error: {error}</div>}
 
           {!loading && !error && farms.map(farm => {
@@ -306,7 +306,7 @@ export default function SettingsPage() {
 
                   <div className="recipients-label">Recipients</div>
                   {farm.recipients.length === 0 && (
-                    <div style={{ fontSize: 13, color: '#9aaa9f', marginBottom: 12 }}>No recipients yet.</div>
+                    <div style={{ fontSize: 13, color: '#8a95a0', marginBottom: 12 }}>No recipients yet.</div>
                   )}
                   {farm.recipients.map(r => (
                     <div className="recipient-row" key={r.id}>

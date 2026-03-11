@@ -23,7 +23,7 @@ interface Commodity {
 }
 
 const LINE_COLORS = [
-  '#2a6e45', '#e8924a', '#6b7fa8', '#e8c44a',
+  '#2176d9', '#e8924a', '#6b7fa8', '#e8c44a',
   '#9b6bb5', '#c4744a', '#4a9e6b', '#e85a4a'
 ]
 
@@ -60,9 +60,9 @@ function FilterPill({ label, active, onClick }: { label: string; active: boolean
   return (
     <button onClick={onClick} style={{
       padding: '4px 12px', borderRadius: 20,
-      border: `1.5px solid ${active ? '#1c3a2a' : '#e0ddd6'}`,
-      background: active ? '#1c3a2a' : '#fff',
-      color: active ? '#a8d5a2' : '#6a7a70',
+      border: `1.5px solid ${active ? '#1a2a3a' : '#e0ddd6'}`,
+      background: active ? '#1a2a3a' : '#fff',
+      color: active ? '#a0c4f0' : '#6a7a70',
       fontSize: 12, fontWeight: 500, cursor: 'pointer',
       fontFamily: 'Inter, sans-serif', transition: 'all 0.15s',
     }}>
@@ -210,10 +210,10 @@ export default function PestTrendChart() {
     if (!active || !payload?.length) return null
     return (
       <div style={{
-        background: '#1c3a2a', borderRadius: 10, padding: '12px 16px',
+        background: '#1a2a3a', borderRadius: 10, padding: '12px 16px',
         boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
       }}>
-        <div style={{ color: '#a8d5a2', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>{label} · {season}</div>
+        <div style={{ color: '#a0c4f0', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>{label} · {season}</div>
         {payload.map((p: any) => (
           <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', gap: 24, marginBottom: 4 }}>
             <span style={{ color: p.color, fontSize: 12 }}>{p.name}</span>
@@ -244,18 +244,18 @@ export default function PestTrendChart() {
         padding: '20px 24px 14px', borderBottom: '1px solid #f0ede6',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
       }}>
-        <div style={{ fontSize: 17, fontWeight: 600, color: '#1c3a2a' }}>
+        <div style={{ fontSize: 17, fontWeight: 600, color: '#1a2a3a' }}>
           Pest Pressure Trend
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 12, color: '#9aaa9f' }}>Season</span>
+          <span style={{ fontSize: 12, color: '#8a95a0' }}>Season</span>
           <div style={{ display: 'flex', gap: 6 }}>
             {seasons.map(s => (
               <button key={s} onClick={() => setSeason(s)} style={{
                 padding: '5px 12px', borderRadius: 20,
-                border: `1.5px solid ${season === s ? '#1c3a2a' : '#e0ddd6'}`,
-                background: season === s ? '#1c3a2a' : '#fff',
-                color: season === s ? '#a8d5a2' : '#6a7a70',
+                border: `1.5px solid ${season === s ? '#1a2a3a' : '#e0ddd6'}`,
+                background: season === s ? '#1a2a3a' : '#fff',
+                color: season === s ? '#a0c4f0' : '#6a7a70',
                 fontSize: 12, fontWeight: 600, cursor: 'pointer',
                 fontFamily: 'Inter, sans-serif',
               }}>
@@ -274,7 +274,7 @@ export default function PestTrendChart() {
         }}>
           {farms.length > 0 && (
             <div className="ptc-filter-group" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 11, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Farm</span>
+              <span style={{ fontSize: 11, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Farm</span>
               <FilterPill label="All" active={!selectedFarmId} onClick={() => setSelectedFarmId('')} />
               {farms.map(f => (
                 <FilterPill
@@ -293,7 +293,7 @@ export default function PestTrendChart() {
 
           {commodities.length > 0 && (
             <div className="ptc-filter-group" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 11, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Commodity</span>
+              <span style={{ fontSize: 11, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Commodity</span>
               <FilterPill label="All" active={!selectedCommodityId} onClick={() => setSelectedCommodityId('')} />
               {commodities.map(c => (
                 <FilterPill
@@ -316,7 +316,7 @@ export default function PestTrendChart() {
               padding: '4px 12px', borderRadius: 20,
               border: `1.5px solid ${selectedPests.has(name) ? LINE_COLORS[i] : '#e0ddd6'}`,
               background: selectedPests.has(name) ? LINE_COLORS[i] + '22' : '#fff',
-              color: selectedPests.has(name) ? LINE_COLORS[i] : '#9aaa9f',
+              color: selectedPests.has(name) ? LINE_COLORS[i] : '#8a95a0',
               fontSize: 12, fontWeight: 500, cursor: 'pointer',
               fontFamily: 'Inter, sans-serif', transition: 'all 0.15s',
             }}>
@@ -329,7 +329,7 @@ export default function PestTrendChart() {
       {/* Chart */}
       <div className="ptc-chart" style={{ padding: '24px 24px 16px' }}>
         {loading && (
-          <div style={{ height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9aaa9f', fontSize: 14 }}>
+          <div style={{ height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8a95a0', fontSize: 14 }}>
             Loading {season} season data…
           </div>
         )}
@@ -344,13 +344,13 @@ export default function PestTrendChart() {
               <CartesianGrid strokeDasharray="3 3" stroke="#f0ede6" />
               <XAxis
                 dataKey="week"
-                tick={{ fontSize: 11, fill: '#9aaa9f', fontFamily: 'Inter' }}
+                tick={{ fontSize: 11, fill: '#8a95a0', fontFamily: 'Inter' }}
                 tickLine={false}
                 axisLine={{ stroke: '#f0ede6' }}
                 interval="preserveStartEnd"
               />
               <YAxis
-                tick={{ fontSize: 11, fill: '#9aaa9f', fontFamily: 'Inter' }}
+                tick={{ fontSize: 11, fill: '#8a95a0', fontFamily: 'Inter' }}
                 tickLine={false}
                 axisLine={false}
               />

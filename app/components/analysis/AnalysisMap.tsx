@@ -12,7 +12,7 @@ const STATUS_COLORS: Record<string, { fill: string; label: string }> = {
 
 function tonHaColor(v: number | null): string {
   if (v == null) return '#aaa'
-  if (v >= 50) return '#2a6e45'
+  if (v >= 50) return '#2176d9'
   if (v >= 30) return '#4caf72'
   if (v >= 15) return '#f5c842'
   return '#e85a4a'
@@ -40,7 +40,7 @@ interface Props {
 }
 
 const TONHA_LEGEND = [
-  { color: '#2a6e45', label: '≥ 50 t/ha' },
+  { color: '#2176d9', label: '≥ 50 t/ha' },
   { color: '#4caf72', label: '30–49' },
   { color: '#f5c842', label: '15–29' },
   { color: '#e85a4a', label: '< 15' },
@@ -159,7 +159,7 @@ export default function AnalysisMap({
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <style>{`
         .oa-tooltip {
-          background: #1c3a2a !important; color: #fff !important; border: none !important;
+          background: #1a2a3a !important; color: #fff !important; border: none !important;
           border-radius: 6px !important; font-size: 12px !important; font-weight: 500 !important;
           padding: 4px 10px !important; font-family: 'Inter', sans-serif !important;
         }

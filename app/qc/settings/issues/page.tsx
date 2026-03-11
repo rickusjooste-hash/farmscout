@@ -28,29 +28,29 @@ interface QcIssueRow {
 
 const s: Record<string, React.CSSProperties> = {
   page:      { display: 'flex', minHeight: '100vh', background: '#f4f1eb', fontFamily: 'Inter, sans-serif' },
-  sidebar:   { width: 220, flexShrink: 0, background: '#1c3a2a', padding: '32px 20px', display: 'flex', flexDirection: 'column', gap: 8, position: 'sticky', top: 0, height: '100vh', overflowY: 'auto' },
-  logo:      { fontSize: 22, color: '#a8d5a2', marginBottom: 32, letterSpacing: '-0.5px' },
-  navItem:   { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, color: '#8aab96', fontSize: 13.5, fontWeight: 500, cursor: 'pointer', textDecoration: 'none', transition: 'all 0.15s' },
-  navLabel:  { fontSize: 10, color: '#5a7a6a', padding: '16px 16px 4px', textTransform: 'uppercase' as const, letterSpacing: '0.08em' },
+  sidebar:   { width: 220, flexShrink: 0, background: '#1a2a3a', padding: '32px 20px', display: 'flex', flexDirection: 'column', gap: 8, position: 'sticky', top: 0, height: '100vh', overflowY: 'auto' },
+  logo:      { fontSize: 22, color: '#a0c4f0', marginBottom: 32, letterSpacing: '-0.5px' },
+  navItem:   { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, color: '#7a8fa0', fontSize: 13.5, fontWeight: 500, cursor: 'pointer', textDecoration: 'none', transition: 'all 0.15s' },
+  navLabel:  { fontSize: 10, color: '#5a7a8a', padding: '16px 16px 4px', textTransform: 'uppercase' as const, letterSpacing: '0.08em' },
   main:      { flex: 1, padding: 40, overflowY: 'auto' },
   header:    { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 },
-  title:     { fontSize: 28, fontWeight: 700, color: '#1c3a2a', letterSpacing: '-0.5px' },
+  title:     { fontSize: 28, fontWeight: 700, color: '#1a2a3a', letterSpacing: '-0.5px' },
   pills:     { display: 'flex', gap: 8, flexWrap: 'wrap' as const },
   pill:      { padding: '6px 14px', borderRadius: 20, border: '1px solid #d4cfca', background: '#fff', color: '#5a6a60', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
-  pillActive:{ padding: '6px 14px', borderRadius: 20, border: '1px solid #2a6e45', background: '#2a6e45', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
+  pillActive:{ padding: '6px 14px', borderRadius: 20, border: '1px solid #2176d9', background: '#2176d9', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
   card:      { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 24 },
   rowBase:   { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid #f0ede6', background: '#fff' },
   rowDrag:   { opacity: 0.4 },
   dragHandle:{ cursor: 'grab', fontSize: 16, color: '#aaa', userSelect: 'none', flexShrink: 0, lineHeight: 1 },
   issueName: { flex: 1, minWidth: 0 },
-  nameEn:    { fontSize: 14, fontWeight: 600, color: '#1c3a2a' },
-  nameAf:    { fontSize: 12, color: '#9aaa9f', marginTop: 1 },
+  nameEn:    { fontSize: 14, fontWeight: 600, color: '#1a2a3a' },
+  nameAf:    { fontSize: 12, color: '#8a95a0', marginTop: 1 },
   catBtns:   { display: 'flex', gap: 4 },
   catBtn:    { padding: '4px 10px', borderRadius: 6, border: '1px solid #d4cfca', background: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' },
   catPicking:{ padding: '4px 10px', borderRadius: 6, border: '1px solid #f5c842', background: '#fffbe6', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', color: '#7a5c00', fontWeight: 600 },
   catQc:     { padding: '4px 10px', borderRadius: 6, border: '1px solid #e85a4a', background: '#fff5f4', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', color: '#8a2020', fontWeight: 600 },
   activeChip:{ padding: '3px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: '1px solid', transition: 'all 0.15s' },
-  empty:     { padding: '40px 24px', textAlign: 'center' as const, color: '#9aaa9f', fontSize: 14 },
+  empty:     { padding: '40px 24px', textAlign: 'center' as const, color: '#8a95a0', fontSize: 14 },
 }
 
 function SortableRow({
@@ -231,7 +231,7 @@ export default function QcIssueSettingsPage() {
         <div style={s.navLabel}>QC</div>
         <a href="/qc/dashboard" style={s.navItem}><span>⚖️</span> QC Dashboard</a>
         <a href="/qc/unknowns" style={s.navItem}><span>📷</span> Unknown Issues</a>
-        <a href="/qc/settings/issues" style={{ ...s.navItem, background: '#2a4f38', color: '#a8d5a2' }}><span>🐛</span> Issue Setup</a>
+        <a href="/qc/settings/issues" style={{ ...s.navItem, background: '#1a4a7a', color: '#a0c4f0' }}><span>🐛</span> Issue Setup</a>
         <a href="/qc/settings/size-bins" style={s.navItem}><span>📏</span> Size Bins</a>
         <a href="/qc/labels" style={s.navItem}><span>🏷️</span> Print Labels</a>
       </aside>
@@ -241,7 +241,7 @@ export default function QcIssueSettingsPage() {
         <div style={s.header}>
           <div>
             <div style={s.title}>QC Issue Settings</div>
-            <div style={{ fontSize: 14, color: '#9aaa9f', marginTop: 4 }}>
+            <div style={{ fontSize: 14, color: '#8a95a0', marginTop: 4 }}>
               Drag to reorder · toggle category and active status
               {saving && <span style={{ marginLeft: 12, color: '#f5c842' }}>Saving…</span>}
             </div>
@@ -266,9 +266,9 @@ export default function QcIssueSettingsPage() {
           {/* Legend header */}
           <div style={{ ...s.rowBase, background: '#f7f5f0', borderBottom: '1px solid #e8e4dc' }}>
             <div style={{ width: 24 }} />
-            <div style={{ flex: 1, fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Issue name</div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 80 }}>Category</div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.06em', width: 80, textAlign: 'right' }}>Status</div>
+            <div style={{ flex: 1, fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Issue name</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 80 }}>Category</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.06em', width: 80, textAlign: 'right' }}>Status</div>
           </div>
 
           {loading ? (

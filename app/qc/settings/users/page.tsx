@@ -28,31 +28,31 @@ interface AppUser {
 const s: Record<string, React.CSSProperties> = {
   page:       { display: 'flex', minHeight: '100vh', background: '#f4f1eb', fontFamily: 'Inter, sans-serif' },
   main:       { flex: 1, padding: 40, overflowY: 'auto' },
-  title:      { fontSize: 28, fontWeight: 700, color: '#1c3a2a', letterSpacing: '-0.5px' },
-  subtitle:   { fontSize: 14, color: '#9aaa9f', marginTop: 4 },
+  title:      { fontSize: 28, fontWeight: 700, color: '#1a2a3a', letterSpacing: '-0.5px' },
+  subtitle:   { fontSize: 14, color: '#8a95a0', marginTop: 4 },
   card:       { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: 24, marginBottom: 24 },
-  cardTitle:  { fontSize: 18, fontWeight: 700, color: '#1c3a2a', marginBottom: 16 },
+  cardTitle:  { fontSize: 18, fontWeight: 700, color: '#1a2a3a', marginBottom: 16 },
   searchWrap: { position: 'relative' as const },
   searchInput:{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #d4cfca', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' as const },
   suggestions:{ position: 'absolute' as const, top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #d4cfca', borderTop: 'none', borderRadius: '0 0 8px 8px', maxHeight: 220, overflowY: 'auto' as const, zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' },
   suggestion: { padding: '10px 14px', cursor: 'pointer', fontSize: 14, borderBottom: '1px solid #f0ede6', display: 'flex', justifyContent: 'space-between' },
-  empNr:      { color: '#9aaa9f', fontSize: 13 },
+  empNr:      { color: '#8a95a0', fontSize: 13 },
   selectedCard:{ background: '#f7f5f0', borderRadius: 10, padding: 20, marginTop: 16, border: '1px solid #e8e4dc' },
   formRow:    { display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center' },
   label:      { fontSize: 13, fontWeight: 600, color: '#5a6a60', width: 110, flexShrink: 0 },
   input:      { flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid #d4cfca', fontSize: 14, fontFamily: 'inherit', outline: 'none' },
   rolePills:  { display: 'flex', gap: 8 },
   rolePill:   { padding: '6px 16px', borderRadius: 20, border: '1px solid #d4cfca', background: '#fff', color: '#5a6a60', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 },
-  rolePillOn: { padding: '6px 16px', borderRadius: 20, border: '1px solid #2a6e45', background: '#2a6e45', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 },
-  btn:        { padding: '10px 24px', borderRadius: 8, border: 'none', background: '#2a6e45', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
+  rolePillOn: { padding: '6px 16px', borderRadius: 20, border: '1px solid #2176d9', background: '#2176d9', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 },
+  btn:        { padding: '10px 24px', borderRadius: 8, border: 'none', background: '#2176d9', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
   btnDisabled:{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#c4cfc8', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'not-allowed', fontFamily: 'inherit' },
   success:    { padding: '10px 16px', borderRadius: 8, background: '#e8f5e9', color: '#2e7d32', fontSize: 14, marginTop: 12, fontWeight: 500 },
   error:      { padding: '10px 16px', borderRadius: 8, background: '#fff5f4', color: '#c62828', fontSize: 14, marginTop: 12, fontWeight: 500 },
-  tableHead:  { display: 'flex', padding: '10px 16px', background: '#f7f5f0', borderBottom: '1px solid #e8e4dc', borderRadius: '14px 14px 0 0', fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase' as const, letterSpacing: '0.06em' },
+  tableHead:  { display: 'flex', padding: '10px 16px', background: '#f7f5f0', borderBottom: '1px solid #e8e4dc', borderRadius: '14px 14px 0 0', fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase' as const, letterSpacing: '0.06em' },
   tableRow:   { display: 'flex', padding: '12px 16px', borderBottom: '1px solid #f0ede6', alignItems: 'center', fontSize: 14 },
   chip:       { display: 'inline-block', padding: '3px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600 },
   revokeBtn:  { padding: '4px 12px', borderRadius: 6, border: '1px solid #e85a4a', background: '#fff', color: '#e85a4a', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 },
-  empty:      { padding: '32px 16px', textAlign: 'center' as const, color: '#9aaa9f', fontSize: 14 },
+  empty:      { padding: '32px 16px', textAlign: 'center' as const, color: '#8a95a0', fontSize: 14 },
 }
 
 export default function QcAppUsersPage() {
@@ -246,10 +246,10 @@ export default function QcAppUsersPage() {
           {/* Selected employee form */}
           {selectedEmployee && (
             <div style={s.selectedCard}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#1c3a2a', marginBottom: 4 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#1a2a3a', marginBottom: 4 }}>
                 {selectedEmployee.full_name}
               </div>
-              <div style={{ fontSize: 13, color: '#9aaa9f', marginBottom: 16 }}>
+              <div style={{ fontSize: 13, color: '#8a95a0', marginBottom: 16 }}>
                 Employee #{selectedEmployee.employee_nr}
                 {selectedEmployee.team && ` · Team ${selectedEmployee.team}`}
               </div>
@@ -315,7 +315,7 @@ export default function QcAppUsersPage() {
 
         {/* Active Users Card */}
         <div style={{ ...s.card, padding: 0 }}>
-          <div style={{ padding: '20px 24px 12px', fontSize: 18, fontWeight: 700, color: '#1c3a2a' }}>
+          <div style={{ padding: '20px 24px 12px', fontSize: 18, fontWeight: 700, color: '#1a2a3a' }}>
             Active Users
           </div>
 
@@ -335,14 +335,14 @@ export default function QcAppUsersPage() {
           ) : (
             users.map(u => (
               <div key={u.id} style={s.tableRow}>
-                <div style={{ flex: 2, fontWeight: 600, color: '#1c3a2a' }}>{u.full_name}</div>
+                <div style={{ flex: 2, fontWeight: 600, color: '#1a2a3a' }}>{u.full_name}</div>
                 <div style={{ flex: 2, color: '#5a6a60' }}>{u.email}</div>
                 <div style={{ flex: 1 }}>
                   <span style={roleChipStyle(u.role)}>
                     {u.role === 'runner' ? 'Runner' : 'QC Worker'}
                   </span>
                 </div>
-                <div style={{ flex: 1, color: '#9aaa9f', fontSize: 13 }}>
+                <div style={{ flex: 1, color: '#8a95a0', fontSize: 13 }}>
                   {u.created_at ? new Date(u.created_at).toLocaleDateString('en-ZA') : '—'}
                 </div>
                 <div style={{ width: 80, textAlign: 'right' }}>

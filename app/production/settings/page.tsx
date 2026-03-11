@@ -90,20 +90,20 @@ export default function BinWeightSettingsPage() {
   }
 
   const st: Record<string, React.CSSProperties> = {
-    page:       { display: 'flex', minHeight: '100vh', background: '#f4f1eb', fontFamily: 'Inter, system-ui, sans-serif', color: '#1c3a2a' },
+    page:       { display: 'flex', minHeight: '100vh', background: '#f4f1eb', fontFamily: 'Inter, system-ui, sans-serif', color: '#1a2a3a' },
     main:       { flex: 1, padding: 40, overflowY: 'auto', minWidth: 0, maxWidth: 800 },
-    title:      { fontSize: 28, fontWeight: 700, color: '#1c3a2a', marginBottom: 8 },
-    sub:        { fontSize: 14, color: '#9aaa9f', marginBottom: 32 },
+    title:      { fontSize: 28, fontWeight: 700, color: '#1a2a3a', marginBottom: 8 },
+    sub:        { fontSize: 14, color: '#8a95a0', marginBottom: 32 },
     card:       { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 24 },
-    cardHeader: { padding: '20px 24px 16px', borderBottom: '1px solid #f0ede6', fontSize: 17, fontWeight: 600, color: '#1c3a2a' },
+    cardHeader: { padding: '20px 24px 16px', borderBottom: '1px solid #f0ede6', fontSize: 17, fontWeight: 600, color: '#1a2a3a' },
     cardBody:   { padding: '20px 24px' },
     formRow:    { display: 'flex', gap: 12, alignItems: 'flex-end', marginBottom: 16, flexWrap: 'wrap' as const },
-    label:      { fontSize: 12, fontWeight: 600, color: '#9aaa9f', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 6 },
+    label:      { fontSize: 12, fontWeight: 600, color: '#8a95a0', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 6 },
     input:      { padding: '8px 12px', borderRadius: 8, border: '1px solid #d4cfca', fontSize: 14, fontFamily: 'inherit', width: '100%' },
     select:     { padding: '8px 12px', borderRadius: 8, border: '1px solid #d4cfca', fontSize: 14, fontFamily: 'inherit', width: '100%', background: '#fff' },
-    btn:        { padding: '8px 20px', borderRadius: 8, border: 'none', background: '#2a6e45', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
+    btn:        { padding: '8px 20px', borderRadius: 8, border: 'none', background: '#2176d9', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
     btnDanger:  { padding: '4px 10px', borderRadius: 6, border: '1px solid #e8e4dc', background: '#fff', color: '#c0392b', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' },
-    btnSmall:   { padding: '4px 10px', borderRadius: 6, border: '1px solid #2a6e45', background: '#2a6e45', color: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' },
+    btnSmall:   { padding: '4px 10px', borderRadius: 6, border: '1px solid #2176d9', background: '#2176d9', color: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' },
   }
 
   return (
@@ -144,15 +144,15 @@ export default function BinWeightSettingsPage() {
         <div style={st.card}>
           <div style={st.cardHeader}>Configured Weights</div>
           {loading ? (
-            <div style={{ padding: 24, textAlign: 'center', color: '#9aaa9f' }}>Loading...</div>
+            <div style={{ padding: 24, textAlign: 'center', color: '#8a95a0' }}>Loading...</div>
           ) : rows.length === 0 ? (
-            <div style={{ padding: 24, textAlign: 'center', color: '#9aaa9f' }}>No weights configured. Default is 400 kg.</div>
+            <div style={{ padding: 24, textAlign: 'center', color: '#8a95a0' }}>No weights configured. Default is 400 kg.</div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
               <thead>
                 <tr style={{ background: '#f7f5f0' }}>
                   {['Commodity', 'Variety', 'Weight (kg)', ''].map(h => (
-                    <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid #e8e4dc' }}>{h}</th>
+                    <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid #e8e4dc' }}>{h}</th>
                   ))}
                 </tr>
               </thead>

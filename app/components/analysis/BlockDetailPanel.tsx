@@ -51,7 +51,7 @@ function delta(current: number | null, prev: number | null): string {
 }
 
 function deltaColor(current: number | null, prev: number | null): string {
-  if (current == null || prev == null) return '#9aaa9f'
+  if (current == null || prev == null) return '#8a95a0'
   return current >= prev ? '#4caf72' : '#e85a4a'
 }
 
@@ -102,8 +102,8 @@ export default function BlockDetailPanel({ orchard, open, onClose, season, prevS
             {/* Header */}
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #f0ede6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: '#1c3a2a' }}>{orchard.name}</div>
-                <div style={{ fontSize: 12, color: '#9aaa9f', marginTop: 2 }}>{orchard.commodityName} · {orchard.farmCode}</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#1a2a3a' }}>{orchard.name}</div>
+                <div style={{ fontSize: 12, color: '#8a95a0', marginTop: 2 }}>{orchard.commodityName} · {orchard.farmCode}</div>
               </div>
               <button onClick={onClose} style={{
                 width: 32, height: 32, borderRadius: '50%', border: '1px solid #e8e4dc',
@@ -115,28 +115,28 @@ export default function BlockDetailPanel({ orchard, open, onClose, season, prevS
             {/* Identity */}
             <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0ede6' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: 13 }}>
-                <div><span style={{ color: '#9aaa9f' }}>Variety</span><br /><strong style={{ color: '#1c3a2a' }}>{orchard.variety || '—'}</strong></div>
-                <div><span style={{ color: '#9aaa9f' }}>Rootstock</span><br /><strong style={{ color: '#1c3a2a' }}>{orchard.rootstock || '—'}</strong></div>
-                <div><span style={{ color: '#9aaa9f' }}>Hectares</span><br /><strong style={{ color: '#1c3a2a' }}>{orchard.ha != null ? orchard.ha.toLocaleString('en-ZA', { maximumFractionDigits: 1 }) : '—'}</strong></div>
-                <div><span style={{ color: '#9aaa9f' }}>Planted</span><br /><strong style={{ color: '#1c3a2a' }}>{orchard.yearPlanted || '—'}</strong></div>
-                <div><span style={{ color: '#9aaa9f' }}>Trees</span><br /><strong style={{ color: '#1c3a2a' }}>{orchard.nrOfTrees?.toLocaleString('en-ZA') || '—'}</strong></div>
+                <div><span style={{ color: '#8a95a0' }}>Variety</span><br /><strong style={{ color: '#1a2a3a' }}>{orchard.variety || '—'}</strong></div>
+                <div><span style={{ color: '#8a95a0' }}>Rootstock</span><br /><strong style={{ color: '#1a2a3a' }}>{orchard.rootstock || '—'}</strong></div>
+                <div><span style={{ color: '#8a95a0' }}>Hectares</span><br /><strong style={{ color: '#1a2a3a' }}>{orchard.ha != null ? orchard.ha.toLocaleString('en-ZA', { maximumFractionDigits: 1 }) : '—'}</strong></div>
+                <div><span style={{ color: '#8a95a0' }}>Planted</span><br /><strong style={{ color: '#1a2a3a' }}>{orchard.yearPlanted || '—'}</strong></div>
+                <div><span style={{ color: '#8a95a0' }}>Trees</span><br /><strong style={{ color: '#1a2a3a' }}>{orchard.nrOfTrees?.toLocaleString('en-ZA') || '—'}</strong></div>
               </div>
             </div>
 
             {/* Production */}
             {hasProduction && (
               <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0ede6' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 12 }}>
                   This Season
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, fontSize: 13 }}>
                   <div>
-                    <div style={{ color: '#9aaa9f', fontSize: 11 }}>Bins</div>
-                    <div style={{ fontSize: 22, fontWeight: 700, color: '#1c3a2a' }}>{Math.round(orchard.bins).toLocaleString('en-ZA')}</div>
+                    <div style={{ color: '#8a95a0', fontSize: 11 }}>Bins</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#1a2a3a' }}>{Math.round(orchard.bins).toLocaleString('en-ZA')}</div>
                   </div>
                   <div>
-                    <div style={{ color: '#9aaa9f', fontSize: 11 }}>Tons</div>
-                    <div style={{ fontSize: 22, fontWeight: 700, color: '#1c3a2a' }}>{orchard.tons.toLocaleString('en-ZA', { maximumFractionDigits: 1 })}</div>
+                    <div style={{ color: '#8a95a0', fontSize: 11 }}>Tons</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#1a2a3a' }}>{orchard.tons.toLocaleString('en-ZA', { maximumFractionDigits: 1 })}</div>
                     {prevSeasonTons != null && (
                       <div style={{ fontSize: 11, color: deltaColor(orchard.tons, prevSeasonTons), fontWeight: 600 }}>
                         {delta(orchard.tons, prevSeasonTons)} vs prev
@@ -144,8 +144,8 @@ export default function BlockDetailPanel({ orchard, open, onClose, season, prevS
                     )}
                   </div>
                   <div>
-                    <div style={{ color: '#9aaa9f', fontSize: 11 }}>T/Ha</div>
-                    <div style={{ fontSize: 22, fontWeight: 700, color: '#1c3a2a' }}>{orchard.tonHa != null ? orchard.tonHa.toLocaleString('en-ZA', { maximumFractionDigits: 1 }) : '—'}</div>
+                    <div style={{ color: '#8a95a0', fontSize: 11 }}>T/Ha</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#1a2a3a' }}>{orchard.tonHa != null ? orchard.tonHa.toLocaleString('en-ZA', { maximumFractionDigits: 1 }) : '—'}</div>
                     {prevSeasonTonHa != null && (
                       <div style={{ fontSize: 11, color: deltaColor(orchard.tonHa, prevSeasonTonHa), fontWeight: 600 }}>
                         {delta(orchard.tonHa, prevSeasonTonHa)} vs prev
@@ -156,25 +156,25 @@ export default function BlockDetailPanel({ orchard, open, onClose, season, prevS
 
                 {/* Weekly production chart */}
                 {loadingWeekly ? (
-                  <div style={{ color: '#9aaa9f', fontSize: 12, marginTop: 16 }}>Loading weekly data...</div>
+                  <div style={{ color: '#8a95a0', fontSize: 12, marginTop: 16 }}>Loading weekly data...</div>
                 ) : weeklyData.length > 0 ? (
                   <div style={{ marginTop: 16 }}>
-                    <div style={{ fontSize: 11, color: '#9aaa9f', marginBottom: 6 }}>Weekly bins</div>
+                    <div style={{ fontSize: 11, color: '#8a95a0', marginBottom: 6 }}>Weekly bins</div>
                     <ResponsiveContainer width="100%" height={120}>
                       <BarChart data={weeklyData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                        <XAxis dataKey="week" tick={{ fontSize: 10, fill: '#9aaa9f' }} tickLine={false} axisLine={false} tickFormatter={v => `W${v}`} />
-                        <YAxis tick={{ fontSize: 10, fill: '#9aaa9f' }} tickLine={false} axisLine={false} />
+                        <XAxis dataKey="week" tick={{ fontSize: 10, fill: '#8a95a0' }} tickLine={false} axisLine={false} tickFormatter={v => `W${v}`} />
+                        <YAxis tick={{ fontSize: 10, fill: '#8a95a0' }} tickLine={false} axisLine={false} />
                         <Tooltip
                           content={({ active, payload }: any) => {
                             if (!active || !payload?.length) return null
                             return (
-                              <div style={{ background: '#1c3a2a', color: '#fff', padding: '6px 10px', borderRadius: 6, fontSize: 12 }}>
+                              <div style={{ background: '#1a2a3a', color: '#fff', padding: '6px 10px', borderRadius: 6, fontSize: 12 }}>
                                 W{payload[0].payload.week}: <strong>{Math.round(payload[0].value).toLocaleString('en-ZA')} bins</strong>
                               </div>
                             )
                           }}
                         />
-                        <Bar dataKey="total" fill="#2a6e45" radius={[3, 3, 0, 0]} />
+                        <Bar dataKey="total" fill="#2176d9" radius={[3, 3, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -185,11 +185,11 @@ export default function BlockDetailPanel({ orchard, open, onClose, season, prevS
             {/* Quality */}
             {hasProduction && orchard.bruisingPct != null && (
               <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0ede6' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
                   Quality
                 </div>
                 <div style={{ fontSize: 13 }}>
-                  <span style={{ color: '#9aaa9f' }}>Avg Bruising: </span>
+                  <span style={{ color: '#8a95a0' }}>Avg Bruising: </span>
                   <strong style={{ color: orchard.bruisingPct < 5 ? '#4caf72' : orchard.bruisingPct < 10 ? '#f5c842' : '#e85a4a' }}>
                     {orchard.bruisingPct.toFixed(1)}%
                   </strong>
@@ -199,7 +199,7 @@ export default function BlockDetailPanel({ orchard, open, onClose, season, prevS
 
             {/* Pest Status */}
             <div style={{ padding: '16px 24px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#9aaa9f', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
                 Pest Status (This Week)
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

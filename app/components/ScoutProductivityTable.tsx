@@ -106,8 +106,8 @@ function deltaChip(val: number | null): string {
 }
 
 function deltaColor(val: number | null): string {
-  if (val === null || val === undefined) return '#9aaa9f'
-  return val > 0 ? '#4caf72' : val < 0 ? '#e85a4a' : '#9aaa9f'
+  if (val === null || val === undefined) return '#8a95a0'
+  return val > 0 ? '#4caf72' : val < 0 ? '#e85a4a' : '#8a95a0'
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -186,7 +186,7 @@ export default function ScoutProductivityTable({
             </thead>
             <tbody>
               {scoutSummaries.length === 0 && (
-                <tr><td colSpan={11} style={{ textAlign: 'center', color: '#9aaa9f', padding: 32 }}>No inspection data for this period</td></tr>
+                <tr><td colSpan={11} style={{ textAlign: 'center', color: '#8a95a0', padding: 32 }}>No inspection data for this period</td></tr>
               )}
               {(scoutSummaries as (DailyRow & { quality_score: number; flagCount: number })[]).map((row) => {
                 const isSelected = selectedScoutId === row.scout_id
@@ -199,7 +199,7 @@ export default function ScoutProductivityTable({
                     onClick={() => onSelectScout(row.scout_id)}
                   >
                     <td>
-                      <div style={{ fontWeight: 600, color: '#1c3a2a' }}>{row.scout_name}</div>
+                      <div style={{ fontWeight: 600, color: '#1a2a3a' }}>{row.scout_name}</div>
                       {smallSample && <div style={{ fontSize: 10, color: '#c0a050' }}>Small sample</div>}
                     </td>
                     <td>{fmtTime(row.first_inspection)}</td>
@@ -207,7 +207,7 @@ export default function ScoutProductivityTable({
                     <td>
                       <span>{fmtDuration(row.active_minutes)}</span>
                       {row.break_count > 0 && (
-                        <span style={{ fontSize: 10, color: '#9aaa9f', marginLeft: 4 }}>
+                        <span style={{ fontSize: 10, color: '#8a95a0', marginLeft: 4 }}>
                           ({row.break_count} break{row.break_count > 1 ? 's' : ''})
                         </span>
                       )}
@@ -215,15 +215,15 @@ export default function ScoutProductivityTable({
                     <td>
                       <span style={{ fontWeight: 600 }}>{row.traps_inspected}</span>
                       {trapPct !== null && (
-                        <span style={{ fontSize: 11, color: '#9aaa9f' }}>/{row.route_size} ({trapPct}%)</span>
+                        <span style={{ fontSize: 11, color: '#8a95a0' }}>/{row.route_size} ({trapPct}%)</span>
                       )}
                     </td>
                     <td>{row.trees_inspected || '—'}</td>
                     <td>{row.zones_completed || '—'}</td>
-                    <td style={{ color: row.avg_seconds_per_trap < 30 ? '#e85a4a' : '#1c3a2a' }}>
+                    <td style={{ color: row.avg_seconds_per_trap < 30 ? '#e85a4a' : '#1a2a3a' }}>
                       {fmtSeconds(row.avg_seconds_per_trap)}
                     </td>
-                    <td style={{ color: row.avg_seconds_per_tree < 20 ? '#e85a4a' : '#1c3a2a' }}>
+                    <td style={{ color: row.avg_seconds_per_tree < 20 ? '#e85a4a' : '#1a2a3a' }}>
                       {fmtSeconds(row.avg_seconds_per_tree)}
                     </td>
                     <td>{fmtDistance(row.distance_walked_m)}</td>
@@ -261,7 +261,7 @@ export default function ScoutProductivityTable({
             padding: 8px 10px;
             font-size: 11px;
             font-weight: 600;
-            color: #9aaa9f;
+            color: #8a95a0;
             text-transform: uppercase;
             letter-spacing: 0.03em;
             border-bottom: 2px solid #f0ede6;
@@ -313,7 +313,7 @@ export default function ScoutProductivityTable({
           </thead>
           <tbody>
             {scoutSummaries.length === 0 && (
-              <tr><td colSpan={9} style={{ textAlign: 'center', color: '#9aaa9f', padding: 32 }}>No data for this period</td></tr>
+              <tr><td colSpan={9} style={{ textAlign: 'center', color: '#8a95a0', padding: 32 }}>No data for this period</td></tr>
             )}
             {(scoutSummaries as (WeeklyRow & { sparkline: { v: number }[] })[]).map((row) => {
               const isSelected = selectedScoutId === row.scout_id
@@ -324,8 +324,8 @@ export default function ScoutProductivityTable({
                   onClick={() => onSelectScout(row.scout_id)}
                 >
                   <td>
-                    <div style={{ fontWeight: 600, color: '#1c3a2a' }}>{row.scout_name}</div>
-                    <div style={{ fontSize: 10, color: '#9aaa9f' }}>{row.active_days} day{row.active_days !== 1 ? 's' : ''} active</div>
+                    <div style={{ fontWeight: 600, color: '#1a2a3a' }}>{row.scout_name}</div>
+                    <div style={{ fontSize: 10, color: '#8a95a0' }}>{row.active_days} day{row.active_days !== 1 ? 's' : ''} active</div>
                   </td>
                   <td>{row.active_days}</td>
                   <td>
@@ -384,7 +384,7 @@ export default function ScoutProductivityTable({
                         <LineChart data={row.sparkline}>
                           <Line
                             dataKey="v"
-                            stroke="#2a6e45"
+                            stroke="#2176d9"
                             strokeWidth={1.5}
                             dot={false}
                           />
@@ -424,7 +424,7 @@ export default function ScoutProductivityTable({
           padding: 8px 10px;
           font-size: 11px;
           font-weight: 600;
-          color: #9aaa9f;
+          color: #8a95a0;
           text-transform: uppercase;
           letter-spacing: 0.03em;
           border-bottom: 2px solid #f0ede6;

@@ -150,7 +150,7 @@ export default function LoginPage() {
           background: #fff;
           font-family: 'DM Sans', sans-serif;
           font-size: 15px;
-          color: #1c3a2a;
+          color: #1a2a3a;
           outline: none;
           transition: border-color 0.15s;
         }

@@ -57,7 +57,7 @@ export default function VarietyTreemap({ items, width = 600, height = 300, metri
   const rects = useMemo(() => layoutTreemap(sorted, 0, 0, width, height), [sorted, width, height])
 
   if (items.length === 0) {
-    return <div style={{ color: '#9aaa9f', fontSize: 13, textAlign: 'center', padding: 40 }}>No variety data available</div>
+    return <div style={{ color: '#8a95a0', fontSize: 13, textAlign: 'center', padding: 40 }}>No variety data available</div>
   }
 
   return (
@@ -78,7 +78,7 @@ export default function VarietyTreemap({ items, width = 600, height = 300, metri
               x={r.x + 1} y={r.y + 1} width={Math.max(r.w - 2, 0)} height={Math.max(r.h - 2, 0)}
               rx={4} fill={r.color}
               opacity={isDimmed ? 0.3 : isHovered || isSelected ? 0.95 : 0.8}
-              stroke={isSelected ? '#1c3a2a' : '#fff'}
+              stroke={isSelected ? '#1a2a3a' : '#fff'}
               strokeWidth={isSelected ? 3 : 2}
               style={{ transition: 'opacity 0.15s, stroke 0.15s' }}
             />

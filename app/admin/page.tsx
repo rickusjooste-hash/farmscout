@@ -194,7 +194,7 @@ export default function AdminPage() {
   }
 
   if (loading) {
-    return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: "'DM Serif Display', serif", fontSize: 24, color: '#1c3a2a', background: '#f4f1eb' }}>Loading…</div>
+    return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: "'DM Serif Display', serif", fontSize: 24, color: '#1a2a3a', background: '#f4f1eb' }}>Loading…</div>
   }
 
   return (
@@ -205,57 +205,57 @@ export default function AdminPage() {
         body { font-family: 'DM Sans', sans-serif; background: #f4f1eb; color: #1a1a1a; }
         .app { display: flex; min-height: 100vh; }
         .sidebar {
-          width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto; background: #1c3a2a;
+          width: 220px; height: 100vh; position: sticky; top: 0; overflow-y: auto; background: #1a2a3a;
           padding: 32px 20px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
         }
-        .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a8d5a2; margin-bottom: 32px; }
+        .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #a0c4f0; margin-bottom: 32px; }
         .logo span { color: #fff; }
         .nav-item {
           display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-          border-radius: 8px; color: #8aab96; font-size: 13.5px; font-weight: 500;
+          border-radius: 8px; color: #7a8fa0; font-size: 13.5px; font-weight: 500;
           cursor: pointer; transition: all 0.15s; text-decoration: none;
         }
-        .nav-item:hover { background: #2a4f38; color: #fff; }
-        .nav-item.active { background: #2a4f38; color: #a8d5a2; }
-        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #2a4f38; font-size: 12px; color: #4a7a5a; }
+        .nav-item:hover { background: #1a4a7a; color: #fff; }
+        .nav-item.active { background: #1a4a7a; color: #a0c4f0; }
+        .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid #1a4a7a; font-size: 12px; color: #5a7a8a; }
         .main { flex: 1; padding: 40px; max-width: 700px; }
-        .page-title { font-family: 'DM Serif Display', serif; font-size: 28px; color: #1c3a2a; margin-bottom: 6px; }
-        .page-sub { font-size: 14px; color: #7a8a80; margin-bottom: 32px; }
+        .page-title { font-family: 'DM Serif Display', serif; font-size: 28px; color: #1a2a3a; margin-bottom: 6px; }
+        .page-sub { font-size: 14px; color: #7a8a9a; margin-bottom: 32px; }
         .tabs { display: flex; gap: 2px; margin-bottom: 28px; background: #e8e4dc; border-radius: 10px; padding: 3px; width: fit-content; }
         .tab {
           padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 600;
           cursor: pointer; border: none; font-family: 'DM Sans', sans-serif;
           color: #6a7a70; background: transparent; transition: all 0.15s;
         }
-        .tab.active { background: #1c3a2a; color: #a8d5a2; }
+        .tab.active { background: #1a2a3a; color: #a0c4f0; }
         .form-card { background: #fff; border-radius: 14px; border: 1px solid #e8e4dc; padding: 32px; }
         label { display: block; font-size: 12px; font-weight: 600; color: #6a7a70; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
         input, select {
           width: 100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid #e0ddd6;
-          font-family: 'DM Sans', sans-serif; font-size: 14px; color: #1c3a2a;
+          font-family: 'DM Sans', sans-serif; font-size: 14px; color: #1a2a3a;
           background: #fff; outline: none; transition: border-color 0.15s;
         }
-        input:focus, select:focus { border-color: #2a6e45; }
+        input:focus, select:focus { border-color: #2176d9; }
         .field { margin-bottom: 20px; }
         .two-col-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .btn-submit {
           width: 100%; padding: 12px; border-radius: 10px; border: none;
-          background: #1c3a2a; color: #a8d5a2; font-size: 15px; font-weight: 600;
+          background: #1a2a3a; color: #a0c4f0; font-size: 15px; font-weight: 600;
           cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background 0.15s;
           margin-top: 8px;
         }
-        .btn-submit:hover { background: #2a4f38; }
+        .btn-submit:hover { background: #1a4a7a; }
         .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
         .error { background: #fdf0ee; border: 1px solid #f5c5be; color: #c0392b; border-radius: 8px; padding: 12px 16px; font-size: 13px; margin-bottom: 20px; }
-        .success { background: #f0f7f2; border: 1px solid #a8d5a2; color: #1c5c2a; border-radius: 8px; padding: 12px 16px; font-size: 13px; margin-bottom: 20px; }
-        .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #9aaa9f; font-weight: 600; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #f0ede6; }
+        .success { background: #f0f4fa; border: 1px solid #a0c4f0; color: #1c5c2a; border-radius: 8px; padding: 12px 16px; font-size: 13px; margin-bottom: 20px; }
+        .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #8a95a0; font-weight: 600; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #f0ede6; }
         .farm-checkboxes { display: flex; flex-direction: column; gap: 8px; }
         .farm-check { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; border: 1.5px solid #e0ddd6; cursor: pointer; transition: all 0.15s; }
-        .farm-check:hover { border-color: #2a6e45; }
-        .farm-check.checked { border-color: #1c3a2a; background: #f0f7f2; }
+        .farm-check:hover { border-color: #2176d9; }
+        .farm-check.checked { border-color: #1a2a3a; background: #f0f4fa; }
         .farm-check input[type=checkbox] { width: auto; }
-        .farm-check-label { font-size: 13px; color: #1c3a2a; font-weight: 500; }
-        .farm-check-code { font-size: 11px; color: #9aaa9f; margin-left: auto; }
+        .farm-check-label { font-size: 13px; color: #1a2a3a; font-weight: 500; }
+        .farm-check-code { font-size: 11px; color: #8a95a0; margin-left: auto; }
       `}</style>
 
       <div className="app">
@@ -276,8 +276,8 @@ export default function AdminPage() {
               await supabase.auth.signOut()
               window.location.href = '/login'
             }} style={{
-              marginTop: 10, background: 'none', border: '1px solid #2a4f38',
-              color: '#6aaa80', borderRadius: 6, padding: '4px 10px',
+              marginTop: 10, background: 'none', border: '1px solid #1a4a7a',
+              color: '#6a9fd4', borderRadius: 6, padding: '4px 10px',
               fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif'
             }}>
               Sign out
