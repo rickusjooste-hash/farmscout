@@ -164,8 +164,8 @@ export default function LeafAnalysisTable({
         va = productionByOrchard?.[a.orchard_id]?.tonHa ?? -1
         vb = productionByOrchard?.[b.orchard_id]?.tonHa ?? -1
       } else if (sortCol === 'size') {
-        va = sizeByOrchard?.[a.orchard_id]?.dominantLabel ?? ''
-        vb = sizeByOrchard?.[b.orchard_id]?.dominantLabel ?? ''
+        va = sizeByOrchard?.[a.orchard_id]?.avgWeightG ?? 0
+        vb = sizeByOrchard?.[b.orchard_id]?.avgWeightG ?? 0
       } else if (nutrientCodeSet.has(sortCol)) {
         va = a.nutrients[sortCol]?.value ?? -1
         vb = b.nutrients[sortCol]?.value ?? -1
@@ -322,7 +322,7 @@ export default function LeafAnalysisTable({
                   {hasSize && (
                     <td style={{ ...s.td, ...s.tdNum, color: '#6a7a70', fontSize: 12 }}>
                       {size ? (
-                        <span title={`Avg ${size.avgWeightG}g`}>{size.dominantLabel}</span>
+                        <span title={size.dominantLabel}>{size.avgWeightG}g</span>
                       ) : '\u2014'}
                     </td>
                   )}

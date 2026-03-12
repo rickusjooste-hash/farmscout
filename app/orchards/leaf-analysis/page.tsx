@@ -522,54 +522,49 @@ export default function LeafAnalysisPage() {
           </div>
         </div>
 
-        {/* Cascading sub-filters: Variety → Orchard (shown when commodity selected) */}
-        {selectedCommodity && (varietyOptions.length > 1 || orchardFilterOptions.length > 1) && (
+        {/* Cascading sub-filters: Commodity → Variety → Orchard */}
+        {selectedCommodity && varietyOptions.length > 1 && (
           <div style={{ ...st.filterRow, marginTop: -12 }}>
-            {varietyOptions.length > 1 && (
-              <>
-                <span style={st.filterLabel}>Variety</span>
-                <div style={st.pillGroup}>
-                  <button
-                    onClick={() => { setSelectedVariety(null); setSelectedOrchardFilter(null) }}
-                    style={{ ...st.pillSm, ...(selectedVariety === null ? st.pillSmActive : {}) }}
-                  >
-                    All
-                  </button>
-                  {varietyOptions.map(v => (
-                    <button
-                      key={v}
-                      onClick={() => { setSelectedVariety(v); setSelectedOrchardFilter(null) }}
-                      style={{ ...st.pillSm, ...(selectedVariety === v ? st.pillSmActive : {}) }}
-                    >
-                      {v}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-            {orchardFilterOptions.length > 1 && (
-              <>
-                {varietyOptions.length > 1 && <div style={st.divider} />}
-                <span style={st.filterLabel}>Orchard</span>
-                <div style={st.pillGroup}>
-                  <button
-                    onClick={() => setSelectedOrchardFilter(null)}
-                    style={{ ...st.pillSm, ...(selectedOrchardFilter === null ? st.pillSmActive : {}) }}
-                  >
-                    All
-                  </button>
-                  {orchardFilterOptions.map(o => (
-                    <button
-                      key={o.id}
-                      onClick={() => setSelectedOrchardFilter(o.id)}
-                      style={{ ...st.pillSm, ...(selectedOrchardFilter === o.id ? st.pillSmActive : {}) }}
-                    >
-                      {o.name}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
+            <span style={st.filterLabel}>Variety</span>
+            <div style={st.pillGroup}>
+              <button
+                onClick={() => { setSelectedVariety(null); setSelectedOrchardFilter(null) }}
+                style={{ ...st.pillSm, ...(selectedVariety === null ? st.pillSmActive : {}) }}
+              >
+                All
+              </button>
+              {varietyOptions.map(v => (
+                <button
+                  key={v}
+                  onClick={() => { setSelectedVariety(v); setSelectedOrchardFilter(null) }}
+                  style={{ ...st.pillSm, ...(selectedVariety === v ? st.pillSmActive : {}) }}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {selectedCommodity && selectedVariety && orchardFilterOptions.length > 1 && (
+          <div style={{ ...st.filterRow, marginTop: -12 }}>
+            <span style={st.filterLabel}>Orchard</span>
+            <div style={st.pillGroup}>
+              <button
+                onClick={() => setSelectedOrchardFilter(null)}
+                style={{ ...st.pillSm, ...(selectedOrchardFilter === null ? st.pillSmActive : {}) }}
+              >
+                All
+              </button>
+              {orchardFilterOptions.map(o => (
+                <button
+                  key={o.id}
+                  onClick={() => setSelectedOrchardFilter(o.id)}
+                  style={{ ...st.pillSm, ...(selectedOrchardFilter === o.id ? st.pillSmActive : {}) }}
+                >
+                  {o.name}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
