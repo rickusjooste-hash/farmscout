@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase-auth'
-import { useUserContext } from '@/lib/useUserContext'
+import { usePageGuard } from '@/lib/usePageGuard'
 import { Fragment, useEffect, useState } from 'react'
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent,
@@ -81,7 +81,7 @@ function SortableRouteRow({
 
 export default function ScoutsPage() {
   const supabase = createClient()
-  const { farmIds, isSuperAdmin, contextLoaded } = useUserContext()
+  const { farmIds, isSuperAdmin, contextLoaded, allowed } = usePageGuard()
 
   const [view, setView] = useState<'directory' | 'route-manager'>('directory')
 
@@ -276,6 +276,8 @@ export default function ScoutsPage() {
     t.pest_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     t.orchard_name?.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  if (!allowed) return null
 
   return (
     <>

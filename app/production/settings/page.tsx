@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase-auth'
-import { useUserContext } from '@/lib/useUserContext'
+import { usePageGuard } from '@/lib/usePageGuard'
 import { useOrgModules } from '@/lib/useOrgModules'
 import { useEffect, useState } from 'react'
 import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
@@ -18,7 +18,7 @@ interface BinWeightRow {
 
 export default function BinWeightSettingsPage() {
   const supabase = createClient()
-  const { isSuperAdmin, contextLoaded, orgId } = useUserContext()
+  const { isSuperAdmin, contextLoaded, orgId, allowedRoutes, allowed } = usePageGuard()
   const modules = useOrgModules()
 
   const [commodities, setCommodities] = useState<Commodity[]>([])
@@ -106,10 +106,12 @@ export default function BinWeightSettingsPage() {
     btnSmall:   { padding: '4px 10px', borderRadius: 6, border: '1px solid #2176d9', background: '#2176d9', color: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' },
   }
 
+  if (!allowed) return null
+
   return (
     <div style={st.page}>
       <ManagerSidebarStyles />
-      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} />
+      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} allowedRoutes={allowedRoutes} />
       <MobileNav isSuperAdmin={isSuperAdmin} modules={modules} />
 
       <main style={st.main}>

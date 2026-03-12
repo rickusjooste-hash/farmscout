@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase-auth'
-import { useUserContext } from '@/lib/useUserContext'
+import { usePageGuard } from '@/lib/usePageGuard'
 import { useOrgModules } from '@/lib/useOrgModules'
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import {
@@ -251,7 +251,7 @@ async function fetchAllRows(query: any): Promise<any[]> {
 
 export default function ProductionPage() {
   const supabase = createClient()
-  const { farmIds, isSuperAdmin, contextLoaded, orgId } = useUserContext()
+  const { farmIds, isSuperAdmin, contextLoaded, orgId, allowedRoutes, allowed } = usePageGuard()
   const modules = useOrgModules()
 
   const [allFarms, setAllFarms] = useState<Farm[]>([])
@@ -777,10 +777,12 @@ export default function ProductionPage() {
 
   // ── Render ──────────────────────────────────────────────────────────────
 
+  if (!allowed) return null
+
   return (
     <div style={s.page}>
       <ManagerSidebarStyles />
-      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} />
+      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} allowedRoutes={allowedRoutes} />
       <MobileNav isSuperAdmin={isSuperAdmin} modules={modules} />
 
       <main style={s.main} className="prod-main">

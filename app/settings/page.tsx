@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Inter } from 'next/font/google'
 import { createClient } from '@/lib/supabase-auth'
+import { usePageGuard } from '@/lib/usePageGuard'
 
 const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500', '600', '700'] })
 
@@ -30,6 +31,7 @@ interface FarmConfig {
 }
 
 export default function SettingsPage() {
+  const { allowed } = usePageGuard()
   const supabase = createClient()
   const [farms, setFarms] = useState<FarmConfig[]>([])
   const [loading, setLoading] = useState(true)
@@ -186,6 +188,8 @@ export default function SettingsPage() {
       alert('Error: ' + err.message)
     }
   }
+
+  if (!allowed) return null
 
   return (
     <div className={inter.className}>

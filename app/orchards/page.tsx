@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase-auth'
-import { useUserContext } from '@/lib/useUserContext'
+import { usePageGuard } from '@/lib/usePageGuard'
 import { useOrgModules } from '@/lib/useOrgModules'
 import { useEffect, useState, useRef } from 'react'
 import MobileNav from '@/app/components/MobileNav'
@@ -55,7 +55,7 @@ function emptyForm() {
 
 export default function OrchardsPage() {
   const supabase = createClient()
-  const { farmIds, isSuperAdmin, contextLoaded } = useUserContext()
+  const { farmIds, isSuperAdmin, contextLoaded, allowed } = usePageGuard()
   const modules = useOrgModules()
 
   const mapRef         = useRef<any>(null)
@@ -462,6 +462,8 @@ export default function OrchardsPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   const o = selectedOrchard
+
+  if (!allowed) return null
 
   return (
     <>

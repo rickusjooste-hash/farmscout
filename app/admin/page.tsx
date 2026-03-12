@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase-auth'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { PAGE_SECTIONS, EXTERNAL_ROLES, getDefaultSectionsForRole } from '@/lib/page-access'
 
 interface Organisation {
   id: string
@@ -21,10 +22,30 @@ export default function AdminPage() {
   const router = useRouter()
 
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'org' | 'farm' | 'user'>('org')
+  const [activeTab, setActiveTab] = useState<'org' | 'farm' | 'user' | 'manage'>('org')
 
   const [organisations, setOrganisations] = useState<Organisation[]>([])
   const [allFarms, setAllFarms] = useState<Farm[]>([])
+
+  // Manage Users tab
+  interface ManagedUser {
+    ou_id: string
+    user_id: string
+    full_name: string
+    email: string
+    role: string
+    allowed_pages: string[] | null
+    organisation_id: string
+    farm_ids: string[]
+  }
+  const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([])
+  const [manageOrgId, setManageOrgId] = useState('')
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
+  const [editSections, setEditSections] = useState<string[]>([])
+  const [editRole, setEditRole] = useState('')
+  const [savingUser, setSavingUser] = useState(false)
+  const [manageSuccess, setManageSuccess] = useState('')
+  const [manageError, setManageError] = useState('')
 
   // Add Organisation form
   const [orgName, setOrgName] = useState('')
@@ -52,6 +73,8 @@ export default function AdminPage() {
   const [mgOrgId, setMgOrgId] = useState('')
   const [mgRole, setMgRole] = useState('farm_manager')
   const [mgSelectedFarms, setMgSelectedFarms] = useState<string[]>([])
+  const [mgPageSections, setMgPageSections] = useState<string[]>(() => getDefaultSectionsForRole('farm_manager'))
+  const [mgPageModified, setMgPageModified] = useState(false)
   const [mgSubmitting, setMgSubmitting] = useState(false)
   const [mgError, setMgError] = useState('')
   const [mgSuccess, setMgSuccess] = useState('')
@@ -158,6 +181,11 @@ export default function AdminPage() {
     setMgSuccess('')
     setMgSubmitting(true)
 
+    // For external roles, always send explicit allowed_pages.
+    // For internal roles, send null (use defaults) unless admin customized.
+    const isExternal = EXTERNAL_ROLES.includes(mgRole)
+    const sendPages = isExternal || mgPageModified ? mgPageSections : null
+
     const res = await fetch('/api/create-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -169,6 +197,7 @@ export default function AdminPage() {
         farm_ids: mgSelectedFarms,
         type: 'manager',
         role: mgRole,
+        allowed_pages: sendPages,
       }),
     })
 
@@ -184,6 +213,8 @@ export default function AdminPage() {
       setMgPassword('')
       setMgRole('farm_manager')
       setMgSelectedFarms([])
+      setMgPageSections(getDefaultSectionsForRole('farm_manager'))
+      setMgPageModified(false)
     }
   }
 
@@ -191,6 +222,118 @@ export default function AdminPage() {
     setMgSelectedFarms(prev =>
       prev.includes(farmId) ? prev.filter(f => f !== farmId) : [...prev, farmId]
     )
+  }
+
+  // ── Manage Users ────────────────────────────────────────────────────────
+
+  async function loadManagedUsers(orgId: string) {
+    setManageError('')
+    setManageSuccess('')
+    setExpandedUserId(null)
+
+    // Get org users (non-scout roles)
+    const { data: orgUsers } = await supabase
+      .from('organisation_users')
+      .select('id, user_id, role, allowed_pages, organisation_id')
+      .eq('organisation_id', orgId)
+      .not('role', 'eq', 'scout')
+      .order('role')
+
+    if (!orgUsers?.length) { setManagedUsers([]); return }
+
+    const userIds = orgUsers.map(u => u.user_id)
+
+    // Get profiles
+    const { data: profiles } = await supabase
+      .from('user_profiles')
+      .select('id, full_name')
+      .in('id', userIds)
+
+    // Get emails from auth (via user_profiles id matching auth.users)
+    // We can't query auth.users from the client, so use emails from scouts or org_users.
+    // Actually let's get emails from the auth metadata if available, or fall back to profile.
+    // Simplest: query the 'scouts' table for emails, or just show name + role.
+    // Actually we can get email from supabase.auth.admin — but we're client-side.
+    // Let's just show name and role — email isn't critical for the manage view.
+
+    // Get farm access
+    const { data: farmAccess } = await supabase
+      .from('user_farm_access')
+      .select('user_id, farm_id')
+      .in('user_id', userIds)
+
+    const profileMap = new Map((profiles || []).map(p => [p.id, p]))
+    const farmMap = new Map<string, string[]>()
+    for (const fa of (farmAccess || [])) {
+      const arr = farmMap.get(fa.user_id) || []
+      arr.push(fa.farm_id)
+      farmMap.set(fa.user_id, arr)
+    }
+
+    setManagedUsers(orgUsers.map(ou => ({
+      ou_id: ou.id,
+      user_id: ou.user_id,
+      full_name: profileMap.get(ou.user_id)?.full_name || '(unknown)',
+      email: '',
+      role: ou.role,
+      allowed_pages: ou.allowed_pages,
+      organisation_id: ou.organisation_id,
+      farm_ids: farmMap.get(ou.user_id) || [],
+    })))
+  }
+
+  function startEditUser(user: ManagedUser) {
+    if (expandedUserId === user.ou_id) {
+      setExpandedUserId(null)
+      return
+    }
+    setExpandedUserId(user.ou_id)
+    setEditRole(user.role)
+    // Resolve current sections for editing
+    if (user.allowed_pages !== null && user.allowed_pages !== undefined) {
+      setEditSections(user.allowed_pages)
+    } else {
+      setEditSections(getDefaultSectionsForRole(user.role))
+    }
+    setManageSuccess('')
+    setManageError('')
+  }
+
+  async function handleSaveUserAccess(user: ManagedUser) {
+    setSavingUser(true)
+    setManageError('')
+    setManageSuccess('')
+
+    // Determine what to send:
+    // If role changed, send new role
+    // For page access: if external role, always send explicit. Otherwise compare to defaults.
+    const isExternal = EXTERNAL_ROLES.includes(editRole)
+    const defaults = getDefaultSectionsForRole(editRole)
+    const sectionsMatch = defaults.length === editSections.length && defaults.every(d => editSections.includes(d))
+    const sendPages = (isExternal || !sectionsMatch) ? editSections : null
+
+    const body: Record<string, any> = {
+      type: 'update-user-access',
+      organisation_user_id: user.ou_id,
+      allowed_pages: sendPages,
+    }
+    if (editRole !== user.role) body.role = editRole
+
+    const res = await fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const json = await res.json()
+    setSavingUser(false)
+
+    if (!res.ok || json.error) {
+      setManageError(json.error || 'Failed to update')
+    } else {
+      setManageSuccess(`Updated access for ${user.full_name}`)
+      // Refresh list
+      await loadManagedUsers(manageOrgId)
+    }
   }
 
   if (loading) {
@@ -307,6 +450,19 @@ export default function AdminPage() {
               onClick={() => setActiveTab('user')}
             >
               Add User
+            </button>
+            <button
+              className={`tab${activeTab === 'manage' ? ' active' : ''}`}
+              onClick={() => {
+                setActiveTab('manage')
+                if (managedUsers.length === 0 && organisations.length > 0) {
+                  const oid = manageOrgId || organisations[0].id
+                  setManageOrgId(oid)
+                  loadManagedUsers(oid)
+                }
+              }}
+            >
+              Manage Users
             </button>
           </div>
 
@@ -437,6 +593,123 @@ export default function AdminPage() {
             </div>
           )}
 
+          {activeTab === 'manage' && (
+            <div className="form-card">
+              <div className="section-title">Manage User Access</div>
+              {manageError && <div className="error">{manageError}</div>}
+              {manageSuccess && <div className="success">{manageSuccess}</div>}
+
+              <div className="field">
+                <label>Organisation</label>
+                <select
+                  value={manageOrgId}
+                  onChange={e => { setManageOrgId(e.target.value); loadManagedUsers(e.target.value) }}
+                >
+                  {organisations.map(o => (
+                    <option key={o.id} value={o.id}>{o.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {managedUsers.length === 0 && (
+                <div style={{ color: '#8a95a0', fontSize: 13, padding: '16px 0' }}>No manager users found for this organisation.</div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                {managedUsers.map(user => {
+                  const isExpanded = expandedUserId === user.ou_id
+                  const farmNames = user.farm_ids.map(fid => allFarms.find(f => f.id === fid)?.full_name || fid).join(', ')
+                  const currentSections = user.allowed_pages !== null
+                    ? (user.allowed_pages.length > 0 ? user.allowed_pages : ['(dashboard only)'])
+                    : ['(role defaults)']
+
+                  return (
+                    <div key={user.ou_id} style={{
+                      border: `1.5px solid ${isExpanded ? '#2176d9' : '#e0ddd6'}`,
+                      borderRadius: 10,
+                      background: isExpanded ? '#f8faff' : '#fff',
+                      transition: 'all 0.15s',
+                    }}>
+                      {/* Summary row */}
+                      <div
+                        onClick={() => startEditUser(user)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 12,
+                          padding: '12px 16px', cursor: 'pointer',
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: 14, color: '#1a2a3a' }}>{user.full_name}</div>
+                          <div style={{ fontSize: 12, color: '#8a95a0', marginTop: 2 }}>
+                            {user.role.replace(/_/g, ' ')}
+                            {farmNames && <span> &middot; {farmNames}</span>}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 11, color: '#8a95a0', textAlign: 'right', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {currentSections.join(', ')}
+                        </div>
+                        <span style={{ fontSize: 16, color: '#8a95a0', transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+                          &#9662;
+                        </span>
+                      </div>
+
+                      {/* Expanded edit panel */}
+                      {isExpanded && (
+                        <div style={{ padding: '0 16px 16px', borderTop: '1px solid #eef2fa' }}>
+                          <div className="field" style={{ marginTop: 16 }}>
+                            <label>Role</label>
+                            <select value={editRole} onChange={e => {
+                              setEditRole(e.target.value)
+                              setEditSections(getDefaultSectionsForRole(e.target.value))
+                            }}>
+                              <option value="farm_manager">Farm Manager</option>
+                              <option value="production_manager">Production Manager</option>
+                              <option value="crop_protection_advisor">Crop Protection Advisor</option>
+                              <option value="horticultural_consultant">Horticultural Consultant</option>
+                              <option value="org_admin">Org Admin</option>
+                            </select>
+                          </div>
+
+                          {editRole !== 'org_admin' && (
+                            <div className="field">
+                              <label>Page Access</label>
+                              <div className="farm-checkboxes">
+                                {PAGE_SECTIONS.filter(s => s.key !== 'admin').map(s => (
+                                  <label
+                                    key={s.key}
+                                    className={`farm-check${editSections.includes(s.key) ? ' checked' : ''}`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={editSections.includes(s.key)}
+                                      onChange={() => setEditSections(prev =>
+                                        prev.includes(s.key) ? prev.filter(k => k !== s.key) : [...prev, s.key]
+                                      )}
+                                    />
+                                    <span className="farm-check-label">{s.label}</span>
+                                    {s.module && <span className="farm-check-code">{s.module} module</span>}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <button
+                            className="btn-submit"
+                            disabled={savingUser}
+                            onClick={() => handleSaveUserAccess(user)}
+                          >
+                            {savingUser ? 'Saving...' : 'Save Changes'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'user' && (
             <div className="form-card">
               <div className="section-title">New User</div>
@@ -480,10 +753,16 @@ export default function AdminPage() {
 
                 <div className="field">
                   <label>Role</label>
-                  <select value={mgRole} onChange={e => setMgRole(e.target.value)} required>
+                  <select value={mgRole} onChange={e => {
+                    const newRole = e.target.value
+                    setMgRole(newRole)
+                    setMgPageSections(getDefaultSectionsForRole(newRole))
+                    setMgPageModified(false)
+                  }} required>
                     <option value="farm_manager">Farm Manager</option>
                     <option value="production_manager">Production Manager</option>
                     <option value="crop_protection_advisor">Crop Protection Advisor</option>
+                    <option value="horticultural_consultant">Horticultural Consultant</option>
                     <option value="org_admin">Org Admin</option>
                   </select>
                 </div>
@@ -517,6 +796,38 @@ export default function AdminPage() {
                           />
                           <span className="farm-check-label">{f.full_name}</span>
                           <span className="farm-check-code">{f.code}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {mgRole !== 'org_admin' && (
+                  <div className="field">
+                    <label>
+                      Page Access
+                      {EXTERNAL_ROLES.includes(mgRole)
+                        ? <span style={{ color: '#c0392b', fontWeight: 400, textTransform: 'none' }}> (must select at least one)</span>
+                        : <span style={{ color: '#b0bdb5', fontWeight: 400, textTransform: 'none' }}> (defaults pre-selected)</span>}
+                    </label>
+                    <div className="farm-checkboxes">
+                      {PAGE_SECTIONS.filter(s => s.key !== 'admin').map(s => (
+                        <label
+                          key={s.key}
+                          className={`farm-check${mgPageSections.includes(s.key) ? ' checked' : ''}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={mgPageSections.includes(s.key)}
+                            onChange={() => {
+                              setMgPageModified(true)
+                              setMgPageSections(prev =>
+                                prev.includes(s.key) ? prev.filter(k => k !== s.key) : [...prev, s.key]
+                              )
+                            }}
+                          />
+                          <span className="farm-check-label">{s.label}</span>
+                          {s.module && <span className="farm-check-code">{s.module} module</span>}
                         </label>
                       ))}
                     </div>

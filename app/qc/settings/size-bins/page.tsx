@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase-auth'
-import { useUserContext } from '@/lib/useUserContext'
+import { usePageGuard } from '@/lib/usePageGuard'
 import { useEffect, useState } from 'react'
 
 interface Commodity { id: string; code: string; name: string }
@@ -66,7 +66,7 @@ const COLS = '1fr 100px 100px 60px 60px 130px'
 
 export default function SizeBinsPage() {
   const supabase = createClient()
-  const { isSuperAdmin, contextLoaded } = useUserContext()
+  const { isSuperAdmin, contextLoaded, allowed } = usePageGuard()
 
   const [commodities, setCommodities] = useState<Commodity[]>([])
   const [selectedCommodityId, setSelectedCommodityId] = useState<string>('')
@@ -195,6 +195,8 @@ export default function SizeBinsPage() {
       transition: 'all 0.12s',
     }
   }
+
+  if (!allowed) return null
 
   return (
     <div style={s.page}>

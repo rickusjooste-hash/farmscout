@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase-auth'
-import { useUserContext } from '@/lib/useUserContext'
+import { usePageGuard } from '@/lib/usePageGuard'
 import PestTrendChart from '@/app/components/PestTrendChart'
 import OrchardPressureMap from '@/app/components/OrchardPressureMap'
 import PestAlertSummary from '@/app/components/PestAlertSummary'
@@ -41,7 +41,7 @@ export default function DashboardPage() {
     inspectedTraps: number
     perScout: Array<{ name: string; count: number; routeLength: number }>
   }>({ totalTraps: 0, inspectedTraps: 0, perScout: [] })
-  const { farmIds, isSuperAdmin, contextLoaded, orgId } = useUserContext()
+  const { farmIds, isSuperAdmin, contextLoaded, orgId, allowedRoutes } = usePageGuard()
   const modules = useOrgModules()
   const [loading, setLoading] = useState(true)
   const [selectedPestId, setSelectedPestId] = useState<string | undefined>()
@@ -681,7 +681,7 @@ export default function DashboardPage() {
       ) : (
         <div className="app">
           <ManagerSidebarStyles />
-          <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} onLogout={handleLogout} />
+          <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} allowedRoutes={allowedRoutes} onLogout={handleLogout} />
 
           {/* Main */}
           <main className="main dash-main">

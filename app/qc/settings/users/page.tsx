@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase-auth'
-import { useUserContext } from '@/lib/useUserContext'
+import { usePageGuard } from '@/lib/usePageGuard'
 import { useOrgModules } from '@/lib/useOrgModules'
 import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
 import { useEffect, useState, useRef } from 'react'
@@ -57,7 +57,7 @@ const s: Record<string, React.CSSProperties> = {
 
 export default function QcAppUsersPage() {
   const supabase = createClient()
-  const { isSuperAdmin, contextLoaded, orgId } = useUserContext()
+  const { isSuperAdmin, contextLoaded, orgId, allowedRoutes, allowed } = usePageGuard()
   const modules = useOrgModules()
 
   // Search state
@@ -201,10 +201,12 @@ export default function QcAppUsersPage() {
     color: r === 'runner' ? '#2e7d32' : '#1565c0',
   })
 
+  if (!allowed) return null
+
   return (
     <div style={s.page}>
       <ManagerSidebarStyles />
-      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} />
+      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} allowedRoutes={allowedRoutes} />
 
       <main style={s.main}>
         <div style={{ marginBottom: 28 }}>

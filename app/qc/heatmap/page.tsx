@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase-auth'
-import { useUserContext } from '@/lib/useUserContext'
+import { usePageGuard } from '@/lib/usePageGuard'
 import { useOrgModules } from '@/lib/useOrgModules'
 import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
 import { useEffect, useState, useRef } from 'react'
@@ -48,7 +48,7 @@ function nextWeek(year: number, week: number) {
 
 export default function QcHeatmapPage() {
   const supabase = createClient()
-  const { farmIds, isSuperAdmin, contextLoaded } = useUserContext()
+  const { farmIds, isSuperAdmin, contextLoaded, allowedRoutes, allowed } = usePageGuard()
   const modules = useOrgModules()
 
   const mapDivRef = useRef<HTMLDivElement>(null)
@@ -300,6 +300,8 @@ export default function QcHeatmapPage() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
+  if (!allowed) return null
+
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'Inter, system-ui, sans-serif' }}>
       <ManagerSidebarStyles />
@@ -316,7 +318,7 @@ export default function QcHeatmapPage() {
         @keyframes qhm-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
       `}</style>
 
-      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} />
+      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} allowedRoutes={allowedRoutes} />
 
       {/* Main */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#1a2a1a' }}>

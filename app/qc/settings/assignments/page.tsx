@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase-auth'
-import { useUserContext } from '@/lib/useUserContext'
+import { usePageGuard } from '@/lib/usePageGuard'
 import { useOrgModules } from '@/lib/useOrgModules'
 import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
 import { useEffect, useState } from 'react'
@@ -23,7 +23,7 @@ interface OrgUser {
 
 export default function QcAssignmentsPage() {
   const supabase = createClient()
-  const { isSuperAdmin, contextLoaded, orgId } = useUserContext()
+  const { isSuperAdmin, contextLoaded, orgId, allowedRoutes, allowed } = usePageGuard()
   const modules = useOrgModules()
 
   const [assignments, setAssignments] = useState<Assignment[]>([])
@@ -127,10 +127,12 @@ export default function QcAssignmentsPage() {
     }
   }
 
+  if (!allowed) return null
+
   return (
     <div style={s.page}>
       <ManagerSidebarStyles />
-      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} />
+      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} allowedRoutes={allowedRoutes} />
 
       <main style={s.main}>
         <div style={{ marginBottom: 28 }}>

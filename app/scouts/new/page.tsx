@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase-auth'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { usePageGuard } from '@/lib/usePageGuard'
 
 interface Farm {
   id: string
@@ -18,6 +19,7 @@ interface CreatedScout {
 }
 
 export default function NewScoutPage() {
+  const { allowed } = usePageGuard()
   const supabase = createClient()
   const router = useRouter()
 
@@ -103,6 +105,8 @@ export default function NewScoutPage() {
 
     setCreated({ full_name: fullName, email, password, scout_id: json.scout_id })
   }
+
+  if (!allowed) return null
 
   if (loading) {
     return <div style={styles.loading}>Loading…</div>

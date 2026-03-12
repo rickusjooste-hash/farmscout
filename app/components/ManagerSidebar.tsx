@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 interface ManagerSidebarProps {
   isSuperAdmin?: boolean
   modules?: string[]
+  allowedRoutes?: string[]
   onLogout?: () => void
 }
 
@@ -272,7 +273,7 @@ function AllFarmLogo() {
  * Shows FarmScout nav items always, QC section only when org has 'qc' module.
  * Uses CSS classes (.ms-sidebar, .ms-nav-item, etc.) — embed <ManagerSidebarStyles /> once per page.
  */
-export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], onLogout }: ManagerSidebarProps) {
+export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], allowedRoutes, onLogout }: ManagerSidebarProps) {
   const pathname = usePathname()
   const hasQc = modules.includes('qc')
   const hasProduction = modules.includes('production')
@@ -280,6 +281,13 @@ export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], 
   function cls(href: string) {
     const active = href === '/' ? pathname === '/' : pathname.startsWith(href)
     return `ms-nav-item${active ? ' active' : ''}`
+  }
+
+  /** Hide links the user cannot access. When allowedRoutes is undefined, show everything (backwards compat). */
+  function show(href: string): boolean {
+    if (!allowedRoutes) return true
+    if (href === '/') return allowedRoutes.includes('/')
+    return allowedRoutes.some(r => r !== '/' && (href === r || href.startsWith(r + '/')))
   }
 
   return (
@@ -291,23 +299,23 @@ export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], 
 
       {/* FarmScout section */}
       <div className="ms-section-label">FarmScout</div>
-      <a href="/" className={cls('/')}><span className="ms-nav-icon"><DashboardIcon /></span> Dashboard</a>
-      <a href="/orchards" className={cls('/orchards')}><span className="ms-nav-icon"><TreeIcon /></span> Orchards</a>
-      <a href="/orchards/analysis" className={cls('/orchards/analysis')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><AnalysisIcon /></span> Analysis</a>
-      <a href="/orchards/leaf-analysis" className={cls('/orchards/leaf-analysis')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><LeafIcon /></span> Leaf Analysis</a>
-      <a href="/pests" className={cls('/pests')}><span className="ms-nav-icon"><BugIcon /></span> Pests</a>
-      <a href="/trap-inspections" className={cls('/trap-inspections')}><span className="ms-nav-icon"><CrosshairIcon /></span> Trap Inspections</a>
-      <a href="/inspections" className={cls('/inspections')}><span className="ms-nav-icon"><SearchIcon /></span> Inspections</a>
-      <a href="/heatmap" className={cls('/heatmap')}><span className="ms-nav-icon"><LayersIcon /></span> Heat Map</a>
-      <a href="/scouts" className={cls('/scouts')}><span className="ms-nav-icon"><PersonIcon /></span> Scouts</a>
-      <a href="/scouts/new" className={cls('/scouts/new')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><PersonPlusIcon /></span> New Scout</a>
-      <a href="/scouts/sections" className={cls('/scouts/sections')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><FolderIcon /></span> Sections</a>
-      <a href="/scouts/productivity" className={cls('/scouts/productivity')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><ActivityIcon /></span> Productivity</a>
-      <a href="/settings" className={cls('/settings')}><span className="ms-nav-icon"><GearIcon /></span> Settings</a>
-      {isSuperAdmin && <a href="/admin" className={cls('/admin')}><span className="ms-nav-icon"><ShieldIcon /></span> Admin</a>}
+      {show('/') && <a href="/" className={cls('/')}><span className="ms-nav-icon"><DashboardIcon /></span> Dashboard</a>}
+      {show('/orchards') && <a href="/orchards" className={cls('/orchards')}><span className="ms-nav-icon"><TreeIcon /></span> Orchards</a>}
+      {show('/orchards/analysis') && <a href="/orchards/analysis" className={cls('/orchards/analysis')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><AnalysisIcon /></span> Analysis</a>}
+      {show('/orchards/leaf-analysis') && <a href="/orchards/leaf-analysis" className={cls('/orchards/leaf-analysis')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><LeafIcon /></span> Leaf Analysis</a>}
+      {show('/pests') && <a href="/pests" className={cls('/pests')}><span className="ms-nav-icon"><BugIcon /></span> Pests</a>}
+      {show('/trap-inspections') && <a href="/trap-inspections" className={cls('/trap-inspections')}><span className="ms-nav-icon"><CrosshairIcon /></span> Trap Inspections</a>}
+      {show('/inspections') && <a href="/inspections" className={cls('/inspections')}><span className="ms-nav-icon"><SearchIcon /></span> Inspections</a>}
+      {show('/heatmap') && <a href="/heatmap" className={cls('/heatmap')}><span className="ms-nav-icon"><LayersIcon /></span> Heat Map</a>}
+      {show('/scouts') && <a href="/scouts" className={cls('/scouts')}><span className="ms-nav-icon"><PersonIcon /></span> Scouts</a>}
+      {show('/scouts/new') && <a href="/scouts/new" className={cls('/scouts/new')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><PersonPlusIcon /></span> New Scout</a>}
+      {show('/scouts/sections') && <a href="/scouts/sections" className={cls('/scouts/sections')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><FolderIcon /></span> Sections</a>}
+      {show('/scouts/productivity') && <a href="/scouts/productivity" className={cls('/scouts/productivity')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><ActivityIcon /></span> Productivity</a>}
+      {show('/settings') && <a href="/settings" className={cls('/settings')}><span className="ms-nav-icon"><GearIcon /></span> Settings</a>}
+      {isSuperAdmin && show('/admin') && <a href="/admin" className={cls('/admin')}><span className="ms-nav-icon"><ShieldIcon /></span> Admin</a>}
 
       {/* QC section — only when org subscribes to qc module */}
-      {hasQc && (
+      {hasQc && show('/qc') && (
         <>
           <div className="ms-section-label">QC</div>
           <a href="/qc/dashboard" className={cls('/qc/dashboard')}><span className="ms-nav-icon"><ClipboardCheckIcon /></span> QC Dashboard</a>
@@ -323,7 +331,7 @@ export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], 
       )}
 
       {/* Production section — only when org subscribes to production module */}
-      {hasProduction && (
+      {hasProduction && show('/production') && (
         <>
           <div className="ms-section-label">Production</div>
           <a href="/production" className={cls('/production')}><span className="ms-nav-icon"><PackageIcon /></span> Production</a>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-auth'
-import { useUserContext } from '@/lib/useUserContext'
+import { usePageGuard } from '@/lib/usePageGuard'
 import { useOrgModules } from '@/lib/useOrgModules'
 import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
 
@@ -143,7 +143,7 @@ const s: Record<string, React.CSSProperties> = {
 }
 
 export default function QcUnknownsPage() {
-  const { isSuperAdmin, contextLoaded } = useUserContext()
+  const { isSuperAdmin, contextLoaded, allowedRoutes, allowed } = usePageGuard()
   const modules = useOrgModules()
   const [issues, setIssues] = useState<UnknownIssue[]>([])
   const [pests, setPests] = useState<Pest[]>([])
@@ -260,11 +260,13 @@ export default function QcUnknownsPage() {
     return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
   }
 
+  if (!allowed) return null
+
   return (
     <div style={s.page}>
       <style>{`html, body { background: #f8f7f4 !important; }`}</style>
       <ManagerSidebarStyles />
-      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} />
+      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} allowedRoutes={allowedRoutes} />
 
       <main style={s.main}>
         <div style={s.pageHeader}>

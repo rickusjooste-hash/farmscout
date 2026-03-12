@@ -54,5 +54,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true })
   }
 
+  if (type === 'update-user-access') {
+    const { organisation_user_id, allowed_pages, role } = body
+    if (!organisation_user_id) {
+      return NextResponse.json({ error: 'organisation_user_id is required' }, { status: 400 })
+    }
+    const update: Record<string, any> = {}
+    if (allowed_pages !== undefined) update.allowed_pages = allowed_pages
+    if (role) update.role = role
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
+    }
+    const { error } = await supabase
+      .from('organisation_users')
+      .update(update)
+      .eq('id', organisation_user_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+    return NextResponse.json({ success: true })
+  }
+
   return NextResponse.json({ error: 'Invalid type' }, { status: 400 })
 }

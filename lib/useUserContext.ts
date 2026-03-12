@@ -2,12 +2,16 @@
 
 import { createClient } from './supabase-auth'
 import { useEffect, useState } from 'react'
+import { resolveAllowedRoutes, canAccessRoute } from './page-access'
 
 interface UserContext {
   farmIds: string[]
   isSuperAdmin: boolean
   contextLoaded: boolean
   orgId: string | null
+  role: string | null
+  allowedRoutes: string[]
+  canAccess: (path: string) => boolean
 }
 
 export function useUserContext(): UserContext {
@@ -15,6 +19,8 @@ export function useUserContext(): UserContext {
   const [farmIds, setFarmIds] = useState<string[] | null>(null)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [orgId, setOrgId] = useState<string | null>(null)
+  const [role, setRole] = useState<string | null>(null)
+  const [allowedRoutes, setAllowedRoutes] = useState<string[]>(['/'])
 
   useEffect(() => {
     // Safety net: if the auth call hangs (e.g. stale session trying to refresh),
@@ -28,23 +34,44 @@ export function useUserContext(): UserContext {
 
         const { data: orgUser } = await supabase
           .from('organisation_users')
-          .select('role, organisation_id')
+          .select('role, organisation_id, allowed_pages')
           .eq('user_id', user.id)
           .single()
 
+        const userRole = orgUser?.role ?? null
+        setRole(userRole)
         if (orgUser?.organisation_id) setOrgId(orgUser.organisation_id)
 
-        if (orgUser?.role === 'super_admin') {
+        // Fetch org modules for route resolution
+        let orgModules = ['farmscout']
+        if (orgUser?.organisation_id) {
+          const { data: org } = await supabase
+            .from('organisations')
+            .select('modules')
+            .eq('id', orgUser.organisation_id)
+            .single()
+          if (org?.modules) orgModules = org.modules
+        }
+
+        // Resolve allowed routes
+        const routes = resolveAllowedRoutes(
+          userRole,
+          orgUser?.allowed_pages ?? null,
+          orgModules,
+        )
+        setAllowedRoutes(routes)
+
+        if (userRole === 'super_admin') {
           setIsSuperAdmin(true)
           setFarmIds([])
           return
         }
 
-        if (orgUser?.role === 'org_admin') {
+        if (userRole === 'org_admin') {
           const { data: farms } = await supabase
             .from('farms')
             .select('id')
-            .eq('organisation_id', orgUser.organisation_id)
+            .eq('organisation_id', orgUser!.organisation_id)
           setFarmIds((farms || []).map((f: any) => f.id))
           return
         }
@@ -70,5 +97,8 @@ export function useUserContext(): UserContext {
     isSuperAdmin,
     contextLoaded: farmIds !== null,
     orgId,
+    role,
+    allowedRoutes,
+    canAccess: (path: string) => canAccessRoute(path, allowedRoutes),
   }
 }

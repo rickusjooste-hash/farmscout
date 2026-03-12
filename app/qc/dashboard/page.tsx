@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase-auth'
-import { useUserContext } from '@/lib/useUserContext'
+import { usePageGuard } from '@/lib/usePageGuard'
 import { useEffect, useState, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -259,7 +259,7 @@ type PickerSort = 'name' | 'bags' | 'fruit' | 'avgWeight' | 'issueRate'
 
 export default function QcDashboardPage() {
   const supabase = createClient()
-  const { farmIds, isSuperAdmin, contextLoaded, orgId } = useUserContext()
+  const { farmIds, isSuperAdmin, contextLoaded, orgId, allowedRoutes, allowed } = usePageGuard()
   const modules = useOrgModules()
 
   const [allFarms, setAllFarms] = useState<Farm[]>([])
@@ -616,10 +616,12 @@ export default function QcDashboardPage() {
     '#6b7fa8', '#8a95a0', '#c8c4bb',
   ]
 
+  if (!allowed) return null
+
   return (
     <div style={s.page}>
       <ManagerSidebarStyles />
-      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} />
+      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} allowedRoutes={allowedRoutes} />
 
       {/* Main */}
       <main style={s.main}>
@@ -1397,7 +1399,7 @@ export default function QcDashboardPage() {
                         >
                           <option value="">— Select new orchard —</option>
                           {allOrchards.map(o => (
-                            <option key={o.id} value={o.id}>{o.name}</option>
+                            <option key={o.id} value={o.id}>{o.name}{o.variety ? ` (${o.variety})` : ''}</option>
                           ))}
                         </select>
                         <button

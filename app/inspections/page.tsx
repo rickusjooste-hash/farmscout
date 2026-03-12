@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase-auth'
-import { useUserContext } from '@/lib/useUserContext'
+import { usePageGuard } from '@/lib/usePageGuard'
 import { useEffect, useState, useRef, useMemo } from 'react'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -135,7 +135,7 @@ function countBadgeColor(count: number): string {
 
 export default function InspectionsPage() {
   const supabase = createClient()
-  const { farmIds, isSuperAdmin, contextLoaded } = useUserContext()
+  const { farmIds, isSuperAdmin, contextLoaded, allowed } = usePageGuard()
 
   const [farms, setFarms] = useState<Farm[]>([])
   const [effectiveFarmIds, setEffectiveFarmIds] = useState<string[]>([])
@@ -516,6 +516,8 @@ export default function InspectionsPage() {
 
 
   // ── Render ────────────────────────────────────────────────────────────────
+
+  if (!allowed) return null
 
   return (
     <>

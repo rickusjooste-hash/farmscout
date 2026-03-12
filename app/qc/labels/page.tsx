@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import QRCode from 'qrcode'
+import { usePageGuard } from '@/lib/usePageGuard'
 
 interface Label {
   uuid: string
@@ -10,6 +11,7 @@ interface Label {
 }
 
 export default function QcLabelsPage() {
+  const { allowed } = usePageGuard()
   const [qty, setQty] = useState(50)
   const [labels, setLabels] = useState<Label[]>([])
   const [generating, setGenerating] = useState(false)
@@ -45,6 +47,8 @@ export default function QcLabelsPage() {
     a.click()
     URL.revokeObjectURL(url)
   }
+
+  if (!allowed) return null
 
   return (
     <>

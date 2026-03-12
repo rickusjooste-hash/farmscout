@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase-auth'
-import { useUserContext } from '@/lib/useUserContext'
+import { usePageGuard } from '@/lib/usePageGuard'
 import { useEffect, useState, useMemo } from 'react'
 import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
 import MobileNav from '@/app/components/MobileNav'
@@ -60,7 +60,7 @@ interface Farm {
 
 export default function ScoutProductivityPage() {
   const supabase = createClient()
-  const { farmIds, isSuperAdmin, contextLoaded, orgId } = useUserContext()
+  const { farmIds, isSuperAdmin, contextLoaded, orgId, allowedRoutes, allowed } = usePageGuard()
 
   const [farms, setFarms] = useState<Farm[]>([])
   const [effectiveFarmIds, setEffectiveFarmIds] = useState<string[]>([])
@@ -214,10 +214,12 @@ export default function ScoutProductivityPage() {
     )
   }
 
+  if (!allowed) return null
+
   return (
     <div className="sprod-app">
       <ManagerSidebarStyles />
-      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} />
+      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} allowedRoutes={allowedRoutes} />
       <MobileNav />
 
       <main className="sprod-main">

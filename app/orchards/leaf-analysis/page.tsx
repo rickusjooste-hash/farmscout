@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase-auth'
-import { useUserContext } from '@/lib/useUserContext'
+import { usePageGuard } from '@/lib/usePageGuard'
 import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
 import LeafAnalysisTable from '@/app/components/leaf-analysis/LeafAnalysisTable'
 import NutrientCorrelationScatter from '@/app/components/leaf-analysis/NutrientCorrelationScatter'
@@ -114,7 +114,7 @@ interface NormRange {
 type ViewMode = 'table' | 'scatter'
 
 export default function LeafAnalysisPage() {
-  const { farmIds, isSuperAdmin, contextLoaded, orgId } = useUserContext()
+  const { farmIds, isSuperAdmin, contextLoaded, orgId, allowedRoutes, allowed } = usePageGuard()
   const supabase = createClient()
 
   const [loading, setLoading] = useState(true)
@@ -442,10 +442,12 @@ export default function LeafAnalysisPage() {
     }
   })
 
+  if (!allowed) return null
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#eae6df', fontFamily: 'Inter, sans-serif' }}>
       <ManagerSidebarStyles />
-      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} />
+      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} allowedRoutes={allowedRoutes} />
 
       <main style={st.main}>
         {/* Page header */}

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase-auth'
 import { useEffect, useState } from 'react'
+import { usePageGuard } from '@/lib/usePageGuard'
 
 interface Section {
   id: string
@@ -25,6 +26,7 @@ interface Farm {
 }
 
 export default function SectionsPage() {
+  const { allowed } = usePageGuard()
   const supabase = createClient()
   const [farms, setFarms] = useState<Farm[]>([])
   const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null)
@@ -132,6 +134,8 @@ export default function SectionsPage() {
   }
 
   const unassigned = orchards.filter(o => !o.section_id)
+
+  if (!allowed) return null
 
   return (
     <>

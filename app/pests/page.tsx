@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase-auth'
-import { useUserContext } from '@/lib/useUserContext'
+import { usePageGuard } from '@/lib/usePageGuard'
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -201,7 +201,7 @@ function SortablePestRow({
 export default function PestsPage() {
   const supabase = createClient()
   const router = useRouter()
-  const { farmIds, isSuperAdmin, contextLoaded } = useUserContext()
+  const { farmIds, isSuperAdmin, contextLoaded, allowed } = usePageGuard()
 
   const [commodities, setCommodities] = useState<Commodity[]>([])
   const [activeCommodity, setActiveCommodity] = useState('POME')
@@ -495,6 +495,8 @@ export default function PestsPage() {
       </div>
     )
   }
+
+  if (!allowed) return null
 
   return (
     <>

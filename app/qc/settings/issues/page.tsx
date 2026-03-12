@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase-auth'
-import { useUserContext } from '@/lib/useUserContext'
+import { usePageGuard } from '@/lib/usePageGuard'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -111,7 +111,7 @@ function SortableRow({
 export default function QcIssueSettingsPage() {
   const supabase = createClient()
   const router = useRouter()
-  const { isSuperAdmin, contextLoaded } = useUserContext()
+  const { isSuperAdmin, contextLoaded, allowed } = usePageGuard()
 
   const [commodities, setCommodities] = useState<Commodity[]>([])
   const [selectedCommodityId, setSelectedCommodityId] = useState<string>('')
@@ -214,6 +214,8 @@ export default function QcIssueSettingsPage() {
       body: JSON.stringify({ type: 'update', id, is_active }),
     })
   }
+
+  if (!allowed) return null
 
   return (
     <div style={s.page}>

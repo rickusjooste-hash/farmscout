@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase-auth'
-import { useUserContext } from '@/lib/useUserContext'
+import { usePageGuard } from '@/lib/usePageGuard'
 import { useEffect, useState, useRef } from 'react'
 import { Inter } from 'next/font/google'
 
@@ -49,7 +49,7 @@ interface BoundaryRow { id: string; name: string; boundary: object | null }
 
 export default function HeatmapPage() {
   const supabase = createClient()
-  const { farmIds, isSuperAdmin, contextLoaded } = useUserContext()
+  const { farmIds, isSuperAdmin, contextLoaded, allowed } = usePageGuard()
 
   const mapDivRef     = useRef<HTMLDivElement>(null)
   const leafletMapRef = useRef<any>(null)
@@ -388,6 +388,8 @@ export default function HeatmapPage() {
   })
 
   // ── Render ────────────────────────────────────────────────────────────────
+  if (!allowed) return null
+
   return (
     <div className={inter.className} style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <style>{`

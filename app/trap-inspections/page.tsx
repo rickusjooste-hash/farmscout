@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase-auth'
-import { useUserContext } from '@/lib/useUserContext'
+import { usePageGuard } from '@/lib/usePageGuard'
 import { useEffect, useState, useRef, useMemo } from 'react'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -107,7 +107,7 @@ function nextWeek(year: number, week: number) {
 
 export default function TrapInspectionsPage() {
   const supabase = createClient()
-  const { farmIds, isSuperAdmin, contextLoaded } = useUserContext()
+  const { farmIds, isSuperAdmin, contextLoaded, allowed } = usePageGuard()
 
   const [effectiveFarmIds, setEffectiveFarmIds] = useState<string[]>([])
 
@@ -408,6 +408,8 @@ export default function TrapInspectionsPage() {
   const showCoveragePanel = !showDetailPanel && showCoverage
 
   // ── Render ────────────────────────────────────────────────────────────────
+
+  if (!allowed) return null
 
   return (
     <>

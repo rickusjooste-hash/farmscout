@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase-auth'
-import { useUserContext } from '@/lib/useUserContext'
+import { usePageGuard } from '@/lib/usePageGuard'
 import { useOrgModules } from '@/lib/useOrgModules'
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import dynamic from 'next/dynamic'
@@ -128,7 +128,7 @@ const s: Record<string, React.CSSProperties> = {
 
 export default function OrchardAnalysisPage() {
   const supabase = createClient()
-  const { farmIds, isSuperAdmin, contextLoaded, orgId } = useUserContext()
+  const { farmIds, isSuperAdmin, contextLoaded, orgId, allowedRoutes, allowed } = usePageGuard()
   const modules = useOrgModules()
   const hasProduction = modules.includes('production')
 
@@ -534,6 +534,8 @@ export default function OrchardAnalysisPage() {
     >{label}</button>
   )
 
+  if (!allowed) return null
+
   return (
     <>
       <ManagerSidebarStyles />
@@ -556,7 +558,7 @@ export default function OrchardAnalysisPage() {
       `}</style>
 
       <div style={s.page}>
-        <ManagerSidebar modules={modules} isSuperAdmin={isSuperAdmin} />
+        <ManagerSidebar modules={modules} isSuperAdmin={isSuperAdmin} allowedRoutes={allowedRoutes} />
         <main className="oa-main" style={s.main}>
 
           {/* Page header */}
