@@ -108,6 +108,13 @@ export default function NutrientCorrelationScatter({
       }))
   }, [orchards, selectedNutrient, yAxis])
 
+  // Compute x-axis extent so we can draw red bands beyond the adequate range
+  const xExtent = useMemo(() => {
+    if (scatterData.length === 0) return { min: 0, max: 1 }
+    const vals = scatterData.map(d => d.x)
+    return { min: Math.min(...vals), max: Math.max(...vals) }
+  }, [scatterData])
+
   // Debug counts
   const withNutrient = orchards.filter(o => o.nutrients[selectedNutrient] != null).length
   const withY = orchards.filter(o => yAxis === 'tonHa' ? (o.tonHa != null && o.tonHa > 0) : (o.avgWeightG != null && o.avgWeightG > 0)).length
@@ -212,13 +219,33 @@ export default function NutrientCorrelationScatter({
                     <span>Adequate</span>
                   </span>
                 )}
+                {(norm.min_adequate != null || norm.max_adequate != null) && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 2, background: 'rgba(232,90,74,0.15)', border: '1px solid rgba(232,90,74,0.4)' }} />
+                    <span>Outside range</span>
+                  </span>
+                )}
               </span>
             )}
           </div>
           <ResponsiveContainer width="100%" height={320}>
             <ScatterChart margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#eef2fa" />
-              {/* Norm reference bands */}
+              {/* Norm reference bands — red (outside) drawn first, then yellow (adequate), then green (optimal) on top */}
+              {norm && norm.min_adequate != null && xExtent.min < norm.min_adequate && (
+                <ReferenceArea
+                  x1={xExtent.min - (xExtent.max - xExtent.min) * 0.5} x2={norm.min_adequate}
+                  fill="rgba(232,90,74,0.07)" fillOpacity={1}
+                  ifOverflow="extendDomain"
+                />
+              )}
+              {norm && norm.max_adequate != null && xExtent.max > norm.max_adequate && (
+                <ReferenceArea
+                  x1={norm.max_adequate} x2={xExtent.max + (xExtent.max - xExtent.min) * 0.5}
+                  fill="rgba(232,90,74,0.07)" fillOpacity={1}
+                  ifOverflow="extendDomain"
+                />
+              )}
               {norm && norm.min_adequate != null && norm.max_adequate != null && (
                 <ReferenceArea
                   x1={norm.min_adequate} x2={norm.max_adequate}
