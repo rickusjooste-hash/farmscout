@@ -46,6 +46,7 @@ interface Props {
   normsLookup?: Record<string, NormRange>  // key: "commodity_id:nutrient_code"
   commodityByOrchard?: Record<string, string>  // orchard_id → commodity_id
   varietyByOrchard?: Record<string, string>  // orchard_id → variety
+  pdfByOrchard?: Record<string, string>  // orchard_id → pdf_url
 }
 
 const MACRO_CODES = new Set(['N', 'P', 'K', 'Ca', 'Mg', 'S'])
@@ -77,15 +78,35 @@ function normBg(value: number, norm: NormRange | undefined): string {
   return 'transparent'
 }
 
+function normTooltip(value: number, norm: NormRange | undefined, code: string, unit: string): string | undefined {
+  if (!norm) return undefined
+  const isMacro = MACRO_CODES.has(code)
+  const dec = isMacro ? 2 : 0
+  const status = value >= norm.min_optimal && value <= norm.max_optimal
+    ? 'Optimal'
+    : (norm.min_adequate != null && norm.max_adequate != null && value >= norm.min_adequate && value <= norm.max_adequate)
+      ? 'Adequate'
+      : 'Outside range'
+  let tip = `${code}: ${value.toFixed(isMacro ? 2 : 1)} ${unit}\n`
+  tip += `Optimal: ${norm.min_optimal.toFixed(dec)} \u2013 ${norm.max_optimal.toFixed(dec)}\n`
+  if (norm.min_adequate != null && norm.max_adequate != null) {
+    tip += `Adequate: ${norm.min_adequate.toFixed(dec)} \u2013 ${norm.max_adequate.toFixed(dec)}\n`
+  }
+  tip += `\u2192 ${status}`
+  return tip
+}
+
 export default function LeafAnalysisTable({
   data, selectedOrchardId, onSelectOrchard, loading,
   productionByOrchard, sizeByOrchard, normsLookup, commodityByOrchard, varietyByOrchard,
+  pdfByOrchard,
 }: Props) {
   const [sortCol, setSortCol] = useState<string>('orchard_name')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   const hasProduction = productionByOrchard && Object.keys(productionByOrchard).length > 0
   const hasSize = sizeByOrchard && Object.keys(sizeByOrchard).length > 0
+  const hasPdf = pdfByOrchard && Object.keys(pdfByOrchard).length > 0
 
   // Discover all nutrients present in the data, ordered by display_order
   const nutrientCols = useMemo(() => {
@@ -167,11 +188,17 @@ export default function LeafAnalysisTable({
 
   const arrow = (col: string) => sortCol === col ? (sortDir === 'asc' ? ' \u25B2' : ' \u25BC') : ''
 
-  // Build norm lookup helper: given orchard's commodity_id + nutrient_code → NormRange
+  // Build norm lookup helper: variety-specific → commodity-level → undefined
   function getNorm(orchardId: string, nutrientCode: string): NormRange | undefined {
     if (!normsLookup || !commodityByOrchard) return undefined
     const commId = commodityByOrchard[orchardId]
     if (!commId) return undefined
+    // Try variety-specific first
+    const variety = varietyByOrchard?.[orchardId]
+    if (variety) {
+      const varNorm = normsLookup[`${commId}:${variety}:${nutrientCode}`]
+      if (varNorm) return varNorm
+    }
     return normsLookup[`${commId}:${nutrientCode}`]
   }
 
@@ -208,6 +235,9 @@ export default function LeafAnalysisTable({
               <span style={s.legendItem}><span style={{ ...s.legendSwatch, background: 'rgba(76,175,114,0.18)' }} />Optimal</span>
               <span style={s.legendItem}><span style={{ ...s.legendSwatch, background: 'rgba(245,200,66,0.18)' }} />Adequate</span>
               <span style={s.legendItem}><span style={{ ...s.legendSwatch, background: 'rgba(232,90,74,0.18)' }} />Outside range</span>
+              <a href="/orchards/leaf-analysis/norms" style={{ color: '#2176d9', fontSize: 11, textDecoration: 'none', marginLeft: 4 }}>
+                Manage norms &rarr;
+              </a>
             </>
           )}
           {hasNorms && hasProduction && <span style={{ width: 1, height: 14, background: '#e0dbd4' }} />}
@@ -254,6 +284,7 @@ export default function LeafAnalysisTable({
               ))}
               <th style={s.th}>Date</th>
               <th style={s.th}>Lab</th>
+              <th style={{ ...s.th, textAlign: 'center' }}>PDF</th>
             </tr>
           </thead>
           <tbody>
@@ -299,8 +330,9 @@ export default function LeafAnalysisTable({
                     const n = row.nutrients[code]
                     const norm = getNorm(row.orchard_id, code)
                     const cellNormBg = n && !isSelected ? normBg(n.value, norm) : 'transparent'
+                    const tooltip = n ? normTooltip(n.value, norm, code, n.unit) : undefined
                     return (
-                      <td key={code} style={{
+                      <td key={code} title={tooltip} style={{
                         ...s.td, ...s.tdNum,
                         background: cellNormBg !== 'transparent' ? cellNormBg : rowBg,
                       }}>
@@ -312,6 +344,20 @@ export default function LeafAnalysisTable({
                     {row.sample_date ? new Date(row.sample_date + 'T00:00:00').toLocaleDateString('en-ZA', { day: '2-digit', month: 'short' }) : '\u2014'}
                   </td>
                   <td style={{ ...s.td, color: '#6a7a70', fontSize: 12 }}>{row.lab_name || '\u2014'}</td>
+                  <td style={{ ...s.td, textAlign: 'center' }}>
+                    {pdfByOrchard?.[row.orchard_id] ? (
+                      <a
+                        href={pdfByOrchard[row.orchard_id]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        title="View lab report PDF"
+                        style={{ color: '#2176d9', textDecoration: 'none', fontSize: 16 }}
+                      >
+                        &#128196;
+                      </a>
+                    ) : '\u2014'}
+                  </td>
                 </tr>
               )
             })}
