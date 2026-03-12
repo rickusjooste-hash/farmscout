@@ -41,6 +41,15 @@ function AnalysisIcon() {
   )
 }
 
+function LeafIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 20A7 7 0 019.8 6.9C15.5 4.9 20 2 20 2s-1.7 5.3-4 9.8A7 7 0 0111 20z" />
+      <path d="M10.7 10.7c3.1-3.1 5.8-4.4 5.8-4.4s-1.3 2.7-4.4 5.8" />
+    </svg>
+  )
+}
+
 function BugIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -285,6 +294,7 @@ export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], 
       <a href="/" className={cls('/')}><span className="ms-nav-icon"><DashboardIcon /></span> Dashboard</a>
       <a href="/orchards" className={cls('/orchards')}><span className="ms-nav-icon"><TreeIcon /></span> Orchards</a>
       <a href="/orchards/analysis" className={cls('/orchards/analysis')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><AnalysisIcon /></span> Analysis</a>
+      <a href="/orchards/leaf-analysis" className={cls('/orchards/leaf-analysis')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><LeafIcon /></span> Leaf Analysis</a>
       <a href="/pests" className={cls('/pests')}><span className="ms-nav-icon"><BugIcon /></span> Pests</a>
       <a href="/trap-inspections" className={cls('/trap-inspections')}><span className="ms-nav-icon"><CrosshairIcon /></span> Trap Inspections</a>
       <a href="/inspections" className={cls('/inspections')}><span className="ms-nav-icon"><SearchIcon /></span> Inspections</a>
