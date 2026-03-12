@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase-auth'
 import { useUserContext } from '@/lib/useUserContext'
 import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
@@ -134,6 +134,8 @@ export default function LeafAnalysisPage() {
 
   const [showImport, setShowImport] = useState(false)
   const [showEntry, setShowEntry] = useState(false)
+  const [attachingPdf, setAttachingPdf] = useState(false)
+  const pdfInputRef = useRef<HTMLInputElement>(null)
 
   // Enrichment data
   const [productionByOrchard, setProductionByOrchard] = useState<Record<string, ProductionData>>({})
@@ -141,6 +143,7 @@ export default function LeafAnalysisPage() {
   const [normsLookup, setNormsLookup] = useState<Record<string, NormRange>>({})
   const [commodityByOrchard, setCommodityByOrchard] = useState<Record<string, string>>({})
   const [varietyByOrchard, setVarietyByOrchard] = useState<Record<string, string>>({})
+  const [pdfByOrchard, setPdfByOrchard] = useState<Record<string, string>>({})
 
   const seasonOptions = buildSeasonOptions(2018)
 
@@ -167,43 +170,46 @@ export default function LeafAnalysisPage() {
     load()
   }, [contextLoaded, farmIds, isSuperAdmin, orgId])
 
-  // Load norms once (they don't change with farm/season)
+  // Load norms once via API route (bypasses RLS on reference tables)
   useEffect(() => {
     if (!contextLoaded) return
     async function loadNorms() {
-      let query = supabase
-        .from('nutrient_norms')
-        .select('commodity_id, nutrient_id, organisation_id, min_optimal, max_optimal, min_adequate, max_adequate, nutrients!inner(code)')
+      try {
+        const res = await fetch('/api/leaf-analysis/norms')
+        if (!res.ok) return
+        const { norms: normsData } = await res.json()
+        if (!normsData || normsData.length === 0) return
 
-      // Always fetch system defaults + org-specific overrides
-      if (orgId) {
-        query = query.or(`organisation_id.is.null,organisation_id.eq.${orgId}`)
-      } else {
-        query = query.is('organisation_id', null)
-      }
-
-      const { data: normsData } = await query
-      if (!normsData || normsData.length === 0) return
-
-      const lookup: Record<string, NormRange> = {}
-      // Process system defaults first, then org-specific (overwrites)
-      const sorted = [...(normsData as any[])].sort((a, b) =>
-        (a.organisation_id ? 1 : 0) - (b.organisation_id ? 1 : 0)
-      )
-      for (const n of sorted) {
-        const code = n.nutrients?.code
-        if (!code) continue
-        lookup[`${n.commodity_id}:${code}`] = {
-          min_optimal: Number(n.min_optimal),
-          max_optimal: Number(n.max_optimal),
-          min_adequate: n.min_adequate != null ? Number(n.min_adequate) : null,
-          max_adequate: n.max_adequate != null ? Number(n.max_adequate) : null,
+        const lookup: Record<string, NormRange> = {}
+        // Process in priority order: system defaults → org commodity → org variety
+        const sorted = [...(normsData as any[])].sort((a: any, b: any) => {
+          const aScore = (a.organisation_id ? 1 : 0) + (a.variety ? 1 : 0)
+          const bScore = (b.organisation_id ? 1 : 0) + (b.variety ? 1 : 0)
+          return aScore - bScore
+        })
+        for (const n of sorted) {
+          const code = n.nutrients?.code
+          if (!code) continue
+          const range = {
+            min_optimal: Number(n.min_optimal),
+            max_optimal: Number(n.max_optimal),
+            min_adequate: n.min_adequate != null ? Number(n.min_adequate) : null,
+            max_adequate: n.max_adequate != null ? Number(n.max_adequate) : null,
+          }
+          if (!n.variety) {
+            lookup[`${n.commodity_id}:${code}`] = range
+          }
+          if (n.variety) {
+            lookup[`${n.commodity_id}:${n.variety}:${code}`] = range
+          }
         }
+        setNormsLookup(lookup)
+      } catch {
+        // Norms are non-critical — page works without them
       }
-      setNormsLookup(lookup)
     }
     loadNorms()
-  }, [orgId, contextLoaded])
+  }, [contextLoaded])
 
   // Load all data when farm or season changes
   const fetchData = useCallback(async () => {
@@ -221,6 +227,7 @@ export default function LeafAnalysisPage() {
         { data: orchardData },
         { data: prodData },
         { data: sizeData },
+        { data: pdfData },
       ] = await Promise.all([
         supabase.rpc('get_leaf_analysis_summary', {
           p_farm_ids: [selectedFarmId],
@@ -240,6 +247,11 @@ export default function LeafAnalysisPage() {
           p_from: from,
           p_to: to,
         }),
+        supabase.from('leaf_analyses')
+          .select('orchard_id, pdf_url')
+          .eq('farm_id', selectedFarmId)
+          .eq('season', season)
+          .not('pdf_url', 'is', null),
       ])
 
       setData(summaryData || [])
@@ -275,6 +287,13 @@ export default function LeafAnalysisPage() {
       }
       setCommodityByOrchard(commMap)
       setVarietyByOrchard(varMap)
+
+      // Build PDF lookup (one per orchard, latest wins)
+      const pdfMap: Record<string, string> = {}
+      for (const r of (pdfData || []) as { orchard_id: string; pdf_url: string }[]) {
+        if (r.pdf_url) pdfMap[r.orchard_id] = r.pdf_url
+      }
+      setPdfByOrchard(pdfMap)
     } catch {
       setData([])
     } finally {
@@ -368,6 +387,42 @@ export default function LeafAnalysisPage() {
       return (aRow?.display_order ?? 99) - (bRow?.display_order ?? 99)
     })
 
+  // Attach PDF to existing analyses for this farm+season
+  async function handleAttachPdf(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !selectedFarmId) return
+
+    setAttachingPdf(true)
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const path = `${selectedFarmId}/${season.replace('/', '-')}/${Date.now()}_${safeName}`
+      const { error: uploadErr } = await supabase.storage
+        .from('leaf-analysis-pdfs')
+        .upload(path, file, { upsert: true })
+      if (uploadErr) throw uploadErr
+
+      const { data: urlData } = supabase.storage
+        .from('leaf-analysis-pdfs')
+        .getPublicUrl(path)
+
+      await fetch('/api/leaf-analysis', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          farm_id: selectedFarmId,
+          season,
+          pdf_url: urlData.publicUrl,
+        }),
+      })
+      fetchData()
+    } catch (err: any) {
+      console.error('PDF attach failed:', err)
+    } finally {
+      setAttachingPdf(false)
+    }
+  }
+
   const enrichedOrchards = [...uniqueOrchards].map(oid => {
     const nutrients: Record<string, number> = {}
     filteredData.filter(d => d.orchard_id === oid).forEach(d => {
@@ -405,6 +460,10 @@ export default function LeafAnalysisPage() {
             </select>
             <button onClick={() => setShowEntry(true)} style={st.addBtn}>+ Add</button>
             <button onClick={() => setShowImport(true)} style={st.importBtn}>Import CSV</button>
+            <button onClick={() => pdfInputRef.current?.click()} disabled={attachingPdf} style={{ ...st.addBtn, opacity: attachingPdf ? 0.5 : 1 }}>
+              {attachingPdf ? 'Uploading...' : 'Attach PDF'}
+            </button>
+            <input ref={pdfInputRef} type="file" accept=".pdf" onChange={handleAttachPdf} style={{ display: 'none' }} />
           </div>
         </div>
 
@@ -553,6 +612,7 @@ export default function LeafAnalysisPage() {
               normsLookup={normsLookup}
               commodityByOrchard={commodityByOrchard}
               varietyByOrchard={varietyByOrchard}
+              pdfByOrchard={pdfByOrchard}
             />
           </div>
         )}
