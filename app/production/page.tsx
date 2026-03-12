@@ -593,16 +593,15 @@ export default function ProductionPage() {
   // QC issue % — extracted for mobile panel + desktop IIFE
   const issuePctData = useMemo(() => {
     const filteredIssues = issueRows.filter(r => r.category !== 'picking_issue')
-    const totalIssues = filteredIssues.reduce((s, r) => s + r.total_count, 0)
     return filteredIssues.map(r => ({
       ...r,
       pct: r.pct_of_fruit > 0
         ? Math.round(r.pct_of_fruit * 10) / 10
-        : totalIssues > 0
-          ? Math.round((r.total_count / totalIssues) * 1000) / 10
+        : totalFruitSampled > 0
+          ? Math.round((r.total_count / totalFruitSampled) * 1000) / 10
           : 0,
     }))
-  }, [issueRows])
+  }, [issueRows, totalFruitSampled])
 
   // Mobile collapse states
   const [qualityOpen, setQualityOpen] = useState(false)
