@@ -71,6 +71,7 @@ export default function NutrientCorrelationScatter({
 }: Props) {
   const [selectedNutrient, setSelectedNutrient] = useState(nutrientCodes[0] || 'N')
   const [yAxis, setYAxis] = useState<'tonHa' | 'avgWeight'>('tonHa')
+  const [showInfo, setShowInfo] = useState(false)
 
   // Keep selectedNutrient in sync when nutrientCodes changes
   useEffect(() => {
@@ -116,7 +117,16 @@ export default function NutrientCorrelationScatter({
   return (
     <div style={s.card}>
       <div style={s.header}>
-        <h3 style={s.title}>Nutrient vs Production</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h3 style={s.title}>Nutrient vs Production</h3>
+          <button
+            onClick={() => setShowInfo(v => !v)}
+            style={s.infoBtn}
+            title="How to read this chart"
+          >
+            i
+          </button>
+        </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <select
             value={selectedNutrient}
@@ -143,6 +153,29 @@ export default function NutrientCorrelationScatter({
           </div>
         </div>
       </div>
+
+      {showInfo && (
+        <div style={s.infoPanel}>
+          <p style={s.infoParagraph}>
+            <strong>What it shows:</strong> Each dot is one orchard. The X-axis is the selected nutrient value from the latest leaf analysis. The Y-axis is either T/Ha (tons per hectare from production bins) or average fruit weight (from QC bag sampling).
+          </p>
+          <p style={s.infoParagraph}>
+            <strong>Dot size:</strong> Proportional to hectares — larger orchards appear as bigger dots.
+          </p>
+          <p style={s.infoParagraph}>
+            <strong>Dot color:</strong> Based on T/Ha performance — blue = 50+, green = 30+, yellow = 15+, red = below 15.
+          </p>
+          <p style={s.infoParagraph}>
+            <strong>Background bands:</strong> The green band shows the optimal nutrient range and the yellow band shows the adequate range (from nutrient norms for the selected commodity). Orchards inside the green band have nutrients within recommended levels.
+          </p>
+          <p style={s.infoParagraph}>
+            <strong>How to read it:</strong> Look for clusters — are high-producing orchards (blue/green dots near the top) landing within the optimal nutrient band? Dots outside the bands may indicate deficiency or excess. Toggle between T/Ha and Avg Weight to see if nutrient levels correlate differently with yield vs fruit size.
+          </p>
+          <p style={{ ...s.infoParagraph, marginBottom: 0 }}>
+            <strong>Interactivity:</strong> Click any dot to open the orchard detail card. Use the dropdown to switch nutrients. Use the toggle to switch between T/Ha and Avg Weight on the Y-axis.
+          </p>
+        </div>
+      )}
 
       {scatterData.length === 0 ? (
         <div style={{ padding: '40px 20px', textAlign: 'center' }}>
@@ -262,5 +295,20 @@ const s: Record<string, React.CSSProperties> = {
   },
   toggleActive: {
     background: '#1a2a3a', color: '#fff', border: '1px solid #1a2a3a',
+  },
+  infoBtn: {
+    width: 22, height: 22, borderRadius: '50%', border: '1.5px solid #b0a898',
+    background: 'transparent', color: '#8a7e72', fontSize: 13, fontWeight: 600,
+    fontFamily: 'Georgia, serif', fontStyle: 'italic', cursor: 'pointer',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    padding: 0, lineHeight: 1,
+  },
+  infoPanel: {
+    background: '#f8f6f2', borderRadius: 10, padding: '14px 18px',
+    marginBottom: 16, fontSize: 13, color: '#5a5348', lineHeight: 1.6,
+    fontFamily: 'Inter, sans-serif',
+  },
+  infoParagraph: {
+    margin: '0 0 8px 0',
   },
 }
