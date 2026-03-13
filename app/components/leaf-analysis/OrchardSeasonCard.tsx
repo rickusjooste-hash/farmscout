@@ -47,6 +47,25 @@ interface TrendRow {
   value: number
 }
 
+interface FertProductStatus {
+  timing_label: string
+  timing_sort: number
+  product_name: string
+  confirmed: boolean
+  date_applied: string | null
+  rate_per_ha: number
+  unit: string
+  n_pct: number
+  p_pct: number
+  k_pct: number
+}
+
+interface FertOrchardStatus {
+  confirmed: number
+  total: number
+  products: FertProductStatus[]
+}
+
 interface Props {
   orchardId: string
   orchardName: string
@@ -59,6 +78,7 @@ interface Props {
   season: string
   open: boolean
   onClose: () => void
+  fertStatus?: FertOrchardStatus | null
 }
 
 function tonHaColor(tonHa: number | null): string {
@@ -117,7 +137,7 @@ const LINE_COLORS = [
 
 export default function OrchardSeasonCard({
   orchardId, orchardName, commodityName, nutrients, production,
-  sizeInfo, normsLookup, farmIds, season, open, onClose,
+  sizeInfo, normsLookup, farmIds, season, open, onClose, fertStatus,
 }: Props) {
   const [sizeDist, setSizeDist] = useState<SizeBin[]>([])
   const [sizeLoading, setSizeLoading] = useState(false)
@@ -236,6 +256,50 @@ export default function OrchardSeasonCard({
             </div>
           </div>
         )}
+
+        {/* Fertilizer Programme */}
+        {fertStatus && fertStatus.products.length > 0 && (() => {
+          // Group products by timing, sorted by timing_sort
+          const byTiming = new Map<string, FertProductStatus[]>()
+          for (const p of [...fertStatus.products].sort((a, b) => a.timing_sort - b.timing_sort)) {
+            const existing = byTiming.get(p.timing_label) || []
+            existing.push(p)
+            byTiming.set(p.timing_label, existing)
+          }
+          return (
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid #eef2fa' }}>
+              <div style={st.sectionTitle}>Fertilizer Programme</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {[...byTiming.entries()].map(([timing, products]) => {
+                  const anyConfirmed = products.some(p => p.confirmed)
+                  const allConfirmed = products.every(p => p.confirmed)
+                  const dateStr = products.find(p => p.date_applied)?.date_applied
+                  return (
+                    <div key={timing} style={{
+                      padding: '10px 12px', borderRadius: 8,
+                      background: allConfirmed ? 'rgba(76,175,114,0.06)' : anyConfirmed ? 'rgba(245,200,66,0.06)' : 'rgba(232,90,74,0.06)',
+                      border: `1px solid ${allConfirmed ? 'rgba(76,175,114,0.15)' : anyConfirmed ? 'rgba(245,200,66,0.15)' : 'rgba(232,90,74,0.15)'}`,
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: '#1a2a3a' }}>{timing}</span>
+                        <span style={{
+                          fontSize: 11, fontWeight: 600,
+                          color: allConfirmed ? '#2d8a4e' : anyConfirmed ? '#9a7b1a' : '#c23616',
+                        }}>
+                          {allConfirmed ? '\u2713 Applied' : anyConfirmed ? '\u25D0 Partial' : '\u2717 Not confirmed'}
+                          {dateStr && allConfirmed && ` ${new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 12, color: '#6a7a70' }}>
+                        {products.map(p => `${p.product_name} ${p.rate_per_ha} ${p.unit}`).join(' \u00B7 ')}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Nutrient Values — Macros */}
         {macros.length > 0 && (

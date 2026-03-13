@@ -234,6 +234,7 @@ export default function ImportModal({ farms, initialFarmId, onDone, onClose }: P
   const [season, setSeason] = useState(getCurrentSeason())
   const [labName, setLabName] = useState('')
   const [fileName, setFileName] = useState('')
+  const [originalFile, setOriginalFile] = useState<File | null>(null)
   const [rows, setRows] = useState<DataRow[]>([])
   const [orchards, setOrchards] = useState<Orchard[]>([])
   const [nutrients, setNutrients] = useState<Nutrient[]>([])
@@ -439,6 +440,7 @@ export default function ImportModal({ farms, initialFarmId, onDone, onClose }: P
     if (!farmId) { setError('Select a farm first'); return }
     setError('')
     setFileName(file.name)
+    setOriginalFile(file)
 
     const ext = file.name.split('.').pop()?.toLowerCase()
     if (ext === 'pdf') {
@@ -487,6 +489,27 @@ export default function ImportModal({ farms, initialFarmId, onDone, onClose }: P
     setStep('importing')
     setError('')
 
+    // Upload original file to Supabase Storage (best-effort — don't block import)
+    let pdfUrl: string | null = null
+    if (originalFile && originalFile.name.toLowerCase().endsWith('.pdf')) {
+      try {
+        const supabase = createClient()
+        const safeName = originalFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+        const path = `${farmId}/${season.replace('/', '-')}/${Date.now()}_${safeName}`
+        const { error: uploadErr } = await supabase.storage
+          .from('leaf-analysis-pdfs')
+          .upload(path, originalFile, { upsert: true })
+        if (!uploadErr) {
+          const { data: urlData } = supabase.storage
+            .from('leaf-analysis-pdfs')
+            .getPublicUrl(path)
+          pdfUrl = urlData.publicUrl
+        }
+      } catch {
+        // Don't block the import if PDF upload fails
+      }
+    }
+
     const importRows = mappedRows.map(r => ({
       orchard_id: r.orchardId,
       sample_date: r.date,
@@ -506,6 +529,7 @@ export default function ImportModal({ farms, initialFarmId, onDone, onClose }: P
           farm_id: farmId,
           season,
           lab_name: labName || null,
+          pdf_url: pdfUrl,
           rows: importRows,
           orchard_mappings: uniqueMappings,
         }),

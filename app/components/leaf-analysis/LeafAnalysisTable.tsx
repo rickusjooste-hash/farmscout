@@ -36,6 +36,21 @@ interface NormRange {
   max_adequate: number | null
 }
 
+interface FertProductStatus {
+  timing_label: string
+  product_name: string
+  confirmed: boolean
+  n_pct: number
+  p_pct: number
+  k_pct: number
+}
+
+interface FertOrchardStatus {
+  confirmed: number
+  total: number
+  products: FertProductStatus[]
+}
+
 interface Props {
   data: SummaryRow[]
   selectedOrchardId: string | null
@@ -47,6 +62,7 @@ interface Props {
   commodityByOrchard?: Record<string, string>  // orchard_id → commodity_id
   varietyByOrchard?: Record<string, string>  // orchard_id → variety
   pdfByOrchard?: Record<string, string>  // orchard_id → pdf_url
+  fertByOrchard?: Record<string, FertOrchardStatus>
 }
 
 const MACRO_CODES = new Set(['N', 'P', 'K', 'Ca', 'Mg', 'S'])
@@ -99,7 +115,7 @@ function normTooltip(value: number, norm: NormRange | undefined, code: string, u
 export default function LeafAnalysisTable({
   data, selectedOrchardId, onSelectOrchard, loading,
   productionByOrchard, sizeByOrchard, normsLookup, commodityByOrchard, varietyByOrchard,
-  pdfByOrchard,
+  pdfByOrchard, fertByOrchard,
 }: Props) {
   const [sortCol, setSortCol] = useState<string>('orchard_name')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -107,6 +123,7 @@ export default function LeafAnalysisTable({
   const hasProduction = productionByOrchard && Object.keys(productionByOrchard).length > 0
   const hasSize = sizeByOrchard && Object.keys(sizeByOrchard).length > 0
   const hasPdf = pdfByOrchard && Object.keys(pdfByOrchard).length > 0
+  const hasFert = fertByOrchard && Object.keys(fertByOrchard).length > 0
 
   // Discover all nutrients present in the data, ordered by display_order
   const nutrientCols = useMemo(() => {
@@ -160,6 +177,11 @@ export default function LeafAnalysisTable({
       if (sortCol === 'variety') {
         va = varietyByOrchard?.[a.orchard_id] ?? ''
         vb = varietyByOrchard?.[b.orchard_id] ?? ''
+      } else if (sortCol === 'fert') {
+        const fa = fertByOrchard?.[a.orchard_id]
+        const fb = fertByOrchard?.[b.orchard_id]
+        va = fa ? (fa.total > 0 ? fa.confirmed / fa.total : -1) : -2
+        vb = fb ? (fb.total > 0 ? fb.confirmed / fb.total : -1) : -2
       } else if (sortCol === 'tonHa') {
         va = productionByOrchard?.[a.orchard_id]?.tonHa ?? -1
         vb = productionByOrchard?.[b.orchard_id]?.tonHa ?? -1
@@ -202,6 +224,38 @@ export default function LeafAnalysisTable({
     return normsLookup[`${commId}:${nutrientCode}`]
   }
 
+  // Diagnostic: check if a nutrient is outside range AND the relevant product was applied
+  function getDiagnosticFlags(orchardId: string, nutrients: Record<string, { value: number; unit: string }>): string[] {
+    if (!fertByOrchard || !normsLookup || !commodityByOrchard) return []
+    const fert = fertByOrchard[orchardId]
+    if (!fert) return []
+
+    const flags: string[] = []
+    // Map nutrients to product NPK: N→n_pct, K→k_pct, (skip Ca per Dr Marie)
+    const nutrientProductMap: [string, 'n_pct' | 'p_pct' | 'k_pct'][] = [
+      ['N', 'n_pct'], ['K', 'k_pct'],
+    ]
+
+    for (const [code, pctField] of nutrientProductMap) {
+      const nVal = nutrients[code]
+      if (!nVal) continue
+      const norm = getNorm(orchardId, code)
+      if (!norm) continue
+      // Check if outside adequate range
+      const minBound = norm.min_adequate ?? norm.min_optimal
+      const maxBound = norm.max_adequate ?? norm.max_optimal
+      if (nVal.value >= minBound && nVal.value <= maxBound) continue
+      // Is the relevant product confirmed applied?
+      const applied = fert.products.some(p => p.confirmed && p[pctField] > 0)
+      if (applied) {
+        const productNames = fert.products.filter(p => p.confirmed && p[pctField] > 0).map(p => p.product_name)
+        const direction = nVal.value < minBound ? 'deficient' : 'excess'
+        flags.push(`${code} ${direction} despite ${productNames.join(', ')} applied`)
+      }
+    }
+    return flags
+  }
+
   if (loading) {
     return (
       <div style={s.card}>
@@ -222,7 +276,7 @@ export default function LeafAnalysisTable({
   }
 
   const hasNorms = normsLookup && Object.keys(normsLookup).length > 0
-  const hasAnyColor = hasNorms || hasProduction
+  const hasAnyColor = hasNorms || hasProduction || hasFert
 
   return (
     <div style={s.card}>
@@ -250,6 +304,15 @@ export default function LeafAnalysisTable({
               <span style={s.legendItem}><span style={{ ...s.legendSwatch, background: 'rgba(232,90,74,0.15)' }} />{'<'}15</span>
             </>
           )}
+          {hasFert && (
+            <>
+              {(hasNorms || hasProduction) && <span style={{ width: 1, height: 14, background: '#e0dbd4' }} />}
+              <span style={s.legendLabel}>Fert:</span>
+              <span style={s.legendItem}><span style={{ ...s.legendSwatch, background: 'rgba(76,175,114,0.15)', textAlign: 'center', lineHeight: '14px', fontSize: 10, color: '#2d8a4e' }}>{'\u2713'}</span>All</span>
+              <span style={s.legendItem}><span style={{ ...s.legendSwatch, background: 'rgba(245,200,66,0.15)', textAlign: 'center', lineHeight: '14px', fontSize: 10, color: '#9a7b1a' }}>{'\u25D0'}</span>Partial</span>
+              <span style={s.legendItem}><span style={{ ...s.legendSwatch, background: 'rgba(232,90,74,0.15)', textAlign: 'center', lineHeight: '14px', fontSize: 10, color: '#c23616' }}>{'\u2717'}</span>None</span>
+            </>
+          )}
         </div>
       )}
       <div style={{ overflowX: 'auto' }}>
@@ -265,6 +328,11 @@ export default function LeafAnalysisTable({
               <th style={s.th} onClick={() => handleSort('variety')}>
                 Variety{arrow('variety')}
               </th>
+              {hasFert && (
+                <th style={{ ...s.th, textAlign: 'center' }} onClick={() => handleSort('fert')}>
+                  Fert{arrow('fert')}
+                </th>
+              )}
               {hasProduction && (
                 <th style={{ ...s.th, ...s.thNum }} onClick={() => handleSort('tonHa')}>
                   T/Ha{arrow('tonHa')}
@@ -309,6 +377,44 @@ export default function LeafAnalysisTable({
                   </td>
                   <td style={{ ...s.td, color: '#6a7a70' }}>{row.commodity_name}</td>
                   <td style={{ ...s.td, color: '#6a7a70' }}>{varietyByOrchard?.[row.orchard_id] || '\u2014'}</td>
+                  {hasFert && (() => {
+                    const fert = fertByOrchard?.[row.orchard_id]
+                    const diagnosticFlags = getDiagnosticFlags(row.orchard_id, row.nutrients)
+                    if (!fert) return <td style={{ ...s.td, textAlign: 'center', color: '#ccc' }}>&mdash;</td>
+                    const allConfirmed = fert.confirmed >= fert.total && fert.total > 0
+                    const noneConfirmed = fert.confirmed === 0
+                    const badge = allConfirmed
+                      ? { symbol: '\u2713', bg: 'rgba(76,175,114,0.12)', color: '#2d8a4e' }
+                      : noneConfirmed
+                        ? { symbol: '\u2717', bg: 'rgba(232,90,74,0.12)', color: '#c23616' }
+                        : { symbol: '\u25D0', bg: 'rgba(245,200,66,0.12)', color: '#9a7b1a' }
+                    const hasDiag = diagnosticFlags.length > 0
+                    return (
+                      <td
+                        style={{ ...s.td, textAlign: 'center' }}
+                        title={diagnosticFlags.length > 0
+                          ? diagnosticFlags.join('\n')
+                          : `${fert.confirmed}/${fert.total} timings confirmed`}
+                      >
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 3,
+                          padding: '2px 8px', borderRadius: 10,
+                          background: badge.bg, color: badge.color,
+                          fontSize: 12, fontWeight: 600,
+                        }}>
+                          {badge.symbol} {fert.confirmed}/{fert.total}
+                        </span>
+                        {hasDiag && (
+                          <span style={{
+                            display: 'inline-block', marginLeft: 4,
+                            color: '#e8924a', fontSize: 14,
+                          }} title={diagnosticFlags.join('\n')}>
+                            &#9888;
+                          </span>
+                        )}
+                      </td>
+                    )
+                  })()}
                   {hasProduction && (
                     <td style={{
                       ...s.td, ...s.tdNum,

@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   let body: Record<string, any>
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }) }
 
-  const { farm_id, season, lab_name, rows, orchard_mappings } = body
+  const { farm_id, season, lab_name, pdf_url, rows, orchard_mappings } = body
   if (!farm_id || !season || !rows?.length)
     return NextResponse.json({ error: 'farm_id, season, rows required' }, { status: 400 })
 
@@ -102,6 +102,7 @@ export async function POST(req: NextRequest) {
         sample_date,
         sample_type: sample_type || 'mid-season',
         lab_name: lab_name || null,
+        pdf_url: pdf_url || null,
         imported_by: user.id,
       })
       .select('id')

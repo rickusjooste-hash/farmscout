@@ -111,6 +111,25 @@ interface NormRange {
   max_adequate: number | null
 }
 
+interface FertProductStatus {
+  timing_label: string
+  timing_sort: number
+  product_name: string
+  confirmed: boolean
+  date_applied: string | null
+  rate_per_ha: number
+  unit: string
+  n_pct: number
+  p_pct: number
+  k_pct: number
+}
+
+interface FertOrchardStatus {
+  confirmed: number
+  total: number
+  products: FertProductStatus[]
+}
+
 type ViewMode = 'table' | 'scatter'
 
 export default function LeafAnalysisPage() {
@@ -144,6 +163,7 @@ export default function LeafAnalysisPage() {
   const [commodityByOrchard, setCommodityByOrchard] = useState<Record<string, string>>({})
   const [varietyByOrchard, setVarietyByOrchard] = useState<Record<string, string>>({})
   const [pdfByOrchard, setPdfByOrchard] = useState<Record<string, string>>({})
+  const [fertByOrchard, setFertByOrchard] = useState<Record<string, FertOrchardStatus>>({})
 
   const seasonOptions = buildSeasonOptions(2018)
 
@@ -294,6 +314,55 @@ export default function LeafAnalysisPage() {
         if (r.pdf_url) pdfMap[r.orchard_id] = r.pdf_url
       }
       setPdfByOrchard(pdfMap)
+
+      // Fetch fert application status (non-blocking enrichment)
+      try {
+        const fertRes = await fetch(`/api/fertilizer/confirm?farm_id=${selectedFarmId}&season=${encodeURIComponent(season)}`)
+        if (fertRes.ok) {
+          const fertData = await fertRes.json() as {
+            line_id: string; orchard_id: string; timing_label: string; timing_sort: number
+            product_name: string; confirmed: boolean; date_applied: string | null
+            rate_per_ha: number; unit: string
+          }[]
+          // We need product nutrient data — fetch from the summary endpoint
+          const fertSummaryRes = await fetch(`/api/fertilizer?farm_id=${selectedFarmId}&season=${encodeURIComponent(season)}`)
+          const fertSummary = fertSummaryRes.ok ? await fertSummaryRes.json() as {
+            product_name: string; n_pct: number; p_pct: number; k_pct: number
+          }[] : []
+          const productNutrients: Record<string, { n_pct: number; p_pct: number; k_pct: number }> = {}
+          for (const fs of fertSummary) {
+            if (!productNutrients[fs.product_name]) {
+              productNutrients[fs.product_name] = { n_pct: fs.n_pct || 0, p_pct: fs.p_pct || 0, k_pct: fs.k_pct || 0 }
+            }
+          }
+
+          const fertMap: Record<string, FertOrchardStatus> = {}
+          for (const r of fertData) {
+            if (!r.orchard_id) continue
+            if (!fertMap[r.orchard_id]) fertMap[r.orchard_id] = { confirmed: 0, total: 0, products: [] }
+            fertMap[r.orchard_id].total++
+            if (r.confirmed) fertMap[r.orchard_id].confirmed++
+            const pn = productNutrients[r.product_name] || { n_pct: 0, p_pct: 0, k_pct: 0 }
+            fertMap[r.orchard_id].products.push({
+              timing_label: r.timing_label,
+              timing_sort: r.timing_sort,
+              product_name: r.product_name,
+              confirmed: r.confirmed,
+              date_applied: r.date_applied,
+              rate_per_ha: r.rate_per_ha,
+              unit: r.unit,
+              n_pct: pn.n_pct,
+              p_pct: pn.p_pct,
+              k_pct: pn.k_pct,
+            })
+          }
+          setFertByOrchard(fertMap)
+        } else {
+          setFertByOrchard({})
+        }
+      } catch {
+        setFertByOrchard({})
+      }
     } catch {
       setData([])
     } finally {
@@ -610,6 +679,7 @@ export default function LeafAnalysisPage() {
               commodityByOrchard={commodityByOrchard}
               varietyByOrchard={varietyByOrchard}
               pdfByOrchard={pdfByOrchard}
+              fertByOrchard={fertByOrchard}
             />
           </div>
         )}
@@ -655,6 +725,7 @@ export default function LeafAnalysisPage() {
           season={season}
           open={true}
           onClose={() => setSelectedOrchardId(null)}
+          fertStatus={fertByOrchard[selectedOrchardId] || null}
         />
       )}
 

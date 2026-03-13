@@ -89,6 +89,7 @@ export default function QcHome() {
   const [bleConnected, setBleConnected] = useState(false)
   const weightBuffer = useRef<number[]>([])
   const confirmDismissedAt = useRef(0)
+  const sessionBinsRef = useRef<QcSizeBin[]>([])
 
   // Camera scanner
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -327,7 +328,7 @@ export default function QcHome() {
     weightBuffer.current = [...weightBuffer.current.slice(-4), rawG]
     const buf = weightBuffer.current
     if (buf.length >= 3 && Math.max(...buf) - Math.min(...buf) <= 2) {
-      setConfirmingWeight(rawG); setConfirmingBin(findSizeBin(rawG, sizeBins))
+      setConfirmingWeight(rawG); setConfirmingBin(findSizeBin(rawG, sessionBinsRef.current))
       setShowWeightConfirm(true); weightBuffer.current = []
     }
   }
@@ -461,6 +462,9 @@ export default function QcHome() {
     if (!orchard) return []
     return sizeBins.filter(b => b.commodity_id === orchard.commodity_id).sort((a, b) => a.display_order - b.display_order)
   }, [activeSession, orchards, sizeBins])
+
+  // Keep ref in sync so the BLE handler (stale closure) always uses commodity-filtered bins
+  useEffect(() => { sessionBinsRef.current = sessionBins() }, [sessionBins])
 
   const sessionQcIssues = useCallback(() => {
     if (!activeSession) return []

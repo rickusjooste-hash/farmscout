@@ -129,6 +129,31 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, id: analysis.id })
 }
 
+// PATCH /api/leaf-analysis — attach PDF to all analyses for a farm+season
+// body: { farm_id, season, pdf_url }
+export async function PATCH(req: NextRequest) {
+  let body: Record<string, any>
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }) }
+
+  const { farm_id, season, pdf_url } = body
+  if (!farm_id || !season || !pdf_url)
+    return NextResponse.json({ error: 'farm_id, season, pdf_url required' }, { status: 400 })
+
+  const { error: accessErr, status } = await checkAccess(req, farm_id)
+  if (accessErr) return NextResponse.json({ error: accessErr }, { status })
+
+  const svc = svcSupabase()
+  const { error, count } = await svc
+    .from('leaf_analyses')
+    .update({ pdf_url })
+    .eq('farm_id', farm_id)
+    .eq('season', season)
+    .is('pdf_url', null)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  return NextResponse.json({ ok: true, updated: count })
+}
+
 // DELETE /api/leaf-analysis body: { id }
 export async function DELETE(req: NextRequest) {
   let body: Record<string, any>
