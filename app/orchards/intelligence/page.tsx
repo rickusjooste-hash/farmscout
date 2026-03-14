@@ -6,6 +6,7 @@ import { usePageGuard } from '@/lib/usePageGuard'
 import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
 import OrchardSummaryTable from '@/app/components/intelligence/OrchardSummaryTable'
 import OrchardScorecard from '@/app/components/intelligence/OrchardScorecard'
+import OrchardComparisonPanel from '@/app/components/intelligence/OrchardComparisonPanel'
 import { calculateScore, type NormRange } from '@/app/components/intelligence/scoreCalculator'
 
 function getCurrentSeason(): string {
@@ -36,8 +37,8 @@ function seasonDateRange(season: string): { from: string; to: string } {
 interface Farm { id: string; full_name: string; code: string }
 interface Commodity { id: string; code: string; name: string }
 interface Orchard {
-  id: string; name: string; orchard_nr: number | null; variety: string | null; rootstock: string | null
-  ha: number | null; commodity_id: string; year_planted: number | null
+  id: string; name: string; orchard_nr: number | null; variety: string | null; variety_group: string | null
+  rootstock: string | null; ha: number | null; commodity_id: string; year_planted: number | null; farm_id: string
 }
 interface ProdRow { orchard_id: string; ton_ha: number | null; tons: number; bins: number }
 interface SizeRow { orchard_id: string; dominant_label: string; avg_weight_g: number; fruit_count: number; total_fruit: number }
@@ -78,6 +79,8 @@ export default function IntelligencePage() {
   const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null)
   const [season, setSeason] = useState(getCurrentSeason())
   const [selectedOrchardId, setSelectedOrchardId] = useState<string | null>(null)
+  const [comparedIds, setComparedIds] = useState<Set<string>>(new Set())
+  const [compareOpen, setCompareOpen] = useState(false)
 
   // Data lookups
   const [productionByOrchard, setProductionByOrchard] = useState<Record<string, { tonHa: number | null; tons: number; bins: number }>>({})
@@ -104,7 +107,9 @@ export default function IntelligencePage() {
       ])
       setFarms(farmData || [])
       setCommodities((commData || []) as Commodity[])
-      if (farmData?.length && !selectedFarmId) setSelectedFarmId(farmData[0].id)
+      if (farmData?.length && !selectedFarmId) {
+        setSelectedFarmId(farmData.length > 1 ? 'all' : farmData[0].id)
+      }
 
       if (orgId) {
         const { data: org } = await supabase.from('organisations').select('modules').eq('id', orgId).single()
@@ -149,18 +154,35 @@ export default function IntelligencePage() {
     loadNorms()
   }, [contextLoaded])
 
+  // Resolve active farm IDs for queries
+  const activeFarmIds = useMemo(() => {
+    if (selectedFarmId === 'all') return farms.map(f => f.id)
+    if (selectedFarmId) return [selectedFarmId]
+    return []
+  }, [selectedFarmId, farms])
+
   // Fetch all data when farm/season changes
   const fetchData = useCallback(async () => {
-    if (!selectedFarmId) return
+    if (!selectedFarmId || activeFarmIds.length === 0) return
     setLoading(true)
     setSelectedOrchardId(null)
+    setComparedIds(new Set())
+    setCompareOpen(false)
 
     const { from, to } = seasonDateRange(season)
     const prev = prevSeason(season)
     const { from: prevFrom, to: prevTo } = seasonDateRange(prev)
 
     try {
-      // Core data — these RPCs all exist and are required
+      // Orchards query — single farm or all farms
+      const orchardQuery = supabase.from('orchards')
+        .select('id, orchard_nr, name, variety, variety_group, rootstock, ha, commodity_id, year_planted, farm_id')
+        .eq('is_active', true)
+        .order('name')
+      if (selectedFarmId !== 'all') orchardQuery.eq('farm_id', selectedFarmId)
+      else orchardQuery.in('farm_id', activeFarmIds)
+
+      // Core data — RPCs all accept farm_id arrays
       const [
         { data: orchardData },
         { data: leafData },
@@ -169,30 +191,26 @@ export default function IntelligencePage() {
         { data: sizeData },
         { data: prevSizeData },
       ] = await Promise.all([
-        supabase.from('orchards')
-          .select('id, orchard_nr, name, variety, rootstock, ha, commodity_id, year_planted')
-          .eq('farm_id', selectedFarmId)
-          .eq('is_active', true)
-          .order('name'),
+        orchardQuery,
         supabase.rpc('get_leaf_analysis_summary', {
-          p_farm_ids: [selectedFarmId],
+          p_farm_ids: activeFarmIds,
           p_season: season,
         }),
         supabase.rpc('get_production_summary', {
-          p_farm_ids: [selectedFarmId],
+          p_farm_ids: activeFarmIds,
           p_season: season,
         }),
         supabase.rpc('get_production_summary', {
-          p_farm_ids: [selectedFarmId],
+          p_farm_ids: activeFarmIds,
           p_season: prev,
         }),
         supabase.rpc('get_orchard_dominant_sizes', {
-          p_farm_ids: [selectedFarmId],
+          p_farm_ids: activeFarmIds,
           p_from: from,
           p_to: to,
         }),
         supabase.rpc('get_orchard_dominant_sizes', {
-          p_farm_ids: [selectedFarmId],
+          p_farm_ids: activeFarmIds,
           p_from: prevFrom,
           p_to: prevTo,
         }),
@@ -239,7 +257,7 @@ export default function IntelligencePage() {
       // QC issues — separate call (RPC may not be deployed yet)
       try {
         const { data: qcData } = await supabase.rpc('get_qc_issues_by_orchard', {
-          p_farm_ids: [selectedFarmId],
+          p_farm_ids: activeFarmIds,
           p_from: from,
           p_to: to,
         })
@@ -254,20 +272,24 @@ export default function IntelligencePage() {
         setQcByOrchard({})
       }
 
-      // Fert data (via API, non-blocking)
+      // Fert data — API takes single farm_id, so fetch per farm and merge
       try {
-        const fertRes = await fetch(`/api/fertilizer/confirm?farm_id=${selectedFarmId}&season=${encodeURIComponent(season)}`)
-        if (fertRes.ok) {
+        const fertMap: Record<string, FertOrchardStatus> = {}
+        const productNutrients: Record<string, { n_pct: number; p_pct: number; k_pct: number }> = {}
+
+        await Promise.all(activeFarmIds.map(async (fid) => {
+          const [fertRes, fertSummaryRes] = await Promise.all([
+            fetch(`/api/fertilizer/confirm?farm_id=${fid}&season=${encodeURIComponent(season)}`),
+            fetch(`/api/fertilizer?farm_id=${fid}&season=${encodeURIComponent(season)}`),
+          ])
+          if (!fertRes.ok) return
           const fertData = await fertRes.json() as FertLine[]
-          const fertSummaryRes = await fetch(`/api/fertilizer?farm_id=${selectedFarmId}&season=${encodeURIComponent(season)}`)
           const fertSummary = fertSummaryRes.ok ? await fertSummaryRes.json() as FertSummaryLine[] : []
-          const productNutrients: Record<string, { n_pct: number; p_pct: number; k_pct: number }> = {}
           for (const fs of fertSummary) {
             if (!productNutrients[fs.product_name]) {
               productNutrients[fs.product_name] = { n_pct: fs.n_pct || 0, p_pct: fs.p_pct || 0, k_pct: fs.k_pct || 0 }
             }
           }
-          const fertMap: Record<string, FertOrchardStatus> = {}
           for (const r of fertData) {
             if (!r.orchard_id) continue
             if (!fertMap[r.orchard_id]) fertMap[r.orchard_id] = { confirmed: 0, total: 0, products: [] }
@@ -281,10 +303,8 @@ export default function IntelligencePage() {
               n_pct: pn.n_pct, p_pct: pn.p_pct, k_pct: pn.k_pct,
             })
           }
-          setFertByOrchard(fertMap)
-        } else {
-          setFertByOrchard({})
-        }
+        }))
+        setFertByOrchard(fertMap)
       } catch { setFertByOrchard({}) }
 
     } catch {
@@ -292,7 +312,7 @@ export default function IntelligencePage() {
     } finally {
       setLoading(false)
     }
-  }, [selectedFarmId, season])
+  }, [selectedFarmId, season, activeFarmIds])
 
   useEffect(() => {
     if (selectedFarmId) fetchData()
@@ -304,6 +324,14 @@ export default function IntelligencePage() {
     for (const c of commodities) map[c.id] = c.code
     return map
   }, [commodities])
+
+  // Farm code lookup (for multi-farm "All" view)
+  const farmCodeById = useMemo(() => {
+    if (selectedFarmId !== 'all') return undefined
+    const map: Record<string, string> = {}
+    for (const f of farms) map[f.id] = f.code || f.full_name
+    return map
+  }, [selectedFarmId, farms])
 
   // Compute norms per orchard (resolve commodity + variety overrides)
   const normsByOrchard = useMemo(() => {
@@ -382,7 +410,7 @@ export default function IntelligencePage() {
   if (!allowed) return null
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#eae6df', fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ display: 'flex', height: '100vh', background: '#eae6df', fontFamily: 'Inter, sans-serif' }}>
       <ManagerSidebarStyles />
       <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} allowedRoutes={allowedRoutes} />
 
@@ -403,6 +431,14 @@ export default function IntelligencePage() {
         {/* Farm pills */}
         <div style={st.filterRow}>
           <div style={st.pillGroup}>
+            {farms.length > 1 && (
+              <button
+                onClick={() => setSelectedFarmId('all')}
+                style={{ ...st.pill, ...(selectedFarmId === 'all' ? st.pillActive : {}) }}
+              >
+                All Farms
+              </button>
+            )}
             {farms.map(f => (
               <button
                 key={f.id}
@@ -459,6 +495,19 @@ export default function IntelligencePage() {
           selectedOrchardId={selectedOrchardId}
           onSelectOrchard={id => setSelectedOrchardId(prev => prev === id ? null : id)}
           loading={loading}
+          comparedIds={comparedIds}
+          onToggleCompare={(id: string) => {
+            setComparedIds(prev => {
+              const next = new Set(prev)
+              if (next.has(id)) next.delete(id)
+              else if (next.size < 4) next.add(id)
+              return next
+            })
+          }}
+          maxCompareReached={comparedIds.size >= 4}
+          onOpenCompare={() => { setCompareOpen(true); setSelectedOrchardId(null) }}
+          onClearCompare={() => { setComparedIds(new Set()); setCompareOpen(false) }}
+          farmCodeById={farmCodeById}
         />
 
         {/* Empty state */}
@@ -472,8 +521,34 @@ export default function IntelligencePage() {
         )}
       </main>
 
+      {/* Comparison panel slide-in */}
+      {compareOpen && comparedIds.size >= 2 && (
+        <OrchardComparisonPanel
+          orchardIds={[...comparedIds]}
+          orchards={scoredOrchards}
+          fertByOrchard={fertByOrchard}
+          productionByOrchard={productionByOrchard}
+          prevProductionByOrchard={prevProductionByOrchard}
+          sizeByOrchard={sizeByOrchard}
+          qcByOrchard={qcByOrchard}
+          nutrientsByOrchard={nutrientsByOrchard}
+          normsByOrchard={normsByOrchard}
+          farmAvgTonHa={farmAvgTonHa}
+          open={true}
+          onClose={() => setCompareOpen(false)}
+          onRemoveOrchard={(id: string) => {
+            setComparedIds(prev => {
+              const next = new Set(prev)
+              next.delete(id)
+              if (next.size < 2) setCompareOpen(false)
+              return next
+            })
+          }}
+        />
+      )}
+
       {/* Scorecard slide-in */}
-      {selectedOrchardId && selectedOrchard && (
+      {!compareOpen && selectedOrchardId && selectedOrchard && (
         <OrchardScorecard
           orchardId={selectedOrchardId}
           orchardNr={selectedOrchard.orchard_nr}
@@ -486,7 +561,7 @@ export default function IntelligencePage() {
           commodityName=""
           ha={selectedOrchard.ha}
           season={season}
-          farmIds={selectedFarmId ? [selectedFarmId] : []}
+          farmIds={activeFarmIds}
           open={true}
           onClose={() => setSelectedOrchardId(null)}
           nutrients={nutrientsByOrchard[selectedOrchardId] || {}}
@@ -508,7 +583,7 @@ export default function IntelligencePage() {
 
 const st: Record<string, React.CSSProperties> = {
   main: {
-    flex: 1, padding: '32px 40px', overflowY: 'auto', minHeight: '100vh',
+    flex: 1, padding: '32px 40px', overflowY: 'auto',
   },
   headerRow: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',

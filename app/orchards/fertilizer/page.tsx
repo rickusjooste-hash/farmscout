@@ -8,6 +8,7 @@ import FertilizerTable from '@/app/components/fertilizer/FertilizerTable'
 import FertilizerOrderList from '@/app/components/fertilizer/FertilizerOrderList'
 import ConfirmApplications, { ConfirmRow } from '@/app/components/fertilizer/ConfirmApplications'
 import FertilizerDashboard, { DashboardRow, LeafNutrientFlag } from '@/app/components/fertilizer/FertilizerDashboard'
+import ProductSettings from '@/app/components/fertilizer/ProductSettings'
 import ImportModal from '@/app/components/fertilizer/ImportModal'
 
 function getCurrentSeason(): string {
@@ -45,6 +46,8 @@ interface SummaryRow {
   product_unit: string
   orchard_id: string
   orchard_name: string
+  orchard_nr: number | null
+  variety: string | null
   legacy_orchard_id: number
   source_block_name: string
   rate_per_ha: number
@@ -72,7 +75,7 @@ interface OrderRow {
   k_pct: number
 }
 
-type ViewMode = 'dashboard' | 'table' | 'order' | 'confirm'
+type ViewMode = 'dashboard' | 'table' | 'order' | 'confirm' | 'products'
 
 export default function FertilizerPage() {
   const { farmIds, isSuperAdmin, contextLoaded, orgId, allowedRoutes, allowed } = usePageGuard()
@@ -424,11 +427,17 @@ export default function FertilizerPage() {
             >
               Confirm
             </button>
+            <button
+              onClick={() => setViewMode('products')}
+              style={{ ...st.viewBtn, ...(viewMode === 'products' ? st.viewBtnActive : {}) }}
+            >
+              Products
+            </button>
           </div>
         </div>
 
         {/* KPI strip */}
-        <div style={st.kpiStrip}>
+        {viewMode !== 'products' && <div style={st.kpiStrip}>
           <div style={st.kpiCard}>
             <div style={st.kpiValue}>{uniqueOrchards.size}</div>
             <div style={st.kpiLabel}>Orchards</div>
@@ -448,7 +457,7 @@ export default function FertilizerPage() {
             </div>
             <div style={st.kpiLabel}>Total NPK (kg)</div>
           </div>
-        </div>
+        </div>}
 
         {/* Main content */}
         {viewMode === 'dashboard' && (
@@ -476,8 +485,12 @@ export default function FertilizerPage() {
           <ConfirmApplications data={confirmData} loading={confirmLoading} onRefresh={fetchConfirmData} />
         )}
 
+        {viewMode === 'products' && orgId && (
+          <ProductSettings orgId={orgId} />
+        )}
+
         {/* Empty state */}
-        {!loading && data.length === 0 && (
+        {!loading && data.length === 0 && viewMode !== 'products' && (
           <div style={st.emptyState}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>&#127793;</div>
             <h3 style={{ color: '#1a2a3a', margin: '0 0 8px' }}>No fertilizer program yet</h3>

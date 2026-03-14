@@ -80,6 +80,7 @@ CREATE TABLE public.fert_orchard_map (
 
 -- 6. RPC: get_fert_recommendation_summary
 -- Returns flat rows joined across all tables for display
+DROP FUNCTION IF EXISTS public.get_fert_recommendation_summary(uuid[], text);
 CREATE OR REPLACE FUNCTION public.get_fert_recommendation_summary(
   p_farm_ids uuid[],
   p_season text DEFAULT NULL
@@ -101,6 +102,8 @@ RETURNS TABLE (
   product_unit text,
   orchard_id uuid,
   orchard_name text,
+  orchard_nr integer,
+  variety text,
   legacy_orchard_id integer,
   source_block_name text,
   rate_per_ha numeric,
@@ -131,6 +134,8 @@ AS $$
     fp.default_unit AS product_unit,
     frl.orchard_id,
     o.name AS orchard_name,
+    o.orchard_nr,
+    o.variety,
     frl.legacy_orchard_id,
     frl.source_block_name,
     frl.rate_per_ha,

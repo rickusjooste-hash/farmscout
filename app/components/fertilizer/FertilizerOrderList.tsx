@@ -26,11 +26,30 @@ type GroupBy = 'timing' | 'product'
 
 export default function FertilizerOrderList({ data, loading }: Props) {
   const [groupBy, setGroupBy] = useState<GroupBy>('timing')
+  const [selectedTiming, setSelectedTiming] = useState<string | null>(null)
+
+  // Available timings for filter
+  const timings = useMemo(() => {
+    const map = new Map<string, { label: string; sort: number }>()
+    for (const r of data) {
+      if (!map.has(r.timing_label)) map.set(r.timing_label, { label: r.timing_label, sort: r.timing_sort })
+    }
+    return [...map.values()].sort((a, b) => a.sort - b.sort)
+  }, [data])
+
+  const activeTiming = (selectedTiming && timings.some(t => t.label === selectedTiming))
+    ? selectedTiming : null
+
+  // Filtered data
+  const filtered = useMemo(() => {
+    if (!activeTiming) return data
+    return data.filter(r => r.timing_label === activeTiming)
+  }, [data, activeTiming])
 
   const grouped = useMemo(() => {
     if (groupBy === 'timing') {
       const map = new Map<string, { label: string; sort: number; rows: OrderRow[] }>()
-      for (const row of data) {
+      for (const row of filtered) {
         if (!map.has(row.timing_label)) {
           map.set(row.timing_label, { label: row.timing_label, sort: row.timing_sort, rows: [] })
         }
@@ -39,7 +58,7 @@ export default function FertilizerOrderList({ data, loading }: Props) {
       return [...map.values()].sort((a, b) => a.sort - b.sort)
     } else {
       const map = new Map<string, { label: string; sort: number; rows: OrderRow[] }>()
-      for (const row of data) {
+      for (const row of filtered) {
         if (!map.has(row.product_name)) {
           map.set(row.product_name, { label: row.product_name, sort: 0, rows: [] })
         }
@@ -47,11 +66,11 @@ export default function FertilizerOrderList({ data, loading }: Props) {
       }
       return [...map.values()].sort((a, b) => a.label.localeCompare(b.label))
     }
-  }, [data, groupBy])
+  }, [filtered, groupBy])
 
   function exportCSV() {
     const headers = ['Group', 'Product', 'Timing', 'Unit', 'Total Qty', 'Total Ha', 'Avg Rate/Ha', 'Orchards', 'N%', 'P%', 'K%']
-    const rows = data.map(r => [
+    const rows = filtered.map(r => [
       groupBy === 'timing' ? r.timing_label : r.product_name,
       r.product_name,
       r.timing_label,
@@ -79,11 +98,35 @@ export default function FertilizerOrderList({ data, loading }: Props) {
   if (data.length === 0) return null
 
   // Grand totals
-  const grandTotalQty = data.reduce((s, r) => s + (r.total_qty ?? 0), 0)
-  const grandTotalHa = data.reduce((s, r) => s + (r.total_ha ?? 0), 0)
+  const grandTotalQty = filtered.reduce((s, r) => s + (r.total_qty ?? 0), 0)
+  const grandTotalHa = filtered.reduce((s, r) => s + (r.total_ha ?? 0), 0)
 
   return (
     <div>
+      {/* Timing filter pills */}
+      {timings.length > 1 && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', paddingBottom: 10, marginBottom: 10, borderBottom: '1px solid #c0bbb5' }}>
+          <span style={{ fontSize: 12, color: '#6a7a70', fontWeight: 500 }}>Timing:</span>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setSelectedTiming(null)}
+              style={{ ...st.filterPill, ...(activeTiming === null ? st.filterPillActive : {}) }}
+            >
+              All
+            </button>
+            {timings.map(t => (
+              <button
+                key={t.label}
+                onClick={() => setSelectedTiming(t.label)}
+                style={{ ...st.filterPill, ...(activeTiming === t.label ? st.filterPillActive : {}) }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Controls */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div style={{ display: 'flex', gap: 2 }}>
@@ -206,6 +249,14 @@ const st: Record<string, React.CSSProperties> = {
     padding: '6px 14px', borderRadius: 8, border: '1px solid #d4cfca',
     background: '#fff', color: '#1a2a3a', fontSize: 13, fontWeight: 500,
     cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+  },
+  filterPill: {
+    padding: '4px 10px', borderRadius: 14, border: '1px solid #e0dbd4',
+    background: '#f8f6f2', color: '#5a6a60', fontSize: 12, cursor: 'pointer',
+    fontFamily: 'Inter, sans-serif', fontWeight: 500, transition: 'all 0.15s',
+  },
+  filterPillActive: {
+    border: '1px solid #1a2a3a', background: '#1a2a3a', color: '#fff',
   },
   grandTotal: {
     padding: '12px 16px', background: '#f5f3ee', borderRadius: 10,

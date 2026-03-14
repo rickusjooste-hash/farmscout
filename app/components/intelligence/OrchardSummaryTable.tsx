@@ -29,8 +29,10 @@ interface OrchardRow {
   name: string
   orchard_nr: number | null
   variety: string | null
+  variety_group: string | null
   ha: number | null
   score: number
+  farm_id: string
 }
 
 interface Props {
@@ -46,9 +48,17 @@ interface Props {
   selectedOrchardId: string | null
   onSelectOrchard: (id: string) => void
   loading: boolean
+  // Compare
+  comparedIds: Set<string>
+  onToggleCompare: (id: string) => void
+  maxCompareReached: boolean
+  onOpenCompare: () => void
+  onClearCompare: () => void
+  // Multi-farm
+  farmCodeById?: Record<string, string>
 }
 
-type SortKey = 'name' | 'fert' | 'n' | 'k' | 'ca' | 'tonha' | 'delta' | 'size' | 'issue' | 'score'
+type SortKey = 'name' | 'variety' | 'fert' | 'n' | 'k' | 'ca' | 'tonha' | 'delta' | 'size' | 'issue' | 'score'
 
 function tonHaColor(tonHa: number | null): string {
   if (tonHa == null) return '#aaa'
@@ -80,6 +90,8 @@ export default function OrchardSummaryTable(props: Props) {
     orchards, fertByOrchard, productionByOrchard, prevProductionByOrchard,
     sizeByOrchard, qcByOrchard, nutrientsByOrchard, normsByOrchard,
     selectedOrchardId, onSelectOrchard, loading,
+    comparedIds, onToggleCompare, maxCompareReached, onOpenCompare, onClearCompare,
+    farmCodeById,
   } = props
 
   const [sortKey, setSortKey] = useState<SortKey>('score')
@@ -98,6 +110,8 @@ export default function OrchardSummaryTable(props: Props) {
       switch (sortKey) {
         case 'name':
           return dir * a.name.localeCompare(b.name)
+        case 'variety':
+          return dir * ((a.variety_group || a.variety || '').localeCompare(b.variety_group || b.variety || ''))
         case 'score':
           return dir * (a.score - b.score)
         case 'fert':
@@ -159,12 +173,13 @@ export default function OrchardSummaryTable(props: Props) {
   const sortArrow = (key: SortKey) => sortKey === key ? (sortAsc ? ' \u25B2' : ' \u25BC') : ''
 
   return (
-    <div style={{ background: '#fff', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-      <div style={{ overflowX: 'auto' }}>
-        <table style={st.table}>
+    <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+      <table style={st.table}>
           <thead>
             <tr>
+              <th style={{ ...st.th, width: 36, padding: '10px 6px', cursor: 'default' }} />
               <th style={st.th} onClick={() => handleSort('name')}>Orchard{sortArrow('name')}</th>
+              <th style={st.th} onClick={() => handleSort('variety')}>Variety{sortArrow('variety')}</th>
               <th style={{ ...st.th, textAlign: 'center' }} onClick={() => handleSort('fert')}>Fert{sortArrow('fert')}</th>
               <th style={{ ...st.th, textAlign: 'center' }} onClick={() => handleSort('n')}>N{sortArrow('n')}</th>
               <th style={{ ...st.th, textAlign: 'center' }} onClick={() => handleSort('k')}>K{sortArrow('k')}</th>
@@ -187,6 +202,8 @@ export default function OrchardSummaryTable(props: Props) {
               const normsMap = normsByOrchard[o.id] || {}
               const topIssue = issues?.[0]
               const isSelected = selectedOrchardId === o.id
+              const isCompared = comparedIds.has(o.id)
+              const isDisabled = maxCompareReached && !isCompared
 
               const delta = prod?.tonHa != null && prevProd?.tonHa != null && prevProd.tonHa > 0
                 ? ((prod.tonHa - prevProd.tonHa) / prevProd.tonHa * 100)
@@ -201,14 +218,42 @@ export default function OrchardSummaryTable(props: Props) {
                   style={{
                     cursor: 'pointer',
                     background: isSelected ? 'rgba(33,118,217,0.06)' : idx % 2 ? '#f8f6f2' : '#fff',
+                    borderLeft: isCompared ? '3px solid #2176d9' : '3px solid transparent',
                     transition: 'background 0.1s',
                   }}
                   onMouseEnter={e => { if (!isSelected) (e.currentTarget.style.background = '#f4f1eb') }}
                   onMouseLeave={e => { if (!isSelected) (e.currentTarget.style.background = idx % 2 ? '#f8f6f2' : '#fff') }}
                 >
+                  {/* Checkbox */}
+                  <td
+                    style={{ ...st.td, padding: '10px 6px', width: 36, textAlign: 'center', cursor: isDisabled ? 'default' : 'pointer' }}
+                    onClick={e => { e.stopPropagation(); if (!isDisabled) onToggleCompare(o.id) }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 18 18" style={{ display: 'block', margin: '0 auto' }}>
+                      {isCompared ? (
+                        <>
+                          <rect x="1" y="1" width="16" height="16" rx="3" fill="#2176d9" stroke="#2176d9" strokeWidth="1.5" />
+                          <path d="M5 9l2.5 2.5L13 6" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                        </>
+                      ) : (
+                        <rect x="1" y="1" width="16" height="16" rx="3" fill="none"
+                          stroke={isDisabled ? '#d4cfca' : '#a0a0a0'} strokeWidth="1.5" />
+                      )}
+                    </svg>
+                  </td>
                   {/* Orchard name */}
                   <td style={{ ...st.td, fontWeight: 500 }}>
-                    {o.orchard_nr != null ? `${o.orchard_nr} ` : ''}{o.name}{o.variety ? ` (${o.variety})` : ''}
+                    {farmCodeById?.[o.farm_id] && (
+                      <span style={{ fontSize: 10, color: '#8a95a0', marginRight: 6, fontWeight: 600, textTransform: 'uppercase' }}>
+                        {farmCodeById[o.farm_id]}
+                      </span>
+                    )}
+                    {o.orchard_nr != null ? `${o.orchard_nr} ` : ''}{o.name}
+                  </td>
+
+                  {/* Variety */}
+                  <td style={{ ...st.td, fontSize: 12, color: '#5a6a60' }}>
+                    {o.variety_group || o.variety || '\u2014'}
                   </td>
 
                   {/* Fert mini bar */}
@@ -309,7 +354,39 @@ export default function OrchardSummaryTable(props: Props) {
             })}
           </tbody>
         </table>
-      </div>
+
+      {/* Sticky compare bar */}
+      {comparedIds.size >= 2 && (
+        <div style={{
+          position: 'sticky', bottom: 0, zIndex: 3,
+          padding: '10px 16px',
+          background: '#fff', borderTop: '2px solid #e0dbd4',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: '#1a2a3a' }}>
+            <span style={{ fontWeight: 600 }}>{comparedIds.size} orchards selected</span>
+            <button
+              onClick={onClearCompare}
+              style={{
+                background: 'none', border: 'none', color: '#6a7a70',
+                fontSize: 12, cursor: 'pointer', textDecoration: 'underline',
+              }}
+            >
+              Clear
+            </button>
+          </div>
+          <button
+            onClick={onOpenCompare}
+            style={{
+              padding: '8px 20px', borderRadius: 8, border: 'none',
+              background: '#2176d9', color: '#fff', fontSize: 13,
+              fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            Compare {'\u2192'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

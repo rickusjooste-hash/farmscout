@@ -420,11 +420,16 @@ export function generateInsights(data: OrchardData, farmAvg: FarmAverages): Insi
     const nkRatio = N / K
     const threshold = isPear(commodityCode) ? 1.5 : 2.0
     if (nkRatio > threshold) {
+      // Context-aware recommendation: if K application is already high, the problem is uptake not rate
+      const kHigh = data.fertKAppliedKgHa != null && data.fertKAppliedKgHa >= 100
+      const rec = kHigh
+        ? `N:K ratio is unbalanced \u2014 excess N relative to K in the leaf. K application is already high (${Math.round(data.fertKAppliedKgHa!)} kg/ha) so increasing K rate is unlikely to help. Investigate K uptake: check soil pH (K availability drops below pH 5.0), soil K fixation (heavy clay soils lock K), root health, and waterlogging. Consider reducing N to bring the ratio back into balance.`
+        : 'N:K ratio is unbalanced \u2014 excess N relative to K. Promotes vegetative growth at the expense of fruit quality and storage potential. Reduce N and increase K.'
       add({
         severity: 'warning', category: 'nk-ratio',
         title: 'N:K ratio imbalance',
         detail: `N:K ratio ${nkRatio.toFixed(1)}:1 exceeds target (${threshold}:1). N ${N.toFixed(2)}%, K ${K.toFixed(2)}%.`,
-        recommendation: 'N:K ratio is unbalanced \u2014 excess N relative to K. Promotes vegetative growth at the expense of fruit quality and storage potential. Reduce N and increase K.',
+        recommendation: rec,
       })
     }
   }

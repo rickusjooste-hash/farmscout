@@ -8,6 +8,7 @@ export interface DashboardRow {
   timing_sort: number
   window_start: string | null
   window_end: string | null
+  commodity_name: string | null
   product_id: string
   product_name: string
   total_orchards: number
@@ -118,7 +119,7 @@ export default function FertilizerDashboard({ data, loading, season, onNavigateC
   // Aggregate by timing
   const timings = useMemo(() => {
     const map = new Map<string, {
-      id: string; label: string; sort: number
+      id: string; label: string; displayLabel: string; sort: number
       windowStart: string | null; windowEnd: string | null
       totalOrchards: number; confirmedOrchards: number
       products: { name: string; totalOrchards: number; confirmedOrchards: number }[]
@@ -127,8 +128,11 @@ export default function FertilizerDashboard({ data, loading, season, onNavigateC
     for (const row of data) {
       let t = map.get(row.timing_id)
       if (!t) {
+        const displayLabel = row.commodity_name
+          ? `${row.timing_label} (${row.commodity_name})`
+          : row.timing_label
         t = {
-          id: row.timing_id, label: row.timing_label, sort: row.timing_sort,
+          id: row.timing_id, label: row.timing_label, displayLabel, sort: row.timing_sort,
           windowStart: row.window_start, windowEnd: row.window_end,
           totalOrchards: 0, confirmedOrchards: 0, products: [],
         }
@@ -248,7 +252,7 @@ export default function FertilizerDashboard({ data, loading, season, onNavigateC
           </div>
         </div>
         <div style={st.kpiCard}>
-          <div style={{ ...st.kpiValue, fontSize: 18 }}>{currentTiming?.label || '\u2014'}</div>
+          <div style={{ ...st.kpiValue, fontSize: 18 }}>{currentTiming?.displayLabel || '\u2014'}</div>
           <div style={st.kpiLabel}>
             {currentTiming
               ? currentTiming.status === 'current' ? 'Due now'
@@ -284,7 +288,7 @@ export default function FertilizerDashboard({ data, loading, season, onNavigateC
                 <div style={st.alertIcon}>!</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, color: '#1a2a3a', fontSize: 14 }}>
-                    {t.label}
+                    {t.displayLabel}
                   </div>
                   {t.unconfirmedProducts.map(p => (
                     <div key={p.name} style={{ fontSize: 13, color: '#6a7a70', marginTop: 2 }}>
@@ -330,7 +334,7 @@ export default function FertilizerDashboard({ data, loading, season, onNavigateC
                 const stripe = idx % 2 === 1
                 return (
                   <tr key={t.id} style={{ background: stripe ? '#f8f6f2' : '#fff' }}>
-                    <td style={{ ...st.td, fontWeight: 500 }}>{t.label}</td>
+                    <td style={{ ...st.td, fontWeight: 500 }}>{t.displayLabel}</td>
                     <td style={{ ...st.td, color: '#6a7a70', fontSize: 12 }}>
                       {t.windowStart && t.windowEnd
                         ? `${formatDate(t.windowStart)} \u2013 ${formatDate(t.windowEnd)}`
@@ -408,7 +412,9 @@ export default function FertilizerDashboard({ data, loading, season, onNavigateC
                   const kPre = (row.total_qty_prescribed || 0) * (row.k_pct || 0) / 100
                   return (
                     <tr key={`${row.timing_id}-${row.product_id}`} style={{ background: stripe ? '#f8f6f2' : '#fff' }}>
-                      <td style={{ ...st.td, color: '#6a7a70', fontSize: 12 }}>{row.timing_label}</td>
+                      <td style={{ ...st.td, color: '#6a7a70', fontSize: 12 }}>
+                        {row.commodity_name ? `${row.timing_label} (${row.commodity_name})` : row.timing_label}
+                      </td>
                       <td style={{ ...st.td, fontWeight: 500 }}>{row.product_name}</td>
                       <td style={{ ...st.td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                         {row.confirmed_orchards}/{row.total_orchards}

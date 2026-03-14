@@ -237,7 +237,7 @@ export default function ConfirmApplications({ data, loading, onRefresh }: Props)
   return (
     <div style={{ paddingBottom: pendingCount > 0 ? 72 : 0 }}>
       {/* Timing pills */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingBottom: 10 }}>
         {timings.map(t => (
           <button
             key={t.id}
@@ -249,8 +249,10 @@ export default function ConfirmApplications({ data, loading, onRefresh }: Props)
         ))}
       </div>
 
+      <div style={st.hr} />
+
       {/* Product pills */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingBottom: 12 }}>
         {products.map(p => (
           <button
             key={p.id}
@@ -262,55 +264,58 @@ export default function ConfirmApplications({ data, loading, onRefresh }: Props)
         ))}
       </div>
 
-      {/* Commodity + Variety filter pills */}
-      {(commodities.length > 1 || varieties.length > 1) && (
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
-          {commodities.length > 1 && (
-            <>
-              <span style={{ fontSize: 12, color: '#6a7a70', fontWeight: 500 }}>Commodity:</span>
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+      {/* Commodity filter pills */}
+      {commodities.length > 1 && (
+        <>
+          <div style={st.hr} />
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', paddingBottom: 10 }}>
+            <span style={{ fontSize: 12, color: '#6a7a70', fontWeight: 500 }}>Commodity:</span>
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => { setSelectedCommodity(null); setSelectedVariety(null) }}
+                style={{ ...st.filterPill, ...(activeCommodity === null ? st.filterPillActive : {}) }}
+              >
+                All
+              </button>
+              {commodities.map(c => (
                 <button
-                  onClick={() => { setSelectedCommodity(null); setSelectedVariety(null) }}
-                  style={{ ...st.filterPill, ...(activeCommodity === null ? st.filterPillActive : {}) }}
+                  key={c}
+                  onClick={() => { setSelectedCommodity(c); setSelectedVariety(null) }}
+                  style={{ ...st.filterPill, ...(activeCommodity === c ? st.filterPillActive : {}) }}
                 >
-                  All
+                  {c}
                 </button>
-                {commodities.map(c => (
-                  <button
-                    key={c}
-                    onClick={() => { setSelectedCommodity(c); setSelectedVariety(null) }}
-                    style={{ ...st.filterPill, ...(activeCommodity === c ? st.filterPillActive : {}) }}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-          {varieties.length > 1 && (
-            <>
-              <span style={{ width: 1, height: 16, background: '#e8e4dc' }} />
-              <span style={{ fontSize: 12, color: '#6a7a70', fontWeight: 500 }}>Variety:</span>
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Variety filter pills */}
+      {varieties.length > 1 && (
+        <>
+          <div style={st.hr} />
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', paddingBottom: 12 }}>
+            <span style={{ fontSize: 12, color: '#6a7a70', fontWeight: 500 }}>Variety:</span>
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => setSelectedVariety(null)}
+                style={{ ...st.filterPill, ...(activeVariety === null ? st.filterPillActive : {}) }}
+              >
+                All
+              </button>
+              {varieties.map(v => (
                 <button
-                  onClick={() => setSelectedVariety(null)}
-                  style={{ ...st.filterPill, ...(activeVariety === null ? st.filterPillActive : {}) }}
+                  key={v}
+                  onClick={() => setSelectedVariety(v)}
+                  style={{ ...st.filterPill, ...(activeVariety === v ? st.filterPillActive : {}) }}
                 >
-                  All
+                  {v}
                 </button>
-                {varieties.map(v => (
-                  <button
-                    key={v}
-                    onClick={() => setSelectedVariety(v)}
-                    style={{ ...st.filterPill, ...(activeVariety === v ? st.filterPillActive : {}) }}
-                  >
-                    {v}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+              ))}
+            </div>
+          </div>
+        </>
       )}
 
       {/* Progress header */}
@@ -464,6 +469,9 @@ const st: Record<string, React.CSSProperties> = {
   },
   filterPillActive: {
     border: '1px solid #1a2a3a', background: '#1a2a3a', color: '#fff',
+  },
+  hr: {
+    height: 1, background: '#c0bbb5', marginBottom: 10,
   },
   progressCard: {
     background: '#fff', borderRadius: 12, padding: '16px 20px',

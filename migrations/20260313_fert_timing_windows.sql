@@ -6,6 +6,8 @@ ALTER TABLE fert_timings ADD COLUMN window_start date;
 ALTER TABLE fert_timings ADD COLUMN window_end date;
 
 -- 2. Dashboard summary RPC: aggregates per timing × product with confirm progress + NPK totals
+-- commodity_name is derived from the orchards in the recommendation (not from fert_recommendations.commodity_id)
+DROP FUNCTION IF EXISTS public.get_fert_dashboard_summary(uuid[], text);
 CREATE OR REPLACE FUNCTION public.get_fert_dashboard_summary(
   p_farm_ids uuid[],
   p_season text DEFAULT NULL
@@ -16,6 +18,7 @@ RETURNS TABLE (
   timing_sort integer,
   window_start date,
   window_end date,
+  commodity_name text,
   product_id uuid,
   product_name text,
   total_orchards bigint,
@@ -34,6 +37,12 @@ AS $$
     ft.sort_order AS timing_sort,
     ft.window_start,
     ft.window_end,
+    (SELECT string_agg(DISTINCT c2.name, ', ' ORDER BY c2.name)
+     FROM fert_recommendation_lines frl2
+     JOIN orchards o2 ON o2.id = frl2.orchard_id
+     JOIN commodities c2 ON c2.id = o2.commodity_id
+     WHERE frl2.recommendation_id = fr.id
+    ) AS commodity_name,
     fp.id AS product_id,
     fp.name AS product_name,
     COUNT(DISTINCT frl.orchard_id) AS total_orchards,
@@ -51,7 +60,7 @@ AS $$
   WHERE fr.farm_id = ANY(p_farm_ids)
     AND (p_season IS NULL OR fr.season = p_season)
     AND frl.orchard_id IS NOT NULL
-  GROUP BY ft.id, ft.label, ft.sort_order, ft.window_start, ft.window_end,
+  GROUP BY fr.id, ft.id, ft.label, ft.sort_order, ft.window_start, ft.window_end,
            fp.id, fp.name, fp.n_pct, fp.p_pct, fp.k_pct
   ORDER BY ft.sort_order, fp.name;
 $$;
