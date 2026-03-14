@@ -35,6 +35,7 @@ RETURNS TABLE (
   orchard_name text,
   orchard_nr integer,
   variety text,
+  commodity_name text,
   rate_per_ha numeric,
   unit text,
   total_qty numeric,
@@ -57,6 +58,7 @@ AS $$
     o.name AS orchard_name,
     o.orchard_nr,
     o.variety,
+    c.name AS commodity_name,
     frl.rate_per_ha,
     frl.unit,
     COALESCE(frl.total_qty, frl.rate_per_ha * COALESCE(frl.ha, 0)) AS total_qty,
@@ -69,6 +71,7 @@ AS $$
   JOIN fert_timings ft ON ft.id = frl.timing_id
   JOIN fert_products fp ON fp.id = frl.product_id
   JOIN orchards o ON o.id = frl.orchard_id
+  JOIN commodities c ON c.id = o.commodity_id
   LEFT JOIN fert_applications fa ON fa.line_id = frl.id
   LEFT JOIN user_profiles up ON up.id = fa.confirmed_by
   WHERE fr.farm_id = ANY(p_farm_ids)

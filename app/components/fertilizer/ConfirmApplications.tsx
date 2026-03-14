@@ -14,6 +14,7 @@ export interface ConfirmRow {
   orchard_name: string
   orchard_nr: number | null
   variety: string | null
+  commodity_name: string | null
   rate_per_ha: number
   unit: string
   total_qty: number | null
@@ -53,6 +54,8 @@ function orchardLabel(row: ConfirmRow): string {
 export default function ConfirmApplications({ data, loading, onRefresh }: Props) {
   const [selectedTiming, setSelectedTiming] = useState<string | null>(null)
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
+  const [selectedCommodity, setSelectedCommodity] = useState<string | null>(null)
+  const [selectedVariety, setSelectedVariety] = useState<string | null>(null)
   const [dateApplied, setDateApplied] = useState(todayStr())
   const [dateModified, setDateModified] = useState(false)
   const [pendingChanges, setPendingChanges] = useState<Map<string, boolean>>(new Map())
@@ -88,10 +91,44 @@ export default function ConfirmApplications({ data, loading, onRefresh }: Props)
     ? selectedProduct
     : products[0]?.id ?? null
 
-  // Filtered rows
-  const rows = useMemo(() => {
+  // Rows matching timing + product (before commodity/variety filter)
+  const timingProductRows = useMemo(() => {
     return data.filter(r => r.timing_id === activeTiming && r.product_id === activeProduct)
   }, [data, activeTiming, activeProduct])
+
+  // Commodities available in current timing/product
+  const commodities = useMemo(() => {
+    const set = new Set<string>()
+    for (const r of timingProductRows) if (r.commodity_name) set.add(r.commodity_name)
+    return [...set].sort()
+  }, [timingProductRows])
+
+  // Active commodity — null means "All"
+  const activeCommodity = (selectedCommodity && commodities.includes(selectedCommodity))
+    ? selectedCommodity : null
+
+  // Varieties available in current timing/product (filtered by commodity if selected)
+  const varieties = useMemo(() => {
+    const set = new Set<string>()
+    for (const r of timingProductRows) {
+      if (activeCommodity && r.commodity_name !== activeCommodity) continue
+      if (r.variety) set.add(r.variety)
+    }
+    return [...set].sort()
+  }, [timingProductRows, activeCommodity])
+
+  // Active variety — null means "All"
+  const activeVariety = (selectedVariety && varieties.includes(selectedVariety))
+    ? selectedVariety : null
+
+  // Filtered rows (timing + product + optional commodity + optional variety)
+  const rows = useMemo(() => {
+    return timingProductRows.filter(r => {
+      if (activeCommodity && r.commodity_name !== activeCommodity) return false
+      if (activeVariety && r.variety !== activeVariety) return false
+      return true
+    })
+  }, [timingProductRows, activeCommodity, activeVariety])
 
   // Effective confirmed state (server data + pending overrides)
   function isConfirmed(lineId: string, serverVal: boolean): boolean {
@@ -224,6 +261,57 @@ export default function ConfirmApplications({ data, loading, onRefresh }: Props)
           </button>
         ))}
       </div>
+
+      {/* Commodity + Variety filter pills */}
+      {(commodities.length > 1 || varieties.length > 1) && (
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+          {commodities.length > 1 && (
+            <>
+              <span style={{ fontSize: 12, color: '#6a7a70', fontWeight: 500 }}>Commodity:</span>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => { setSelectedCommodity(null); setSelectedVariety(null) }}
+                  style={{ ...st.filterPill, ...(activeCommodity === null ? st.filterPillActive : {}) }}
+                >
+                  All
+                </button>
+                {commodities.map(c => (
+                  <button
+                    key={c}
+                    onClick={() => { setSelectedCommodity(c); setSelectedVariety(null) }}
+                    style={{ ...st.filterPill, ...(activeCommodity === c ? st.filterPillActive : {}) }}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          {varieties.length > 1 && (
+            <>
+              <span style={{ width: 1, height: 16, background: '#e8e4dc' }} />
+              <span style={{ fontSize: 12, color: '#6a7a70', fontWeight: 500 }}>Variety:</span>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => setSelectedVariety(null)}
+                  style={{ ...st.filterPill, ...(activeVariety === null ? st.filterPillActive : {}) }}
+                >
+                  All
+                </button>
+                {varieties.map(v => (
+                  <button
+                    key={v}
+                    onClick={() => setSelectedVariety(v)}
+                    style={{ ...st.filterPill, ...(activeVariety === v ? st.filterPillActive : {}) }}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Progress header */}
       <div style={st.progressCard}>
@@ -368,6 +456,14 @@ const st: Record<string, React.CSSProperties> = {
   },
   pillActive: {
     border: '1px solid #2176d9', background: '#2176d9', color: '#fff',
+  },
+  filterPill: {
+    padding: '4px 10px', borderRadius: 14, border: '1px solid #e0dbd4',
+    background: '#f8f6f2', color: '#5a6a60', fontSize: 12, cursor: 'pointer',
+    fontFamily: 'Inter, sans-serif', fontWeight: 500, transition: 'all 0.15s',
+  },
+  filterPillActive: {
+    border: '1px solid #1a2a3a', background: '#1a2a3a', color: '#fff',
   },
   progressCard: {
     background: '#fff', borderRadius: 12, padding: '16px 20px',
