@@ -10,6 +10,8 @@ import ConfirmApplications, { ConfirmRow } from '@/app/components/fertilizer/Con
 import FertilizerDashboard, { DashboardRow, LeafNutrientFlag } from '@/app/components/fertilizer/FertilizerDashboard'
 import ProductSettings from '@/app/components/fertilizer/ProductSettings'
 import ImportModal from '@/app/components/fertilizer/ImportModal'
+import DispatchView from '@/app/components/fertilizer/DispatchView'
+import OrchardFertDetail from '@/app/components/fertilizer/OrchardFertDetail'
 
 function getCurrentSeason(): string {
   const now = new Date()
@@ -75,7 +77,7 @@ interface OrderRow {
   k_pct: number
 }
 
-type ViewMode = 'dashboard' | 'table' | 'order' | 'confirm' | 'products'
+type ViewMode = 'dashboard' | 'table' | 'order' | 'confirm' | 'dispatch' | 'products'
 
 export default function FertilizerPage() {
   const { farmIds, isSuperAdmin, contextLoaded, orgId, allowedRoutes, allowed } = usePageGuard()
@@ -99,6 +101,7 @@ export default function FertilizerPage() {
   const [dashboardLoading, setDashboardLoading] = useState(false)
   const [dashboardProduction, setDashboardProduction] = useState<Record<string, { tonHa: number | null }>>({})
   const [dashboardLeafFlags, setDashboardLeafFlags] = useState<LeafNutrientFlag[]>([])
+  const [selectedOrchardId, setSelectedOrchardId] = useState<string | null>(null)
 
   const seasonOptions = buildSeasonOptions(2018)
 
@@ -282,7 +285,7 @@ export default function FertilizerPage() {
   }, [fetchData, selectedFarmId])
 
   useEffect(() => {
-    if (selectedFarmId && viewMode === 'confirm') fetchConfirmData()
+    if (selectedFarmId && (viewMode === 'confirm' || viewMode === 'table')) fetchConfirmData()
   }, [fetchConfirmData, selectedFarmId, viewMode])
 
   useEffect(() => {
@@ -428,12 +431,26 @@ export default function FertilizerPage() {
               Confirm
             </button>
             <button
+              onClick={() => setViewMode('dispatch')}
+              style={{ ...st.viewBtn, ...(viewMode === 'dispatch' ? st.viewBtnActive : {}) }}
+            >
+              Dispatch
+            </button>
+            <button
               onClick={() => setViewMode('products')}
               style={{ ...st.viewBtn, ...(viewMode === 'products' ? st.viewBtnActive : {}) }}
             >
               Products
             </button>
           </div>
+          <div style={st.divider} />
+          <a
+            href="/applicators/new"
+            target="_blank"
+            style={{ ...st.viewBtn, textDecoration: 'none', fontSize: 12, color: '#2176d9', border: '1px solid #2176d9' }}
+          >
+            + Applicator
+          </a>
         </div>
 
         {/* KPI strip */}
@@ -474,7 +491,7 @@ export default function FertilizerPage() {
         )}
 
         {viewMode === 'table' && (
-          <FertilizerTable data={filteredData} loading={loading} />
+          <FertilizerTable data={filteredData} loading={loading} onOrchardClick={setSelectedOrchardId} />
         )}
 
         {viewMode === 'order' && (
@@ -483,6 +500,10 @@ export default function FertilizerPage() {
 
         {viewMode === 'confirm' && (
           <ConfirmApplications data={confirmData} loading={confirmLoading} onRefresh={fetchConfirmData} />
+        )}
+
+        {viewMode === 'dispatch' && selectedFarmId && orgId && (
+          <DispatchView farmId={selectedFarmId} season={season} orgId={orgId} />
         )}
 
         {viewMode === 'products' && orgId && (
@@ -501,6 +522,16 @@ export default function FertilizerPage() {
           </div>
         )}
       </main>
+
+      {/* Orchard Fert Detail Panel */}
+      {selectedOrchardId && (
+        <OrchardFertDetail
+          orchardId={selectedOrchardId}
+          confirmData={confirmData}
+          summaryData={data}
+          onClose={() => setSelectedOrchardId(null)}
+        />
+      )}
 
       {/* Import Modal */}
       {showImport && (
