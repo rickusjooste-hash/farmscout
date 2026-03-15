@@ -61,7 +61,7 @@ export async function PATCH(req: NextRequest) {
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
 
   // Only allow known fields
-  const allowed = ['name', 'registration_no', 'n_pct', 'p_pct', 'k_pct', 'ca_pct', 'mg_pct', 's_pct', 'default_unit']
+  const allowed = ['name', 'registration_no', 'n_pct', 'p_pct', 'k_pct', 'ca_pct', 'mg_pct', 's_pct', 'default_unit', 'bag_weight_kg']
   const update: Record<string, unknown> = {}
   for (const key of allowed) {
     if (key in fields) update[key] = fields[key]

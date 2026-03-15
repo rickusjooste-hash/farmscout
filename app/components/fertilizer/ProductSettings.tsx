@@ -13,6 +13,7 @@ interface Product {
   mg_pct: number
   s_pct: number
   default_unit: string
+  bag_weight_kg: number | null
 }
 
 interface EditRow extends Product {
@@ -31,7 +32,7 @@ const NUM_FIELDS = ['n_pct', 'p_pct', 'k_pct', 'ca_pct', 'mg_pct', 's_pct'] as c
 const EMPTY_NEW: Omit<Product, 'id'> = {
   name: '', registration_no: null,
   n_pct: 0, p_pct: 0, k_pct: 0, ca_pct: 0, mg_pct: 0, s_pct: 0,
-  default_unit: 'kg/ha',
+  default_unit: 'kg/ha', bag_weight_kg: null,
 }
 
 export default function ProductSettings({ orgId }: Props) {
@@ -76,6 +77,7 @@ export default function ProductSettings({ orgId }: Props) {
           n_pct: row.n_pct, p_pct: row.p_pct, k_pct: row.k_pct,
           ca_pct: row.ca_pct, mg_pct: row.mg_pct, s_pct: row.s_pct,
           default_unit: row.default_unit,
+          bag_weight_kg: row.bag_weight_kg,
         }),
       })
       if (res.ok) {
@@ -146,16 +148,17 @@ export default function ProductSettings({ orgId }: Props) {
       <div style={st.tableWrap}>
         <table style={st.table}>
           <colgroup>
-            <col style={{ width: '22%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '7%' }} />
-            <col style={{ width: '7%' }} />
-            <col style={{ width: '7%' }} />
-            <col style={{ width: '7%' }} />
-            <col style={{ width: '7%' }} />
-            <col style={{ width: '7%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '16%' }} />
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '6%' }} />
+            <col style={{ width: '6%' }} />
+            <col style={{ width: '6%' }} />
+            <col style={{ width: '6%' }} />
+            <col style={{ width: '6%' }} />
+            <col style={{ width: '6%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '14%' }} />
           </colgroup>
           <thead>
             <tr>
@@ -168,6 +171,7 @@ export default function ProductSettings({ orgId }: Props) {
               <th style={{ ...st.th, textAlign: 'center' }}>Mg%</th>
               <th style={{ ...st.th, textAlign: 'center' }}>S%</th>
               <th style={st.th}>Unit</th>
+              <th style={{ ...st.th, textAlign: 'center' }}>Bag kg</th>
               <th style={{ ...st.th, textAlign: 'center' }}>Actions</th>
             </tr>
           </thead>
@@ -210,6 +214,16 @@ export default function ProductSettings({ orgId }: Props) {
                     >
                       {UNIT_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
                     </select>
+                  </td>
+                  <td style={st.td}>
+                    <input
+                      type="number"
+                      step="1"
+                      value={row.bag_weight_kg != null && row.bag_weight_kg !== 0 ? row.bag_weight_kg : ''}
+                      placeholder="-"
+                      onChange={e => updateField(row.id, 'bag_weight_kg', e.target.value === '' ? null : parseFloat(e.target.value))}
+                      style={st.numInput}
+                    />
                   </td>
                   <td style={{ ...st.td, textAlign: 'center' }}>
                     <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
@@ -271,6 +285,16 @@ export default function ProductSettings({ orgId }: Props) {
                 >
                   {UNIT_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
+              </td>
+              <td style={st.td}>
+                <input
+                  type="number"
+                  step="1"
+                  value={newRow.bag_weight_kg != null && newRow.bag_weight_kg !== 0 ? newRow.bag_weight_kg : ''}
+                  placeholder="-"
+                  onChange={e => setNewRow(prev => ({ ...prev, bag_weight_kg: e.target.value === '' ? null : parseFloat(e.target.value) }))}
+                  style={st.numInput}
+                />
               </td>
               <td style={{ ...st.td, textAlign: 'center' }}>
                 <button onClick={addProduct} disabled={adding} style={st.addBtn}>

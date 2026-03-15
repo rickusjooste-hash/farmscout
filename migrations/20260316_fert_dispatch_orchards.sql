@@ -10,6 +10,9 @@
 
 ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'applicator';
 
+-- Add bag_weight_kg to fert_products
+ALTER TABLE public.fert_products ADD COLUMN IF NOT EXISTS bag_weight_kg numeric;
+
 -- ════════════════════════════════════════════════════════════════════════════
 -- 1. Add dispatched_to on fert_dispatches — the assigned applicator
 -- ════════════════════════════════════════════════════════════════════════════
@@ -80,6 +83,7 @@ RETURNS TABLE (
   ha                 numeric,
   rate_per_ha        numeric,
   total_qty          numeric,
+  bag_weight_kg      numeric,
   confirmed          boolean,
   date_applied       date,
   actual_rate_per_ha numeric,
@@ -104,6 +108,7 @@ AS $$
     frl.ha,
     frl.rate_per_ha,
     COALESCE(frl.total_qty, frl.rate_per_ha * COALESCE(frl.ha, 0)) AS total_qty,
+    fp.bag_weight_kg,
     COALESCE(fa.confirmed, false) AS confirmed,
     fa.date_applied,
     fa.actual_rate_per_ha,
