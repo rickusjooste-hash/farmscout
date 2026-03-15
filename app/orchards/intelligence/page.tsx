@@ -161,6 +161,111 @@ export default function IntelligencePage() {
     return []
   }, [selectedFarmId, farms])
 
+  // Size + QC — per-orchard queries to avoid qc_fruit full-table scans
+  interface SizeDistRow { orchard_id: string; bin_label: string; fruit_count: number; avg_weight_g: number }
+  interface IssueCountRow { orchard_id: string; pest_name: string; category: string; total_count: number }
+
+  const fetchHeavyData = useCallback(async (
+    orchardIds: string[], farmIds: string[], from: string, to: string, prevFrom: string, prevTo: string,
+  ) => {
+    // Size data — use get_orchard_size_distribution_bulk per-orchard (works in scorecard)
+    // Batch 5 at a time to avoid overwhelming the connection pool
+    try {
+      const sizeMap: Record<string, { dominantLabel: string; avgWeightG: number }> = {}
+      const prevSizeMap: Record<string, { dominantLabel: string; avgWeightG: number }> = {}
+
+      const BATCH = 5
+      for (let i = 0; i < orchardIds.length; i += BATCH) {
+        const batch = orchardIds.slice(i, i + BATCH)
+        const results = await Promise.all(batch.flatMap(oid => [
+          supabase.rpc('get_orchard_size_distribution_bulk', {
+            p_farm_ids: farmIds, p_from: from, p_to: to, p_orchard_id: oid,
+          }).then(res => ({ oid, season: 'cur', data: res.data, error: res.error })),
+          supabase.rpc('get_orchard_size_distribution_bulk', {
+            p_farm_ids: farmIds, p_from: prevFrom, p_to: prevTo, p_orchard_id: oid,
+          }).then(res => ({ oid, season: 'prev', data: res.data, error: res.error })),
+        ]))
+
+        for (const { oid, season: s, data } of results) {
+          if (!data || data.length === 0) continue
+          const rows = data as SizeDistRow[]
+          let bestBin = '', bestCount = 0, totalCount = 0, totalWeight = 0
+          for (const r of rows) {
+            const cnt = Number(r.fruit_count)
+            const wt = Number(r.avg_weight_g)
+            if (cnt > bestCount) { bestBin = r.bin_label; bestCount = cnt }
+            totalCount += cnt
+            totalWeight += wt * cnt
+          }
+          if (totalCount > 0) {
+            const entry = { dominantLabel: bestBin, avgWeightG: Math.round(totalWeight / totalCount) }
+            if (s === 'cur') sizeMap[oid] = entry
+            else prevSizeMap[oid] = entry
+          }
+        }
+      }
+
+      setSizeByOrchard(sizeMap)
+      setPrevSizeByOrchard(prevSizeMap)
+    } catch {
+      console.warn('[Intelligence] Size fetch failed')
+    }
+
+    // QC issues — qc_bag_issues is small (165K rows), use original RPC per farm
+    try {
+      const qcMap: Record<string, QcIssueRow[]> = {}
+      await Promise.all(farmIds.map(async (fid) => {
+        const issueRes = await supabase.rpc('get_qc_issue_counts', { p_farm_id: fid, p_from: from, p_to: to })
+        if (issueRes.error) { console.warn('[Intelligence] QC issues:', fid, issueRes.error.message); return }
+
+        // Fruit counts per orchard — per-orchard via size_distribution_bulk (already fetched above, reuse)
+        // For pct, use total fruit from sizeByOrchard (will be set by now or from prev render)
+        const byOrchard: Record<string, IssueCountRow[]> = {}
+        for (const r of (issueRes.data || []) as IssueCountRow[]) {
+          if (!byOrchard[r.orchard_id]) byOrchard[r.orchard_id] = []
+          byOrchard[r.orchard_id].push(r)
+        }
+
+        // Get fruit counts for this farm's orchards — batch per-orchard
+        const farmOrchardIds = orchardIds.filter(oid => {
+          // We don't have farm-to-orchard mapping here, so just query all
+          return byOrchard[oid] != null
+        })
+        const fruitCounts: Record<string, number> = {}
+        const BATCH = 5
+        for (let i = 0; i < farmOrchardIds.length; i += BATCH) {
+          const batch = farmOrchardIds.slice(i, i + BATCH)
+          const results = await Promise.all(batch.map(oid =>
+            supabase.rpc('get_orchard_size_distribution_bulk', {
+              p_farm_ids: [fid], p_from: from, p_to: to, p_orchard_id: oid,
+            }).then(res => ({ oid, data: res.data }))
+          ))
+          for (const { oid, data } of results) {
+            if (data) {
+              fruitCounts[oid] = (data as SizeDistRow[]).reduce((s, r) => s + Number(r.fruit_count), 0)
+            }
+          }
+        }
+
+        for (const [oid, issues] of Object.entries(byOrchard)) {
+          const sampled = fruitCounts[oid] || 0
+          qcMap[oid] = issues.slice(0, 5).map(r => ({
+            orchard_id: oid,
+            pest_name: r.pest_name,
+            category: r.category,
+            total_count: Number(r.total_count),
+            fruit_sampled: sampled,
+            pct_of_fruit: sampled > 0 ? Math.round(Number(r.total_count) / sampled * 1000) / 10 : 0,
+          }))
+        }
+      }))
+      setQcByOrchard(qcMap)
+    } catch {
+      console.warn('[Intelligence] QC issues fetch failed')
+      setQcByOrchard({})
+    }
+  }, [])
+
   // Fetch all data when farm/season changes
   const fetchData = useCallback(async () => {
     if (!selectedFarmId || activeFarmIds.length === 0) return
@@ -188,8 +293,6 @@ export default function IntelligencePage() {
         { data: leafData },
         { data: prodData },
         { data: prevProdData },
-        { data: sizeData },
-        { data: prevSizeData },
       ] = await Promise.all([
         orchardQuery,
         supabase.rpc('get_leaf_analysis_summary', {
@@ -203,16 +306,6 @@ export default function IntelligencePage() {
         supabase.rpc('get_production_summary', {
           p_farm_ids: activeFarmIds,
           p_season: prev,
-        }),
-        supabase.rpc('get_orchard_dominant_sizes', {
-          p_farm_ids: activeFarmIds,
-          p_from: from,
-          p_to: to,
-        }),
-        supabase.rpc('get_orchard_dominant_sizes', {
-          p_farm_ids: activeFarmIds,
-          p_from: prevFrom,
-          p_to: prevTo,
         }),
       ])
 
@@ -232,20 +325,6 @@ export default function IntelligencePage() {
       }
       setPrevProductionByOrchard(prevProdMap)
 
-      // Size lookup
-      const sizeMap: Record<string, { dominantLabel: string; avgWeightG: number }> = {}
-      for (const r of (sizeData || []) as SizeRow[]) {
-        sizeMap[r.orchard_id] = { dominantLabel: r.dominant_label, avgWeightG: Number(r.avg_weight_g) }
-      }
-      setSizeByOrchard(sizeMap)
-
-      // Previous size lookup
-      const prevSizeMap: Record<string, { dominantLabel: string; avgWeightG: number }> = {}
-      for (const r of (prevSizeData || []) as SizeRow[]) {
-        prevSizeMap[r.orchard_id] = { dominantLabel: r.dominant_label, avgWeightG: Number(r.avg_weight_g) }
-      }
-      setPrevSizeByOrchard(prevSizeMap)
-
       // Leaf nutrients per orchard
       const nutMap: Record<string, Record<string, number>> = {}
       for (const r of (leafData || []) as LeafRow[]) {
@@ -254,23 +333,9 @@ export default function IntelligencePage() {
       }
       setNutrientsByOrchard(nutMap)
 
-      // QC issues — separate call (RPC may not be deployed yet)
-      try {
-        const { data: qcData } = await supabase.rpc('get_qc_issues_by_orchard', {
-          p_farm_ids: activeFarmIds,
-          p_from: from,
-          p_to: to,
-        })
-        const qcMap: Record<string, QcIssueRow[]> = {}
-        for (const r of (qcData || []) as QcIssueRow[]) {
-          if (!qcMap[r.orchard_id]) qcMap[r.orchard_id] = []
-          qcMap[r.orchard_id].push(r)
-        }
-        setQcByOrchard(qcMap)
-      } catch (err) {
-        console.error('[Intelligence] QC issues fetch failed:', err)
-        setQcByOrchard({})
-      }
+      // Heavy QC queries (size + issues) — per-orchard to avoid qc_fruit timeout
+      const oids = (orchardData || []).map((o: Orchard) => o.id)
+      fetchHeavyData(oids, activeFarmIds, from, to, prevFrom, prevTo)
 
       // Fert data — API takes single farm_id, so fetch per farm and merge
       try {
@@ -353,13 +418,37 @@ export default function IntelligencePage() {
     return result
   }, [orchards, normsLookup])
 
-  // Farm avg T/Ha
+  // Variety group avg T/Ha — orchards are benchmarked against their own variety group
+  const varietyGroupAvgTonHa = useMemo(() => {
+    const grouped: Record<string, number[]> = {}
+    for (const o of orchards) {
+      const key = (o.variety_group || o.variety || '__none__').toLowerCase()
+      const tonHa = productionByOrchard[o.id]?.tonHa
+      if (tonHa != null) {
+        if (!grouped[key]) grouped[key] = []
+        grouped[key].push(tonHa)
+      }
+    }
+    const avgs: Record<string, number> = {}
+    for (const [key, vals] of Object.entries(grouped)) {
+      avgs[key] = vals.reduce((a, b) => a + b, 0) / vals.length
+    }
+    return avgs
+  }, [orchards, productionByOrchard])
+
+  // Helper: get the avg T/Ha for an orchard's variety group
+  function getGroupAvgTonHa(o: Orchard): number | null {
+    const key = (o.variety_group || o.variety || '__none__').toLowerCase()
+    return varietyGroupAvgTonHa[key] ?? null
+  }
+
+  // Overall farm avg (for KPI display only)
   const farmAvgTonHa = useMemo(() => {
     const vals = Object.values(productionByOrchard).map(p => p.tonHa).filter((v): v is number => v != null)
     return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null
   }, [productionByOrchard])
 
-  // Compute scores
+  // Compute scores — each orchard benchmarked against its variety group avg
   const scoredOrchards = useMemo(() => {
     return orchards.map(o => {
       const nuts = nutrientsByOrchard[o.id] || {}
@@ -369,20 +458,15 @@ export default function IntelligencePage() {
       const fert = fertByOrchard[o.id]
       const size = sizeByOrchard[o.id]
 
-      // Total issue rate
       const totalIssueRate = qcIssues.length > 0
         ? qcIssues.reduce((sum, q) => sum + q.pct_of_fruit, 0)
         : null
 
-      // Compute pct upper bins — estimate from dominant bin label
-      // We'll use a simple heuristic: if we have size data
       let pctUpperBins: number | null = null
-      // We don't have full bin distribution at the summary level,
-      // so we'll leave this null and let the score use the neutral fallback
 
       const score = calculateScore({
         tonHa: prod?.tonHa ?? null,
-        farmAvgTonHa,
+        farmAvgTonHa: getGroupAvgTonHa(o),
         leafNutrients: nuts,
         norms,
         issueRate: totalIssueRate,
@@ -393,7 +477,7 @@ export default function IntelligencePage() {
 
       return { ...o, score }
     })
-  }, [orchards, nutrientsByOrchard, normsByOrchard, productionByOrchard, qcByOrchard, fertByOrchard, sizeByOrchard, farmAvgTonHa])
+  }, [orchards, nutrientsByOrchard, normsByOrchard, productionByOrchard, qcByOrchard, fertByOrchard, sizeByOrchard, varietyGroupAvgTonHa])
 
   // Selected orchard details
   const selectedOrchard = orchards.find(o => o.id === selectedOrchardId)
@@ -419,7 +503,13 @@ export default function IntelligencePage() {
         <div style={st.headerRow}>
           <div>
             <h1 style={st.pageTitle}>Orchard Intelligence</h1>
-            <p style={st.subtitle}>Cross-stream performance analysis: Input {'\u2192'} Uptake {'\u2192'} Output {'\u2192'} Value {'\u2192'} Quality</p>
+            <p style={st.subtitle}>
+              Cross-stream performance analysis: Input {'\u2192'} Uptake {'\u2192'} Output {'\u2192'} Value {'\u2192'} Quality
+              {' \u00B7 '}
+              <a href="/orchards/intelligence/rules" style={{ color: '#2176d9', textDecoration: 'none', fontWeight: 500 }}>
+                View Rules
+              </a>
+            </p>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <select value={season} onChange={e => setSeason(e.target.value)} style={st.seasonSelect}>
@@ -491,7 +581,6 @@ export default function IntelligencePage() {
           qcByOrchard={qcByOrchard}
           nutrientsByOrchard={nutrientsByOrchard}
           normsByOrchard={normsByOrchard}
-          farmAvgTonHa={farmAvgTonHa}
           selectedOrchardId={selectedOrchardId}
           onSelectOrchard={id => setSelectedOrchardId(prev => prev === id ? null : id)}
           loading={loading}
@@ -533,7 +622,7 @@ export default function IntelligencePage() {
           qcByOrchard={qcByOrchard}
           nutrientsByOrchard={nutrientsByOrchard}
           normsByOrchard={normsByOrchard}
-          farmAvgTonHa={farmAvgTonHa}
+          varietyGroupAvgTonHa={varietyGroupAvgTonHa}
           open={true}
           onClose={() => setCompareOpen(false)}
           onRemoveOrchard={(id: string) => {
@@ -572,7 +661,7 @@ export default function IntelligencePage() {
           sizeInfo={sizeByOrchard[selectedOrchardId] || null}
           prevSizeInfo={prevSizeByOrchard[selectedOrchardId] || null}
           qcIssues={qcByOrchard[selectedOrchardId] || []}
-          farmAvgTonHa={farmAvgTonHa}
+          farmAvgTonHa={selectedOrchard ? getGroupAvgTonHa(selectedOrchard) : null}
           pctSmallBins={null}
           pctLargeBins={null}
         />

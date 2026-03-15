@@ -395,8 +395,8 @@ export default function ProductionPage() {
             p_orchard_id: selectedOrchardId || null,
           }),
         ])
-        if (sizeRes.error) console.error('Size dist RPC error:', sizeRes.error)
-        if (issueRes.error) console.error('Issue breakdown RPC error:', issueRes.error)
+        if (sizeRes.error) console.error('Size dist RPC error:', sizeRes.error.message, sizeRes.error.code)
+        if (issueRes.error) console.error('Issue breakdown RPC error:', issueRes.error.message, issueRes.error.code)
         // Merge duplicate labels (same label can appear for different commodities with different display_order)
         const rawBins = (sizeRes.data || []) as SizeBin[]
         const mergedMap: Record<string, SizeBin> = {}

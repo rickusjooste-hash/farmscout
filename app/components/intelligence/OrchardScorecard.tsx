@@ -225,7 +225,7 @@ export default function OrchardScorecard(props: Props) {
     .filter(code => nutrients[code] != null)
     .map(code => ({ code, value: nutrients[code] }))
 
-  // Fert products by timing + NPK totals per ha
+  // Fert products by timing + NPK totals per ha (confirmed applications only)
   const fertByTiming = new Map<string, FertProduct[]>()
   let fertTotalN = 0, fertTotalP = 0, fertTotalK = 0
   if (fertStatus) {
@@ -233,10 +233,11 @@ export default function OrchardScorecard(props: Props) {
       const arr = fertByTiming.get(p.timing_label) || []
       arr.push(p)
       fertByTiming.set(p.timing_label, arr)
-      // Accumulate NPK kg/ha from all products (prescribed, not just confirmed)
-      fertTotalN += p.rate_per_ha * (p.n_pct || 0) / 100
-      fertTotalP += p.rate_per_ha * (p.p_pct || 0) / 100
-      fertTotalK += p.rate_per_ha * (p.k_pct || 0) / 100
+      if (p.confirmed) {
+        fertTotalN += p.rate_per_ha * (p.n_pct || 0) / 100
+        fertTotalP += p.rate_per_ha * (p.p_pct || 0) / 100
+        fertTotalK += p.rate_per_ha * (p.k_pct || 0) / 100
+      }
     }
   }
 

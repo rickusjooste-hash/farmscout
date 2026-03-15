@@ -463,7 +463,17 @@ export default function QcDashboardPage() {
       ...b,
       pct_of_total: totalFruit > 0 ? Math.round(Number(b.fruit_count) / totalFruit * 1000) / 10 : 0,
     })))
-    setIssueData(((issueRes.data as IssueRow[]) || []).filter(r => r.category !== 'picking_issue'))
+    setIssueData(((issueRes.data as IssueRow[]) || [])
+      .filter(r => r.category !== 'picking_issue')
+      .map(r => ({
+        ...r,
+        pct_of_fruit: r.pct_of_fruit > 0
+          ? r.pct_of_fruit
+          : totalFruit > 0
+            ? Math.round(Number(r.total_count) / totalFruit * 1000) / 10
+            : 0,
+      }))
+    )
     setPickerBreakdown((pickerIssueRes.data as PickerIssueRow[]) || [])
 
     const bags = (bagRes.data as BagRow[]) || []

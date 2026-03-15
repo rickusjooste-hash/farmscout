@@ -61,7 +61,7 @@ interface Props {
   qcByOrchard: Record<string, QcIssue[]>
   nutrientsByOrchard: Record<string, Record<string, number>>
   normsByOrchard: Record<string, Record<string, NormRange>>
-  farmAvgTonHa: number | null
+  varietyGroupAvgTonHa: Record<string, number>
   open: boolean
   onClose: () => void
   onRemoveOrchard: (id: string) => void
@@ -132,7 +132,7 @@ export default function OrchardComparisonPanel(props: Props) {
   const {
     orchardIds, orchards, fertByOrchard, productionByOrchard, prevProductionByOrchard,
     sizeByOrchard, qcByOrchard, nutrientsByOrchard, normsByOrchard,
-    farmAvgTonHa, open, onClose, onRemoveOrchard,
+    varietyGroupAvgTonHa, open, onClose, onRemoveOrchard,
   } = props
 
   const [sameVariety, setSameVariety] = useState(false)
@@ -289,11 +289,13 @@ export default function OrchardComparisonPanel(props: Props) {
       }),
     })
     r.push({
-      section: 'Production', label: 'vs Farm Avg', direction: 'higher',
+      section: 'Production', label: 'vs Variety Avg', direction: 'higher',
       values: compared.map(o => {
         const cur = productionByOrchard[o.id]?.tonHa
-        if (cur == null || farmAvgTonHa == null || farmAvgTonHa === 0) return { display: '\u2014', raw: null }
-        const delta = ((cur - farmAvgTonHa) / farmAvgTonHa) * 100
+        const groupKey = (o.variety_group || o.variety || '__none__').toLowerCase()
+        const groupAvg = varietyGroupAvgTonHa[groupKey]
+        if (cur == null || groupAvg == null || groupAvg === 0) return { display: '\u2014', raw: null }
+        const delta = ((cur - groupAvg) / groupAvg) * 100
         return { display: `${delta >= 0 ? '+' : ''}${delta.toFixed(0)}%`, raw: delta }
       }),
     })
@@ -340,7 +342,7 @@ export default function OrchardComparisonPanel(props: Props) {
     })
 
     return r
-  }, [compared, fertByOrchard, comparisonData, nutrientsByOrchard, normsByOrchard, productionByOrchard, prevProductionByOrchard, farmAvgTonHa, sizeByOrchard, qcByOrchard])
+  }, [compared, fertByOrchard, comparisonData, nutrientsByOrchard, normsByOrchard, productionByOrchard, prevProductionByOrchard, varietyGroupAvgTonHa, sizeByOrchard, qcByOrchard])
 
   if (compared.length < 2) return null
 

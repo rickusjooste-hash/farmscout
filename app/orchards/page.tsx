@@ -363,6 +363,98 @@ export default function OrchardsPage() {
     setSaveErr(''); setSaveOk(false)
   }
 
+  // ── KML Export ────────────────────────────────────────────────────────────
+  function exportKml() {
+    const farmOrchards = orchards.filter(o => o.farm_id === selectedFarmId)
+    const farm = farms.find(f => f.id === selectedFarmId)
+    const farmName = farm?.full_name || farm?.code || 'Farm'
+
+    // Convert GeoJSON coordinates [lng, lat] to KML coordinate string "lng,lat,0"
+    function coordsToKml(ring: number[][]): string {
+      return ring.map(([lng, lat]) => `${lng},${lat},0`).join(' ')
+    }
+
+    function geometryToKml(geom: any): string {
+      if (!geom) return ''
+      if (geom.type === 'Polygon') {
+        const outer = geom.coordinates[0]
+        let kml = '<Polygon><outerBoundaryIs><LinearRing><coordinates>' + coordsToKml(outer) + '</coordinates></LinearRing></outerBoundaryIs>'
+        for (let i = 1; i < geom.coordinates.length; i++) {
+          kml += '<innerBoundaryIs><LinearRing><coordinates>' + coordsToKml(geom.coordinates[i]) + '</coordinates></LinearRing></innerBoundaryIs>'
+        }
+        return kml + '</Polygon>'
+      }
+      if (geom.type === 'MultiPolygon') {
+        return '<MultiGeometry>' + geom.coordinates.map((poly: number[][][]) => {
+          let kml = '<Polygon><outerBoundaryIs><LinearRing><coordinates>' + coordsToKml(poly[0]) + '</coordinates></LinearRing></outerBoundaryIs>'
+          for (let i = 1; i < poly.length; i++) {
+            kml += '<innerBoundaryIs><LinearRing><coordinates>' + coordsToKml(poly[i]) + '</coordinates></LinearRing></innerBoundaryIs>'
+          }
+          return kml + '</Polygon>'
+        }).join('') + '</MultiGeometry>'
+      }
+      return ''
+    }
+
+    // Convert hex color (#RRGGBB) to KML color (aaBBGGRR)
+    function hexToKml(hex: string, alpha: string): string {
+      const r = hex.slice(1, 3)
+      const g = hex.slice(3, 5)
+      const b = hex.slice(5, 7)
+      return alpha + b + g + r
+    }
+
+    const placemarks = farmOrchards
+      .filter(o => boundaryMapRef.current[o.id])
+      .map(o => {
+        const geom = boundaryMapRef.current[o.id]
+        const name = (o.orchard_nr != null ? `${o.orchard_nr} ` : '') + o.name
+        const variety = o.variety || ''
+        const ha = o.ha ? `${o.ha} ha` : ''
+        const desc = [variety, o.rootstock, ha].filter(Boolean).join(' · ')
+        const commCode = o.commodities?.code || ''
+        const color = orchardColor(commCode)
+        const fillColor = hexToKml(color, '55')  // ~33% opacity
+        const lineColor = hexToKml(color, 'ff')  // solid outline
+        return `  <Placemark>
+    <name>${escXml(name)}</name>
+    <description>${escXml(desc)}</description>
+    <Style>
+      <LineStyle><color>${lineColor}</color><width>2</width></LineStyle>
+      <PolyStyle><color>${fillColor}</color></PolyStyle>
+    </Style>
+    <ExtendedData>
+      <Data name="commodity"><value>${escXml(commCode)}</value></Data>
+      <Data name="variety"><value>${escXml(variety)}</value></Data>
+      <Data name="ha"><value>${o.ha ?? ''}</value></Data>
+    </ExtendedData>
+    ${geometryToKml(geom)}
+  </Placemark>`
+      })
+
+    if (placemarks.length === 0) { alert('No orchard boundaries to export'); return }
+
+    const kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+  <name>${escXml(farmName)} — Orchards</name>
+${placemarks.join('\n')}
+</Document>
+</kml>`
+
+    const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${farmName.replace(/[^a-zA-Z0-9_-]/g, '_')}_orchards.kml`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function escXml(s: string): string {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  }
+
   // ── Load zones when orchard selected ──────────────────────────────────────
   useEffect(() => {
     if (!selectedOrchard) { setOrchardZones([]); return }
@@ -699,6 +791,11 @@ export default function OrchardsPage() {
                 onChange={e => { setSelectedFarmId(e.target.value); setSelectedOrchard(null) }}>
                 {farms.map(f => <option key={f.id} value={f.id}>{f.full_name}</option>)}
               </select>
+            )}
+            {mode === 'view' && boundaryMapReady && (
+              <button className="btn-cancel" onClick={exportKml} title="Export orchard boundaries as KML">
+                Export KML
+              </button>
             )}
             {mode === 'view' && <button className="btn-primary" onClick={enterAdd}>+ Add Orchard</button>}
           </div>

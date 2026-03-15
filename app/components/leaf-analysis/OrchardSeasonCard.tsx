@@ -364,10 +364,10 @@ export default function OrchardSeasonCard({
             <div style={{ color: '#8a95a0', fontSize: 12 }}>No QC data for this season</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {sizeDist.map(bin => {
+              {sizeDist.map((bin, i) => {
                 const pct = maxCount > 0 ? (bin.fruit_count / maxCount) * 100 : 0
                 return (
-                  <div key={bin.bin_label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div key={`${bin.bin_label}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ width: 72, fontSize: 11, color: '#6a7a70', textAlign: 'right', flexShrink: 0 }}>
                       {bin.bin_label}
                     </div>

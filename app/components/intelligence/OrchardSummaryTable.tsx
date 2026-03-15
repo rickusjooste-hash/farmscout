@@ -44,7 +44,6 @@ interface Props {
   qcByOrchard: Record<string, QcIssue[]>
   nutrientsByOrchard: Record<string, Record<string, number>>
   normsByOrchard: Record<string, Record<string, NormRange>>
-  farmAvgTonHa: number | null
   selectedOrchardId: string | null
   onSelectOrchard: (id: string) => void
   loading: boolean
@@ -94,7 +93,7 @@ export default function OrchardSummaryTable(props: Props) {
     farmCodeById,
   } = props
 
-  const [sortKey, setSortKey] = useState<SortKey>('score')
+  const [sortKey, setSortKey] = useState<SortKey>('variety')
   const [sortAsc, setSortAsc] = useState(true)
 
   function handleSort(key: SortKey) {
