@@ -29,6 +29,25 @@ export async function GET(req: NextRequest) {
 
   const svc = svcSupabase()
 
+  // Return applicators list if requested
+  if (req.nextUrl.searchParams.get('applicators')) {
+    const { data: farmUsers } = await svc
+      .from('user_farm_access')
+      .select('user_id, user_profiles!inner(id, full_name)')
+      .eq('farm_id', farmId)
+
+    const seen = new Set<string>()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const list = (farmUsers || []).flatMap((row: any) => {
+      const p = row.user_profiles
+      if (!p || seen.has(p.id)) return []
+      seen.add(p.id)
+      return [{ id: p.id, full_name: p.full_name }]
+    })
+    list.sort((a: { full_name: string }, b: { full_name: string }) => a.full_name.localeCompare(b.full_name))
+    return NextResponse.json(list)
+  }
+
   // Fetch dispatches with orchard details + applicator name
   const { data, error } = await svc
     .from('fert_dispatches')

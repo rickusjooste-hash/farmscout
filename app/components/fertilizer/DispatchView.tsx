@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { createClient } from '@/lib/supabase-auth'
 import type { ConfirmRow } from './ConfirmApplications'
 
 interface DispatchOrchard {
@@ -51,7 +50,6 @@ function orchardLabel(row: { orchard_nr: number | null; orchard_name: string; va
 }
 
 export default function DispatchView({ farmId, season, orgId }: Props) {
-  const supabase = createClient()
   const [appStatus, setAppStatus] = useState<ConfirmRow[]>([])
   const [dispatches, setDispatches] = useState<DispatchRow[]>([])
   const [applicators, setApplicators] = useState<Applicator[]>([])
@@ -67,26 +65,16 @@ export default function DispatchView({ farmId, season, orgId }: Props) {
   const [notes, setNotes] = useState('')
   const [creating, setCreating] = useState(false)
 
-  // Fetch users with farm access as potential applicators
+  // Fetch applicators via server-side API (bypasses RLS)
   useEffect(() => {
     async function loadApplicators() {
-      const { data } = await supabase
-        .from('user_farm_access')
-        .select('user_id, user_profiles!inner(id, full_name)')
-        .eq('farm_id', farmId)
-      if (!data) return
-      const seen = new Set<string>()
-      const list: Applicator[] = []
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for (const row of data as any[]) {
-        const p = row.user_profiles
-        if (p && !seen.has(p.id)) {
-          seen.add(p.id)
-          list.push({ id: p.id, full_name: p.full_name })
+      try {
+        const res = await fetch(`/api/fertilizer/dispatch?farm_id=${farmId}&applicators=1`)
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data)) setApplicators(data)
         }
-      }
-      list.sort((a, b) => a.full_name.localeCompare(b.full_name))
-      setApplicators(list)
+      } catch { /* ignore */ }
     }
     loadApplicators()
   }, [farmId])
