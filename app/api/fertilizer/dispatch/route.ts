@@ -29,12 +29,24 @@ export async function GET(req: NextRequest) {
 
   const svc = svcSupabase()
 
-  // Return applicators list if requested
+  // Return applicators list if requested — users with role='applicator' and farm access
   if (req.nextUrl.searchParams.get('applicators')) {
+    const { data: farm } = await svc.from('farms').select('organisation_id').eq('id', farmId).single()
+    if (!farm) return NextResponse.json([])
+
+    const { data: orgApplicators } = await svc
+      .from('organisation_users')
+      .select('user_id')
+      .eq('organisation_id', farm.organisation_id)
+      .eq('role', 'applicator')
+
+    if (!orgApplicators?.length) return NextResponse.json([])
+
     const { data: farmUsers } = await svc
       .from('user_farm_access')
       .select('user_id, user_profiles!inner(id, full_name)')
       .eq('farm_id', farmId)
+      .in('user_id', orgApplicators.map(a => a.user_id))
 
     const seen = new Set<string>()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

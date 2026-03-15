@@ -146,11 +146,10 @@ export async function POST(req: NextRequest) {
   }
 
   if (type === 'qc_worker' || type === 'runner' || type === 'applicator') {
-    // 3. Insert organisation_users — applicator uses 'scout' role (field worker)
-    const orgRole = type === 'applicator' ? 'scout' : type
+    // 3. Insert organisation_users
     const { error: orgUserError } = await supabase
       .from('organisation_users')
-      .insert({ organisation_id, user_id: userId, role: orgRole })
+      .insert({ organisation_id, user_id: userId, role: type })
 
     if (orgUserError) {
       await supabase.auth.admin.deleteUser(userId)

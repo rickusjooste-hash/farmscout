@@ -5,6 +5,12 @@
 -- Keeps: fert_dispatch_sections intact for backward compat
 
 -- ════════════════════════════════════════════════════════════════════════════
+-- 0. Add 'applicator' to the user_role enum
+-- ════════════════════════════════════════════════════════════════════════════
+
+ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'applicator';
+
+-- ════════════════════════════════════════════════════════════════════════════
 -- 1. Add dispatched_to on fert_dispatches — the assigned applicator
 -- ════════════════════════════════════════════════════════════════════════════
 
