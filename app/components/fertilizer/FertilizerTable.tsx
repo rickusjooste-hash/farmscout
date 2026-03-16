@@ -26,6 +26,7 @@ interface SummaryRow {
 interface Props {
   data: SummaryRow[]
   loading: boolean
+  onOrchardClick?: (orchardId: string) => void
 }
 
 function orchardLabel(name: string, nr: number | null, variety: string | null): string {
@@ -34,7 +35,7 @@ function orchardLabel(name: string, nr: number | null, variety: string | null): 
   return `${prefix}${name}${suffix}`
 }
 
-export default function FertilizerTable({ data, loading }: Props) {
+export default function FertilizerTable({ data, loading, onOrchardClick }: Props) {
   const [sortCol, setSortCol] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [selectedCommodity, setSelectedCommodity] = useState<string | null>(null)
@@ -246,7 +247,16 @@ export default function FertilizerTable({ data, loading }: Props) {
             {orchardRows.map(row => (
               <tr key={row.orchardId}>
                 <td style={{ ...st.td, position: 'sticky', left: 0, background: '#fff', fontWeight: 500, fontSize: 12, zIndex: 1 }}>
-                  {orchardLabel(row.orchardName, row.orchardNr, row.variety)}
+                  {onOrchardClick ? (
+                    <button
+                      onClick={() => onOrchardClick(row.orchardId)}
+                      style={{ background: 'none', border: 'none', color: '#2176d9', cursor: 'pointer', fontWeight: 500, fontSize: 12, padding: 0, textAlign: 'left' }}
+                    >
+                      {orchardLabel(row.orchardName, row.orchardNr, row.variety)}
+                    </button>
+                  ) : (
+                    orchardLabel(row.orchardName, row.orchardNr, row.variety)
+                  )}
                 </td>
                 <td style={{ ...st.td, textAlign: 'right', fontSize: 12, color: '#6a7a70' }}>
                   {row.ha != null ? row.ha.toFixed(1) : '\u2014'}

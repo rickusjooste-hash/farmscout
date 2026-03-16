@@ -14,6 +14,8 @@ export interface ScoreInput {
   // Production
   tonHa: number | null
   farmAvgTonHa: number | null
+  // Benchmark targets (org > industry > farm avg cascade)
+  benchmarkTarget: number | null // org_target or industry_target
   // Leaf health (nutrient code → value)
   leafNutrients: Record<string, number>
   norms: Record<string, NormRange>
@@ -32,9 +34,11 @@ export function calculateScore(input: ScoreInput): number {
   let total = 0
 
   // ── Production: 30 points ──
+  // Cascade: org target > industry target > farm avg
   const prodMax = 30
-  if (input.tonHa != null && input.farmAvgTonHa != null && input.farmAvgTonHa > 0) {
-    const ratio = input.tonHa / input.farmAvgTonHa
+  const baseline = input.benchmarkTarget ?? input.farmAvgTonHa
+  if (input.tonHa != null && baseline != null && baseline > 0) {
+    const ratio = input.tonHa / baseline
     if (ratio >= 1.2) total += prodMax
     else if (ratio >= 1.0) total += prodMax * 0.85
     else if (ratio >= 0.8) total += prodMax * 0.5

@@ -91,6 +91,7 @@ export default function IntelligencePage() {
   const [normsLookup, setNormsLookup] = useState<Record<string, NormRange>>({})
   const [qcByOrchard, setQcByOrchard] = useState<Record<string, QcIssueRow[]>>({})
   const [fertByOrchard, setFertByOrchard] = useState<Record<string, FertOrchardStatus>>({})
+  const [benchmarksByOrchard, setBenchmarksByOrchard] = useState<Record<string, number>>({})
 
 
   const seasonOptions = buildSeasonOptions(2018)
@@ -372,6 +373,20 @@ export default function IntelligencePage() {
         setFertByOrchard(fertMap)
       } catch { setFertByOrchard({}) }
 
+      // Benchmarks
+      try {
+        const benchRes = await fetch(`/api/benchmarks?farm_ids=${activeFarmIds.join(',')}&season=${encodeURIComponent(season)}`)
+        if (benchRes.ok) {
+          const benchData = await benchRes.json() as { orchard_id: string; org_target: number | null; industry_target: number | null }[]
+          const bMap: Record<string, number> = {}
+          for (const r of benchData) {
+            const target = r.org_target ?? r.industry_target
+            if (target != null) bMap[r.orchard_id] = target
+          }
+          setBenchmarksByOrchard(bMap)
+        }
+      } catch { setBenchmarksByOrchard({}) }
+
     } catch {
       setOrchards([])
     } finally {
@@ -467,6 +482,7 @@ export default function IntelligencePage() {
       const score = calculateScore({
         tonHa: prod?.tonHa ?? null,
         farmAvgTonHa: getGroupAvgTonHa(o),
+        benchmarkTarget: benchmarksByOrchard[o.id] ?? null,
         leafNutrients: nuts,
         norms,
         issueRate: totalIssueRate,
@@ -477,7 +493,7 @@ export default function IntelligencePage() {
 
       return { ...o, score }
     })
-  }, [orchards, nutrientsByOrchard, normsByOrchard, productionByOrchard, qcByOrchard, fertByOrchard, sizeByOrchard, varietyGroupAvgTonHa])
+  }, [orchards, nutrientsByOrchard, normsByOrchard, productionByOrchard, qcByOrchard, fertByOrchard, sizeByOrchard, varietyGroupAvgTonHa, benchmarksByOrchard])
 
   // Selected orchard details
   const selectedOrchard = orchards.find(o => o.id === selectedOrchardId)

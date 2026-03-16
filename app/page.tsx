@@ -8,6 +8,7 @@ import OrchardPressureMap from '@/app/components/OrchardPressureMap'
 import PestAlertSummary from '@/app/components/PestAlertSummary'
 import TreeScoutingAlertSummary from '@/app/components/TreeScoutingAlertSummary'
 import RebaitSummaryPanel from '@/app/components/RebaitSummaryPanel'
+import WeatherStrip from '@/app/components/WeatherStrip'
 import { useRouter } from 'next/navigation'
 import { Inter } from 'next/font/google'
 import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
@@ -642,12 +643,13 @@ export default function DashboardPage() {
             padding-top: calc(56px + env(safe-area-inset-top, 0px));
           }
           .dash-section-kpi    { order: 0; }
-          .dash-section-alerts { order: 1; }
-          .dash-section-weeks  { order: 2; display: none; }
-          .dash-section-map    { order: 3; }
-          .dash-section-tree   { order: 4; }
-          .dash-section-trend  { order: 5; display: none; }
-          .dash-section-rebait { order: 6; display: none; }
+          .dash-section-weather { order: 1; }
+          .dash-section-alerts { order: 2; }
+          .dash-section-weeks  { order: 3; display: none; }
+          .dash-section-map    { order: 4; }
+          .dash-section-tree   { order: 5; }
+          .dash-section-trend  { order: 6; display: none; }
+          .dash-section-rebait { order: 7; display: none; }
 
           .dash-expand-btn {
             min-height: 44px !important;
@@ -804,6 +806,11 @@ export default function DashboardPage() {
                   {weekSessions.length} of {totalOrchards} orchards this week
                 </div>
               </div>
+            </div>
+
+            {/* Weather Strip */}
+            <div className="dash-section-weather">
+              <WeatherStrip farmIds={effectiveFarmIds} />
             </div>
 
             {/* Pest Alerts */}
