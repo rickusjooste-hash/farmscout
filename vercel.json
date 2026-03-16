@@ -3,6 +3,10 @@
     {
       "path": "/api/weather/ingest?secret=${CRON_SECRET}",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/weather/aquacheck?secret=${CRON_SECRET}",
+      "schedule": "*/30 * * * *"
     }
   ]
 }
