@@ -25,6 +25,7 @@ export const PAGE_SECTIONS: PageSection[] = [
   { key: 'settings',    label: 'Settings',              routes: ['/settings'] },
   { key: 'qc',          label: 'QC',                    routes: ['/qc'], module: 'qc' },
   { key: 'production',  label: 'Production',            routes: ['/production'], module: 'production' },
+  { key: 'irrigation',  label: 'Irrigation',            routes: ['/irrigation'], module: 'irrigation' },
   { key: 'admin',       label: 'Admin',                 routes: ['/admin'] },
 ]
 

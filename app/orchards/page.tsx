@@ -24,14 +24,17 @@ interface Orchard {
   plant_distance: number | null
   row_width: number | null
   legacy_id: number | null
+  irrigation_type_id: string | null
   is_active: boolean
   commodities: { code: string; name: string } | null
   sections: { name: string; section_nr: number } | null
+  irrigation_types: { name: string; efficiency: number } | null
 }
 
 interface Commodity { id: string; code: string; name: string }
 interface Section   { id: string; name: string; section_nr: number }
 interface Farm      { id: string; full_name: string; code: string; organisation_id: string }
+interface IrrigationType { id: string; name: string; efficiency: number }
 
 const COMMODITY_COLORS: Record<string, string> = {
   POME:   '#6b9fd4',
@@ -42,12 +45,12 @@ function orchardColor(code: string | undefined) {
   return COMMODITY_COLORS[code ?? ''] ?? '#aaaaaa'
 }
 
-const ORCHARD_SELECT = 'id, name, orchard_nr, farm_id, organisation_id, commodity_id, section_id, variety, variety_group, rootstock, ha, year_planted, trees_per_ha, nr_of_trees, plant_distance, row_width, legacy_id, is_active, commodities(code,name), sections!section_id(name,section_nr)'
+const ORCHARD_SELECT = 'id, name, orchard_nr, farm_id, organisation_id, commodity_id, section_id, variety, variety_group, rootstock, ha, year_planted, trees_per_ha, nr_of_trees, plant_distance, row_width, legacy_id, irrigation_type_id, is_active, commodities(code,name), sections!section_id(name,section_nr), irrigation_types(name,efficiency)'
 
 function emptyForm() {
   return {
     name: '', commodityId: '', orchardNr: '', sectionId: '', farmId: '',
-    variety: '', varietyGroup: '', rootstock: '',
+    variety: '', varietyGroup: '', rootstock: '', irrigationTypeId: '',
     ha: '', yearPlanted: '', treesPerHa: '', nrOfTrees: '',
     plantDistance: '', rowWidth: '', legacyId: '',
   }
@@ -85,6 +88,7 @@ export default function OrchardsPage() {
   const [orchards,       setOrchards]       = useState<Orchard[]>([])
   const [commodities,    setCommodities]    = useState<Commodity[]>([])
   const [sections,       setSections]       = useState<Section[]>([])
+  const [irrigationTypes, setIrrigationTypes] = useState<IrrigationType[]>([])
   const [refreshKey,     setRefreshKey]     = useState(0)
 
   // ── Form state ────────────────────────────────────────────────────────────
@@ -127,9 +131,11 @@ export default function OrchardsPage() {
     Promise.all([
       supabase.from('commodities').select('id, code, name').order('name'),
       supabase.from('sections').select('id, name, section_nr').eq('farm_id', selectedFarmId).order('section_nr'),
-    ]).then(([{ data: comms }, { data: secs }]) => {
+      supabase.from('irrigation_types').select('id, name, efficiency').order('name'),
+    ]).then(([{ data: comms }, { data: secs }, { data: irrTypes }]) => {
       setCommodities((comms as Commodity[]) || [])
       setSections((secs as Section[]) || [])
+      setIrrigationTypes((irrTypes as IrrigationType[]) || [])
     })
   }, [selectedFarmId])
 
@@ -344,7 +350,7 @@ export default function OrchardsPage() {
       sectionId: o.section_id ?? '',
       farmId: o.farm_id,
       variety: o.variety ?? '', varietyGroup: o.variety_group ?? '',
-      rootstock: o.rootstock ?? '',
+      rootstock: o.rootstock ?? '', irrigationTypeId: o.irrigation_type_id ?? '',
       ha: o.ha?.toString() ?? '', yearPlanted: o.year_planted?.toString() ?? '',
       treesPerHa: o.trees_per_ha?.toString() ?? '', nrOfTrees: o.nr_of_trees?.toString() ?? '',
       plantDistance: o.plant_distance?.toString() ?? '', rowWidth: o.row_width?.toString() ?? '',
@@ -546,6 +552,20 @@ ${placemarks.join('\n')}
     })
     const json = await res.json()
     if (!res.ok || json.error) { setSaveErr(json.error || 'Save failed'); setSaving(false); return }
+
+    // Update irrigation_type_id separately (not in the upsert_orchard RPC)
+    const orchId = json.orchardId || (mode === 'edit' ? editTarget!.id : null)
+    if (orchId) {
+      await fetch('/api/orchards/manage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'update-irrigation-type',
+          id: orchId,
+          irrigationTypeId: form.irrigationTypeId || null,
+        }),
+      })
+    }
 
     setSaveOk(true); setSaving(false)
     setRefreshKey(k => k + 1)
@@ -886,6 +906,16 @@ ${placemarks.join('\n')}
                   <input className="field-input" value={form.rootstock}
                     onChange={e => setForm(f => ({ ...f, rootstock: e.target.value }))} />
                 </div>
+                <div className="field-wrap">
+                  <div className="field-label">Irrigation Type</div>
+                  <select className="field-input" value={form.irrigationTypeId}
+                    onChange={e => setForm(f => ({ ...f, irrigationTypeId: e.target.value }))}>
+                    <option value="">— Select —</option>
+                    {irrigationTypes.map(t => (
+                      <option key={t.id} value={t.id}>{t.name} ({Math.round(t.efficiency * 100)}%)</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="field-row">
                   <div className="field-wrap">
                     <div className="field-label">Hectares</div>
@@ -965,6 +995,7 @@ ${placemarks.join('\n')}
                       <div className="info-row"><span className="info-label">Nr trees</span><span className="info-value">{o.nr_of_trees?.toLocaleString() ?? '—'}</span></div>
                       <div className="info-row"><span className="info-label">Row width</span><span className="info-value">{o.row_width ? `${o.row_width} m` : '—'}</span></div>
                       <div className="info-row"><span className="info-label">Legacy ID</span><span className="info-value">{o.legacy_id ?? '—'}</span></div>
+                      <div className="info-row"><span className="info-label">Irrigation</span><span className="info-value">{(o.irrigation_types as any)?.name || '—'}{(o.irrigation_types as any)?.efficiency ? ` (${Math.round((o.irrigation_types as any).efficiency * 100)}%)` : ''}</span></div>
                       <div className="info-divider" />
 
                       {/* Zones section */}

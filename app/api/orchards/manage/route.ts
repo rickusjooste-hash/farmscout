@@ -29,7 +29,23 @@ export async function POST(req: NextRequest) {
     orchardNr, variety, varietyGroup, rootstock,
     ha, yearPlanted, treesPerHa, nrOfTrees,
     plantDistance, rowWidth, legacyId, boundary,
+    irrigationTypeId,
   } = body
+
+  // Handle irrigation type update (lightweight, separate path)
+  if (type === 'update-irrigation-type') {
+    if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+    const svc = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    )
+    const { error } = await svc.from('orchards')
+      .update({ irrigation_type_id: irrigationTypeId || null })
+      .eq('id', id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+    return NextResponse.json({ ok: true })
+  }
 
   if (!type || !['create', 'update'].includes(type)) {
     return NextResponse.json({ error: 'type must be "create" or "update"' }, { status: 400 })
