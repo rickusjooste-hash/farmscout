@@ -159,10 +159,11 @@ export default function SpreaderSettings({ farmId, orgId }: Props) {
 
   // Pending edits: key = `${width}_${opening}`, value = kg_per_ha string
   const [edits, setEdits] = useState<Record<string, string>>({})
+  const [structureChanged, setStructureChanged] = useState(false)
   const [saving, setSaving] = useState(false)
 
   // Reset edits when product/spreader changes
-  useEffect(() => { setEdits({}) }, [selectedSpreaderId, selectedProductId])
+  useEffect(() => { setEdits({}); setStructureChanged(false) }, [selectedSpreaderId, selectedProductId])
 
   // Count chart entries for a product on the selected spreader
   function productEntryCount(productId: string): number {
@@ -181,7 +182,7 @@ export default function SpreaderSettings({ farmId, orgId }: Props) {
     setEdits(prev => ({ ...prev, [`${width}_${opening}`]: value }))
   }
 
-  const hasEdits = Object.keys(edits).length > 0
+  const hasEdits = Object.keys(edits).length > 0 || structureChanged
 
   async function handleSaveChart() {
     if (!selectedSpreaderId || !selectedProductId || !hasEdits) return
@@ -211,6 +212,7 @@ export default function SpreaderSettings({ farmId, orgId }: Props) {
         })
       }
       setEdits({})
+      setStructureChanged(false)
       await fetchData()
     } catch { /* ignore */ }
     setSaving(false)
@@ -339,7 +341,7 @@ export default function SpreaderSettings({ farmId, orgId }: Props) {
                         <th key={w} style={{ ...st.th, textAlign: 'center' }}>
                           {w}m
                           <button
-                            onClick={() => setWidths(prev => prev.filter(x => x !== w))}
+                            onClick={() => { setWidths(prev => prev.filter(x => x !== w)); setStructureChanged(true) }}
                             style={st.removeColBtn}
                             title="Remove width"
                           >
@@ -375,7 +377,7 @@ export default function SpreaderSettings({ farmId, orgId }: Props) {
                         <td style={{ ...st.td, fontWeight: 600, color: '#1a2a3a', whiteSpace: 'nowrap' }}>
                           {opening.toFixed(1)}
                           <button
-                            onClick={() => setOpenings(prev => prev.filter(x => x !== opening))}
+                            onClick={() => { setOpenings(prev => prev.filter(x => x !== opening)); setStructureChanged(true) }}
                             style={st.removeRowBtn}
                             title="Remove opening"
                           >

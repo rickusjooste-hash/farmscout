@@ -65,18 +65,27 @@ export async function POST(req: NextRequest) {
       type: string; spreader_id: string; product_id: string
       entries: { width_m: number; opening: number; kg_per_ha: number }[]
     }
-    if (!spreader_id || !product_id || !entries?.length) {
-      return NextResponse.json({ error: 'spreader_id, product_id, entries required' }, { status: 400 })
+    if (!spreader_id || !product_id) {
+      return NextResponse.json({ error: 'spreader_id, product_id required' }, { status: 400 })
     }
     const svc = svcSupabase()
-    const rows = entries.map(e => ({
-      spreader_id, product_id,
-      width_m: e.width_m, opening: e.opening, kg_per_ha: e.kg_per_ha,
-    }))
-    const { error } = await svc
+    // Delete existing entries for this spreader+product, then insert new ones
+    const { error: delErr } = await svc
       .from('spreader_chart_entries')
-      .upsert(rows, { onConflict: 'spreader_id,product_id,width_m,opening' })
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+      .delete()
+      .eq('spreader_id', spreader_id)
+      .eq('product_id', product_id)
+    if (delErr) return NextResponse.json({ error: delErr.message }, { status: 400 })
+    if (entries?.length) {
+      const rows = entries.map(e => ({
+        spreader_id, product_id,
+        width_m: e.width_m, opening: e.opening, kg_per_ha: e.kg_per_ha,
+      }))
+      const { error } = await svc
+        .from('spreader_chart_entries')
+        .insert(rows)
+      if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+    }
     return NextResponse.json({ ok: true })
   }
 
