@@ -9,6 +9,7 @@ import PestAlertSummary from '@/app/components/PestAlertSummary'
 import TreeScoutingAlertSummary from '@/app/components/TreeScoutingAlertSummary'
 import RebaitSummaryPanel from '@/app/components/RebaitSummaryPanel'
 import WeatherStrip from '@/app/components/WeatherStrip'
+import SoilMoistureCards from '@/app/components/SoilMoistureCards'
 import { useRouter } from 'next/navigation'
 import { Inter } from 'next/font/google'
 import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
@@ -811,6 +812,7 @@ export default function DashboardPage() {
             {/* Weather Strip */}
             <div className="dash-section-weather">
               <WeatherStrip farmIds={effectiveFarmIds} />
+              <SoilMoistureCards farmIds={effectiveFarmIds} />
             </div>
 
             {/* Pest Alerts */}

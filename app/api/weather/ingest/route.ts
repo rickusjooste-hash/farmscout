@@ -12,9 +12,9 @@ function svcSupabase() {
 
 /**
  * Parse iLeaf MottechData.csv
- * Expected format (comma-separated):
- * datetime, temperature, rainfall, eto_cumulative, station_name, station_code
- * "2026-03-16 08:00", 22.5, 0.0, 1.2, "Moutons Valley", "GWS00128"
+ * Actual format (no header, no quotes):
+ * 2026-03-16 10:00:00,23.100000,.00,.11,Moutons Valley,GWS00128
+ * Fields: datetime, temperature, rainfall, eto_cumulative, station_name, station_code
  */
 function parseCSV(csv: string) {
   const lines = csv.trim().split('\n')
@@ -31,37 +31,21 @@ function parseCSV(csv: string) {
     const line = lines[i].trim()
     if (!line) continue
 
-    // Split on comma, respecting quoted fields
-    const parts = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g)
-    if (!parts || parts.length < 6) continue
+    const parts = line.split(',')
+    if (parts.length < 6) continue
 
-    const clean = (s: string) => s.replace(/^"|"$/g, '').trim()
-    const dateStr = clean(parts[0])
-    const temp = parseFloat(clean(parts[1]))
-    const rain = parseFloat(clean(parts[2]))
-    const eto = parseFloat(clean(parts[3]))
-    const stationName = clean(parts[4])
-    const stationCode = clean(parts[5])
+    const dateStr = parts[0].trim()
+    const temp = parseFloat(parts[1].trim())
+    const rain = parseFloat(parts[2].trim())
+    const eto = parseFloat(parts[3].trim())
+    const stationName = parts[4].trim()
+    const stationCode = parts[5].trim()
 
-    // Skip header row
+    // Skip header row if present
     if (isNaN(temp) && dateStr.toLowerCase().includes('date')) continue
 
-    // Parse date — iLeaf uses "YYYY-MM-DD HH:MM" or "DD/MM/YYYY HH:MM"
-    let parsedDate: Date | null = null
-    if (dateStr.includes('/')) {
-      // DD/MM/YYYY HH:MM format
-      const match = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})/)
-      if (match) {
-        parsedDate = new Date(
-          parseInt(match[3]), parseInt(match[2]) - 1, parseInt(match[1]),
-          parseInt(match[4]), parseInt(match[5])
-        )
-      }
-    } else {
-      parsedDate = new Date(dateStr)
-    }
-
-    if (!parsedDate || isNaN(parsedDate.getTime())) continue
+    const parsedDate = new Date(dateStr)
+    if (isNaN(parsedDate.getTime())) continue
 
     rows.push({
       reading_at: parsedDate.toISOString(),
