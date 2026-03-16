@@ -86,7 +86,7 @@ function computeDailySummaries(rows: Array<{
 
     return {
       reading_date: date,
-      eto_mm: etoVals.length > 0 ? Math.max(...etoVals) : null,
+      eto_mm: etoVals.length > 0 ? Math.round(etoVals.reduce((a, b) => a + b, 0) * 100) / 100 : null,
       rainfall_mm: rainVals.length > 0 ? rainVals.reduce((a, b) => a + b, 0) : null,
       temp_min_c: temps.length > 0 ? Math.min(...temps) : null,
       temp_max_c: temps.length > 0 ? Math.max(...temps) : null,
