@@ -143,10 +143,63 @@ export default function SpreaderSettings({ farmId, orgId }: Props) {
     return entry ? Number(entry.kg_per_ha) : null
   }
 
+  // Pending edits: key = `${width}_${opening}`, value = kg_per_ha string
+  const [edits, setEdits] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+
+  // Reset edits when product/spreader changes
+  useEffect(() => { setEdits({}) }, [selectedSpreaderId, selectedProductId])
+
   // Count chart entries for a product on the selected spreader
   function productEntryCount(productId: string): number {
     if (!selectedSpreaderId) return 0
     return chartEntries.filter(e => e.product_id === productId).length
+  }
+
+  function getCellValue(width: number, opening: number): string {
+    const key = `${width}_${opening}`
+    if (key in edits) return edits[key]
+    const val = getChartValue(width, opening)
+    return val != null ? String(val) : ''
+  }
+
+  function setCellValue(width: number, opening: number, value: string) {
+    setEdits(prev => ({ ...prev, [`${width}_${opening}`]: value }))
+  }
+
+  const hasEdits = Object.keys(edits).length > 0
+
+  async function handleSaveChart() {
+    if (!selectedSpreaderId || !selectedProductId || !hasEdits) return
+    setSaving(true)
+    try {
+      // Build all entries (existing + edits merged)
+      const entries: { width_m: number; opening: number; kg_per_ha: number }[] = []
+      for (const w of WIDTHS) {
+        for (const o of OPENINGS) {
+          const val = getCellValue(w, o)
+          const num = parseFloat(val)
+          if (val && !isNaN(num) && num > 0) {
+            entries.push({ width_m: w, opening: o, kg_per_ha: num })
+          }
+        }
+      }
+      if (entries.length > 0) {
+        await fetch('/api/fertilizer/spreaders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'chart',
+            spreader_id: selectedSpreaderId,
+            product_id: selectedProductId,
+            entries,
+          }),
+        })
+      }
+      setEdits({})
+      await fetchData()
+    } catch { /* ignore */ }
+    setSaving(false)
   }
 
   const activeSpreader = spreaders.find(s => s.id === selectedSpreaderId)
@@ -260,40 +313,59 @@ export default function SpreaderSettings({ farmId, orgId }: Props) {
             })}
           </div>
 
-          {/* Chart grid: widths as columns, openings as rows */}
+          {/* Chart grid: widths as columns, openings as rows — editable */}
           {selectedProductId && (
-            <div style={st.tableWrap}>
-              <table style={st.table}>
-                <thead>
-                  <tr>
-                    <th style={st.th}>Opening</th>
-                    {WIDTHS.map(w => (
-                      <th key={w} style={{ ...st.th, textAlign: 'center' }}>{w}m</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {OPENINGS.map((opening, idx) => (
-                    <tr key={opening} style={{ background: idx % 2 === 1 ? '#f8f6f2' : '#fff' }}>
-                      <td style={{ ...st.td, fontWeight: 600, color: '#1a2a3a' }}>{opening.toFixed(1)}</td>
-                      {WIDTHS.map(w => {
-                        const val = getChartValue(w, opening)
-                        return (
-                          <td key={w} style={{ ...st.td, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
-                            {val != null ? val : <span style={{ color: '#d4cfca' }}>—</span>}
-                          </td>
-                        )
-                      })}
+            <>
+              <div style={st.tableWrap}>
+                <table style={st.table}>
+                  <thead>
+                    <tr>
+                      <th style={st.th}>Opening</th>
+                      {WIDTHS.map(w => (
+                        <th key={w} style={{ ...st.th, textAlign: 'center' }}>{w}m</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody>
+                    {OPENINGS.map((opening, idx) => (
+                      <tr key={opening} style={{ background: idx % 2 === 1 ? '#f8f6f2' : '#fff' }}>
+                        <td style={{ ...st.td, fontWeight: 600, color: '#1a2a3a' }}>{opening.toFixed(1)}</td>
+                        {WIDTHS.map(w => {
+                          const key = `${w}_${opening}`
+                          const isEdited = key in edits
+                          return (
+                            <td key={w} style={st.td}>
+                              <input
+                                type="number"
+                                value={getCellValue(w, opening)}
+                                onChange={e => setCellValue(w, opening, e.target.value)}
+                                placeholder="—"
+                                style={{
+                                  ...st.cellInput,
+                                  ...(isEdited ? st.cellInputEdited : {}),
+                                }}
+                              />
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-          <div style={{ marginTop: 12, fontSize: 12, color: '#6a7a70' }}>
-            Values show kg/ha at {activeSpreader.fixed_speed_kmh} km/h. Chart data is entered via migration or managed through the database.
-          </div>
+              <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: 12, color: '#6a7a70' }}>
+                  kg/ha at {activeSpreader.fixed_speed_kmh} km/h. Edit cells directly, then save.
+                </div>
+                {hasEdits && (
+                  <button onClick={handleSaveChart} disabled={saving} style={st.chartSaveBtn}>
+                    {saving ? 'Saving...' : 'Save Chart'}
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -378,6 +450,20 @@ const st: Record<string, React.CSSProperties> = {
     whiteSpace: 'nowrap',
   },
   td: {
-    padding: '6px 10px', borderBottom: '1px solid #f0ede6', fontSize: 13,
+    padding: '2px 2px', borderBottom: '1px solid #f0ede6', fontSize: 13,
+  },
+  cellInput: {
+    width: '100%', boxSizing: 'border-box' as const, border: '1px solid transparent',
+    borderRadius: 4, padding: '4px 4px', fontSize: 13, color: '#1a2a3a',
+    textAlign: 'center' as const, fontVariantNumeric: 'tabular-nums',
+    fontFamily: 'Inter, sans-serif', background: 'transparent', outline: 'none',
+  },
+  cellInputEdited: {
+    border: '1px solid #f5c842', background: '#fef9ee',
+  },
+  chartSaveBtn: {
+    padding: '8px 20px', borderRadius: 8, border: 'none',
+    background: '#2176d9', color: '#fff', fontSize: 14, fontWeight: 600,
+    cursor: 'pointer', fontFamily: 'Inter, sans-serif',
   },
 }
