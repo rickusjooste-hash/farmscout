@@ -20,6 +20,8 @@ interface DispatchRow {
   product_name: string
   dispatched_to: string | null
   dispatched_to_name: string | null
+  spreader_id: string | null
+  spreader_name: string | null
   dispatched_at: string
   status: string
   notes: string | null
@@ -29,6 +31,11 @@ interface DispatchRow {
 interface Applicator {
   id: string
   full_name: string
+}
+
+interface SpreaderOption {
+  id: string
+  name: string
 }
 
 interface Props {
@@ -53,6 +60,7 @@ export default function DispatchView({ farmId, season, orgId }: Props) {
   const [appStatus, setAppStatus] = useState<ConfirmRow[]>([])
   const [dispatches, setDispatches] = useState<DispatchRow[]>([])
   const [applicators, setApplicators] = useState<Applicator[]>([])
+  const [spreaders, setSpreaders] = useState<SpreaderOption[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedDispatchId, setExpandedDispatchId] = useState<string | null>(null)
 
@@ -62,10 +70,11 @@ export default function DispatchView({ farmId, season, orgId }: Props) {
   const [selectedVariety, setSelectedVariety] = useState<string | null>(null)
   const [selectedLineIds, setSelectedLineIds] = useState<Set<string>>(new Set())
   const [selectedApplicatorId, setSelectedApplicatorId] = useState<string>('')
+  const [selectedSpreaderId, setSelectedSpreaderId] = useState<string>('')
   const [notes, setNotes] = useState('')
   const [creating, setCreating] = useState(false)
 
-  // Fetch applicators via server-side API (bypasses RLS)
+  // Fetch applicators + spreaders
   useEffect(() => {
     async function loadApplicators() {
       try {
@@ -76,7 +85,17 @@ export default function DispatchView({ farmId, season, orgId }: Props) {
         }
       } catch { /* ignore */ }
     }
+    async function loadSpreaders() {
+      try {
+        const res = await fetch(`/api/fertilizer/spreaders?farm_id=${farmId}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data)) setSpreaders(data.map((s: { id: string; name: string }) => ({ id: s.id, name: s.name })))
+        }
+      } catch { /* ignore */ }
+    }
     loadApplicators()
+    loadSpreaders()
   }, [farmId])
 
   const fetchData = useCallback(async () => {
@@ -207,12 +226,14 @@ export default function DispatchView({ farmId, season, orgId }: Props) {
           product_id: activeProduct,
           line_ids: [...selectedLineIds],
           dispatched_to: selectedApplicatorId || undefined,
+          spreader_id: selectedSpreaderId || undefined,
           notes: notes || undefined,
           organisation_id: orgId,
         }),
       })
       setSelectedLineIds(new Set())
       setSelectedApplicatorId('')
+      setSelectedSpreaderId('')
       setNotes('')
       await fetchData()
     } catch { /* ignore */ }
@@ -386,6 +407,19 @@ export default function DispatchView({ farmId, season, orgId }: Props) {
                 ))}
               </select>
               <a href="/applicators/new" target="_blank" style={st.addLink}>+ Add applicator</a>
+            </div>
+            <div style={{ minWidth: 200 }}>
+              <label style={st.fieldLabel}>Spreader</label>
+              <select
+                value={selectedSpreaderId}
+                onChange={e => setSelectedSpreaderId(e.target.value)}
+                style={st.select}
+              >
+                <option value="">-- Select spreader --</option>
+                {spreaders.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
             </div>
             <div style={{ flex: 1, minWidth: 200 }}>
               <label style={st.fieldLabel}>Notes (optional)</label>

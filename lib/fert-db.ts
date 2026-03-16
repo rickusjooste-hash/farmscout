@@ -41,6 +41,8 @@ export interface FertDispatchedLine {
   rate_per_ha: number
   total_qty: number | null
   bag_weight_kg: number | null
+  row_width: number | null
+  spreader_id: string | null
   confirmed: boolean
   date_applied: string | null
   actual_rate_per_ha: number | null
@@ -63,6 +65,15 @@ export interface FertApplication {
   created_at: string
   _syncStatus?: 'pending' | 'synced'
   _photo?: string | null  // base64 data URL — stripped before upload
+}
+
+export interface SpreaderChartEntry {
+  id: string
+  spreader_id: string
+  product_id: string
+  width_m: number
+  opening: number
+  kg_per_ha: number
 }
 
 export interface FertSyncQueueItem {
@@ -120,6 +131,11 @@ interface FertDB extends DBSchema {
     key: string
     value: FertMeta
   }
+  chart_entries: {
+    key: string
+    value: SpreaderChartEntry
+    indexes: { 'by_spreader_product': [string, string] }
+  }
 }
 
 // ── Database singleton ────────────────────────────────────────────────────
@@ -129,7 +145,7 @@ let _db: IDBPDatabase<FertDB> | null = null
 export async function getFertDB(): Promise<IDBPDatabase<FertDB>> {
   if (_db) return _db
 
-  _db = await openDB<FertDB>('farmscout-fert', 1, {
+  _db = await openDB<FertDB>('farmscout-fert', 2, {
     upgrade(db) {
       if (!db.objectStoreNames.contains('orchards')) {
         db.createObjectStore('orchards', { keyPath: 'id' })
@@ -158,6 +174,10 @@ export async function getFertDB(): Promise<IDBPDatabase<FertDB>> {
       }
       if (!db.objectStoreNames.contains('meta')) {
         db.createObjectStore('meta', { keyPath: 'key' })
+      }
+      if (!db.objectStoreNames.contains('chart_entries')) {
+        const s = db.createObjectStore('chart_entries', { keyPath: 'id' })
+        s.createIndex('by_spreader_product', ['spreader_id', 'product_id'])
       }
     },
   })

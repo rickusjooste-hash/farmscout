@@ -64,11 +64,12 @@ export async function GET(req: NextRequest) {
   const { data, error } = await svc
     .from('fert_dispatches')
     .select(`
-      id, farm_id, timing_id, product_id, dispatched_by, dispatched_to, dispatched_at, status, notes,
+      id, farm_id, timing_id, product_id, dispatched_by, dispatched_to, spreader_id, dispatched_at, status, notes,
       fert_timings!inner(label, sort_order),
       fert_products!inner(name),
       fert_dispatch_orchards(orchard_id, line_id, orchards!inner(name, orchard_nr, variety)),
-      applicant:user_profiles!dispatched_to(full_name)
+      applicant:user_profiles!dispatched_to(full_name),
+      spreader:spreaders!spreader_id(name)
     `)
     .eq('farm_id', farmId)
     .order('dispatched_at', { ascending: false })
@@ -97,6 +98,8 @@ export async function GET(req: NextRequest) {
       dispatched_by: d.dispatched_by,
       dispatched_to: d.dispatched_to,
       dispatched_to_name: d.applicant?.full_name || null,
+      spreader_id: d.spreader_id || null,
+      spreader_name: d.spreader?.name || null,
       dispatched_at: d.dispatched_at,
       status: d.status,
       notes: d.notes,
@@ -116,7 +119,7 @@ export async function POST(req: NextRequest) {
   let body: Record<string, unknown>
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }) }
 
-  const { farm_id, timing_id, product_id, line_ids, notes, organisation_id, dispatched_to } = body as {
+  const { farm_id, timing_id, product_id, line_ids, notes, organisation_id, dispatched_to, spreader_id } = body as {
     farm_id: string
     timing_id: string
     product_id: string
@@ -124,6 +127,7 @@ export async function POST(req: NextRequest) {
     notes?: string
     organisation_id: string
     dispatched_to?: string
+    spreader_id?: string
   }
 
   if (!farm_id || !timing_id || !product_id || !line_ids?.length || !organisation_id) {
@@ -152,6 +156,7 @@ export async function POST(req: NextRequest) {
       product_id,
       dispatched_by: user.id,
       dispatched_to: dispatched_to || null,
+      spreader_id: spreader_id || null,
       notes: notes || null,
     })
     .select('id')

@@ -62,13 +62,13 @@ export default function FertLogin() {
       localStorage.setItem('fertapp_farm_id', farmId)
       localStorage.setItem('fertapp_org_id', orgId)
 
-      // 5. Pull dispatched lines into IndexedDB
-      const { pullFertDispatchedLines } = await import('@/lib/fert-sync')
+      // 5. Pull dispatched lines + chart entries into IndexedDB
+      const { pullFertDispatchedLines, pullSpreaderChartEntries } = await import('@/lib/fert-sync')
       const syncResult = await pullFertDispatchedLines(accessToken)
       if (!syncResult.success) {
         console.warn('[FertLogin] Sync warning:', syncResult.error)
-        // Non-fatal — allow login even if sync fails
       }
+      await pullSpreaderChartEntries(accessToken)
 
       // 6. Go to FertApp home
       window.location.href = '/fert'

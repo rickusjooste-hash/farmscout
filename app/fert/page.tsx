@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import ApplicationView from './ApplicationView'
-import type { FertDispatchedLine } from '@/lib/fert-db'
+import type { FertDispatchedLine, SpreaderChartEntry } from '@/lib/fert-db'
 
 type ViewMode = 'home' | 'application'
 
@@ -17,6 +17,7 @@ export default function FertAppPage() {
   const [orgId, setOrgId] = useState('')
   const [userId, setUserId] = useState('')
   const [collapsedTimings, setCollapsedTimings] = useState<Set<string>>(new Set())
+  const [chartEntries, setChartEntries] = useState<SpreaderChartEntry[]>([])
 
   // Init
   useEffect(() => {
@@ -69,10 +70,15 @@ export default function FertAppPage() {
   const loadLines = useCallback(async () => {
     try {
       const { fertGetAll } = await import('@/lib/fert-db')
-      const all = await fertGetAll('dispatched_lines')
+      const [all, charts] = await Promise.all([
+        fertGetAll('dispatched_lines'),
+        fertGetAll('chart_entries'),
+      ])
       setLines(all.sort((a, b) => (a.timing_sort - b.timing_sort) || a.orchard_name.localeCompare(b.orchard_name)))
+      setChartEntries(charts)
     } catch {
       setLines([])
+      setChartEntries([])
     }
     await refreshPendingCount()
   }, [])
@@ -107,6 +113,28 @@ export default function FertAppPage() {
     localStorage.removeItem('fertapp_org_id')
     localStorage.removeItem('fertapp_ref_last_pull')
     window.location.href = '/fert/login'
+  }
+
+  function findOpening(line: FertDispatchedLine): { opening: number; actualKgHa: number } | null {
+    if (!line.spreader_id || !line.row_width || !line.rate_per_ha) return null
+    const widthM = line.row_width * 2
+    // Filter chart entries for this spreader + product
+    const candidates = chartEntries.filter(
+      e => e.spreader_id === line.spreader_id && e.product_id === line.product_id
+    )
+    if (candidates.length === 0) return null
+    // Find available widths and pick the closest
+    const availableWidths = [...new Set(candidates.map(e => Number(e.width_m)))]
+    const closestWidth = availableWidths.reduce((best, w) =>
+      Math.abs(w - widthM) < Math.abs(best - widthM) ? w : best
+    )
+    // Filter to that width, find closest kg/ha
+    const widthEntries = candidates.filter(e => Number(e.width_m) === closestWidth)
+    if (widthEntries.length === 0) return null
+    const best = widthEntries.reduce((prev, curr) =>
+      Math.abs(Number(curr.kg_per_ha) - line.rate_per_ha) < Math.abs(Number(prev.kg_per_ha) - line.rate_per_ha) ? curr : prev
+    )
+    return { opening: Number(best.opening), actualKgHa: Number(best.kg_per_ha) }
   }
 
   function handleLineSelect(line: FertDispatchedLine) {
@@ -262,6 +290,12 @@ export default function FertAppPage() {
                             {Math.ceil(line.total_qty / line.bag_weight_kg)} bags
                           </div>
                         ) : null}
+                        {(() => {
+                          const result = findOpening(line)
+                          return result ? (
+                            <div style={s.lineOpening}>Opening: {result.opening.toFixed(1)}</div>
+                          ) : null
+                        })()}
                       </div>
                     </button>
                   ))}
@@ -409,6 +443,7 @@ const s: Record<string, React.CSSProperties> = {
   lineRate: { fontSize: 16, fontWeight: 700 },
   lineUnit: { fontSize: 11, color: '#6a8a6a' },
   lineBags: { fontSize: 13, fontWeight: 600, color: '#f5c842', marginTop: 2 },
+  lineOpening: { fontSize: 13, fontWeight: 700, color: '#4caf72', marginTop: 2 },
   footer: {
     padding: '16px 20px',
     borderTop: '1px solid #2e5a2e',

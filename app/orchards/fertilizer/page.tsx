@@ -12,6 +12,7 @@ import ProductSettings from '@/app/components/fertilizer/ProductSettings'
 import ImportModal from '@/app/components/fertilizer/ImportModal'
 import DispatchView from '@/app/components/fertilizer/DispatchView'
 import OrchardFertDetail from '@/app/components/fertilizer/OrchardFertDetail'
+import SpreaderSettings from '@/app/components/fertilizer/SpreaderSettings'
 
 function getCurrentSeason(): string {
   const now = new Date()
@@ -77,7 +78,7 @@ interface OrderRow {
   k_pct: number
 }
 
-type ViewMode = 'dashboard' | 'table' | 'order' | 'confirm' | 'dispatch' | 'products'
+type ViewMode = 'dashboard' | 'table' | 'order' | 'confirm' | 'dispatch' | 'products' | 'spreaders'
 
 export default function FertilizerPage() {
   const { farmIds, isSuperAdmin, contextLoaded, orgId, allowedRoutes, allowed } = usePageGuard()
@@ -442,6 +443,12 @@ export default function FertilizerPage() {
             >
               Products
             </button>
+            <button
+              onClick={() => setViewMode('spreaders')}
+              style={{ ...st.viewBtn, ...(viewMode === 'spreaders' ? st.viewBtnActive : {}) }}
+            >
+              Spreaders
+            </button>
           </div>
           <div style={st.divider} />
           <a
@@ -454,7 +461,7 @@ export default function FertilizerPage() {
         </div>
 
         {/* KPI strip */}
-        {viewMode !== 'products' && <div style={st.kpiStrip}>
+        {viewMode !== 'products' && viewMode !== 'spreaders' && <div style={st.kpiStrip}>
           <div style={st.kpiCard}>
             <div style={st.kpiValue}>{uniqueOrchards.size}</div>
             <div style={st.kpiLabel}>Orchards</div>
@@ -508,6 +515,10 @@ export default function FertilizerPage() {
 
         {viewMode === 'products' && orgId && (
           <ProductSettings orgId={orgId} />
+        )}
+
+        {viewMode === 'spreaders' && selectedFarmId && orgId && (
+          <SpreaderSettings farmId={selectedFarmId} orgId={orgId} />
         )}
 
         {/* Empty state */}
