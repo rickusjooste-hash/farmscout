@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await svc
     .from('spreaders')
     .select(`
-      id, name, fixed_speed_kmh,
+      id, name, fixed_speed_kmh, grid_openings, grid_widths,
       spreader_chart_entries(id, product_id, width_m, opening, kg_per_ha)
     `)
     .eq('farm_id', farmId)
@@ -44,6 +44,8 @@ export async function GET(req: NextRequest) {
     id: s.id,
     name: s.name,
     fixed_speed_kmh: s.fixed_speed_kmh,
+    grid_openings: s.grid_openings || null,
+    grid_widths: s.grid_widths || null,
     chart_entries: s.spreader_chart_entries || [],
   }))
 
@@ -61,14 +63,22 @@ export async function POST(req: NextRequest) {
 
   // Chart entry upsert mode
   if (body.type === 'chart') {
-    const { spreader_id, product_id, entries } = body as {
+    const { spreader_id, product_id, entries, grid_openings, grid_widths } = body as {
       type: string; spreader_id: string; product_id: string
       entries: { width_m: number; opening: number; kg_per_ha: number }[]
+      grid_openings?: number[]; grid_widths?: number[]
     }
     if (!spreader_id || !product_id) {
       return NextResponse.json({ error: 'spreader_id, product_id required' }, { status: 400 })
     }
     const svc = svcSupabase()
+    // Save grid structure on the spreader
+    if (grid_openings || grid_widths) {
+      const gridUpdate: Record<string, unknown> = {}
+      if (grid_openings) gridUpdate.grid_openings = grid_openings
+      if (grid_widths) gridUpdate.grid_widths = grid_widths
+      await svc.from('spreaders').update(gridUpdate).eq('id', spreader_id)
+    }
     // Delete existing entries for this spreader+product, then insert new ones
     const { error: delErr } = await svc
       .from('spreader_chart_entries')

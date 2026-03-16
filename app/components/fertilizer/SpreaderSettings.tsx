@@ -6,6 +6,8 @@ interface Spreader {
   id: string
   name: string
   fixed_speed_kmh: number
+  grid_openings: number[] | null
+  grid_widths: number[] | null
 }
 
 interface ChartEntry {
@@ -78,15 +80,12 @@ export default function SpreaderSettings({ farmId, orgId }: Props) {
       }
       setChartEntries(allEntries)
 
-      // Derive openings and widths from existing chart data
-      if (allEntries.length > 0) {
-        const existingOpenings = [...new Set(allEntries.map(e => Number(e.opening)))].sort((a, b) => a - b)
-        const existingWidths = [...new Set(allEntries.map(e => Number(e.width_m)))].sort((a, b) => a - b)
-        if (existingOpenings.length > 0) setOpenings(existingOpenings)
-        if (existingWidths.length > 0) setWidths(existingWidths)
-      }
-
       if (sp.length > 0 && !selectedSpreaderId) setSelectedSpreaderId(sp[0].id)
+
+      // Load grid from selected (or first) spreader
+      const active = sp.find((s: Spreader) => s.id === selectedSpreaderId) || sp[0]
+      if (active?.grid_openings?.length) setOpenings(active.grid_openings.map(Number).sort((a: number, b: number) => a - b))
+      if (active?.grid_widths?.length) setWidths(active.grid_widths.map(Number).sort((a: number, b: number) => a - b))
       if (pr.length > 0 && !selectedProductId) setSelectedProductId(pr[0].id)
     } catch { /* ignore */ }
     setLoading(false)
@@ -162,8 +161,14 @@ export default function SpreaderSettings({ farmId, orgId }: Props) {
   const [structureChanged, setStructureChanged] = useState(false)
   const [saving, setSaving] = useState(false)
 
-  // Reset edits when product/spreader changes
-  useEffect(() => { setEdits({}); setStructureChanged(false) }, [selectedSpreaderId, selectedProductId])
+  // Reset edits and reload grid when product/spreader changes
+  useEffect(() => {
+    setEdits({})
+    setStructureChanged(false)
+    const active = spreaders.find(s => s.id === selectedSpreaderId)
+    if (active?.grid_openings?.length) setOpenings(active.grid_openings.map(Number).sort((a, b) => a - b))
+    if (active?.grid_widths?.length) setWidths(active.grid_widths.map(Number).sort((a, b) => a - b))
+  }, [selectedSpreaderId, selectedProductId])
 
   // Count chart entries for a product on the selected spreader
   function productEntryCount(productId: string): number {
@@ -208,6 +213,8 @@ export default function SpreaderSettings({ farmId, orgId }: Props) {
             spreader_id: selectedSpreaderId,
             product_id: selectedProductId,
             entries,
+            grid_openings: openings,
+            grid_widths: widths,
           }),
         })
       }
