@@ -367,6 +367,16 @@ export default function SpreaderSettings({ farmId, orgId }: Props) {
                               }
                             }}
                           />
+                          <button
+                            onClick={() => {
+                              const v = parseFloat(newWidth)
+                              if (v > 0 && !widths.includes(v)) {
+                                setWidths(prev => [...prev, v].sort((a, b) => a - b))
+                                setNewWidth('')
+                              }
+                            }}
+                            style={{ background: '#4caf72', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 6px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}
+                          >+</button>
                         </div>
                       </th>
                     </tr>
@@ -426,6 +436,16 @@ export default function SpreaderSettings({ farmId, orgId }: Props) {
                               }
                             }}
                           />
+                          <button
+                            onClick={() => {
+                              const v = parseFloat(newOpening)
+                              if (v > 0 && !openings.includes(v)) {
+                                setOpenings(prev => [...prev, v].sort((a, b) => a - b))
+                                setNewOpening('')
+                              }
+                            }}
+                            style={{ ...st.addBtn, padding: '4px 8px', fontSize: 11 }}
+                          >+</button>
                         </div>
                       </td>
                       {widths.map(w => <td key={w} style={st.td} />)}
