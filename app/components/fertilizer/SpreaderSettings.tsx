@@ -26,8 +26,8 @@ interface Props {
   orgId: string
 }
 
-const OPENINGS = [0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 2.8, 3.2, 3.6, 4.0, 4.2, 4.4, 4.6, 4.8, 5.0]
-const WIDTHS = [4, 5, 6, 7, 8, 9]
+const DEFAULT_OPENINGS = [0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 2.8, 3.2, 3.6, 4.0, 4.2, 4.4, 4.6, 4.8, 5.0]
+const DEFAULT_WIDTHS = [4, 5, 6, 7, 8, 9]
 
 export default function SpreaderSettings({ farmId, orgId }: Props) {
   const [spreaders, setSpreaders] = useState<Spreader[]>([])
@@ -38,6 +38,12 @@ export default function SpreaderSettings({ farmId, orgId }: Props) {
   // Selected state
   const [selectedSpreaderId, setSelectedSpreaderId] = useState<string | null>(null)
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
+
+  // Editable openings and widths per spreader
+  const [openings, setOpenings] = useState<number[]>(DEFAULT_OPENINGS)
+  const [widths, setWidths] = useState<number[]>(DEFAULT_WIDTHS)
+  const [newOpening, setNewOpening] = useState('')
+  const [newWidth, setNewWidth] = useState('')
 
   // Add spreader form
   const [newName, setNewName] = useState('')
@@ -71,6 +77,14 @@ export default function SpreaderSettings({ farmId, orgId }: Props) {
         }
       }
       setChartEntries(allEntries)
+
+      // Derive openings and widths from existing chart data
+      if (allEntries.length > 0) {
+        const existingOpenings = [...new Set(allEntries.map(e => Number(e.opening)))].sort((a, b) => a - b)
+        const existingWidths = [...new Set(allEntries.map(e => Number(e.width_m)))].sort((a, b) => a - b)
+        if (existingOpenings.length > 0) setOpenings(existingOpenings)
+        if (existingWidths.length > 0) setWidths(existingWidths)
+      }
 
       if (sp.length > 0 && !selectedSpreaderId) setSelectedSpreaderId(sp[0].id)
       if (pr.length > 0 && !selectedProductId) setSelectedProductId(pr[0].id)
@@ -175,8 +189,8 @@ export default function SpreaderSettings({ farmId, orgId }: Props) {
     try {
       // Build all entries (existing + edits merged)
       const entries: { width_m: number; opening: number; kg_per_ha: number }[] = []
-      for (const w of WIDTHS) {
-        for (const o of OPENINGS) {
+      for (const w of widths) {
+        for (const o of openings) {
           const val = getCellValue(w, o)
           const num = parseFloat(val)
           if (val && !isNaN(num) && num > 0) {
@@ -321,16 +335,54 @@ export default function SpreaderSettings({ farmId, orgId }: Props) {
                   <thead>
                     <tr>
                       <th style={st.th}>Opening</th>
-                      {WIDTHS.map(w => (
-                        <th key={w} style={{ ...st.th, textAlign: 'center' }}>{w}m</th>
+                      {widths.map(w => (
+                        <th key={w} style={{ ...st.th, textAlign: 'center' }}>
+                          {w}m
+                          <button
+                            onClick={() => setWidths(prev => prev.filter(x => x !== w))}
+                            style={st.removeColBtn}
+                            title="Remove width"
+                          >
+                            &times;
+                          </button>
+                        </th>
                       ))}
+                      <th style={{ ...st.th, textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                          <input
+                            type="number"
+                            value={newWidth}
+                            onChange={e => setNewWidth(e.target.value)}
+                            placeholder="+"
+                            style={st.addColInput}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') {
+                                const v = parseFloat(newWidth)
+                                if (v > 0 && !widths.includes(v)) {
+                                  setWidths(prev => [...prev, v].sort((a, b) => a - b))
+                                  setNewWidth('')
+                                }
+                              }
+                            }}
+                          />
+                        </div>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {OPENINGS.map((opening, idx) => (
+                    {openings.map((opening, idx) => (
                       <tr key={opening} style={{ background: idx % 2 === 1 ? '#f8f6f2' : '#fff' }}>
-                        <td style={{ ...st.td, fontWeight: 600, color: '#1a2a3a' }}>{opening.toFixed(1)}</td>
-                        {WIDTHS.map(w => {
+                        <td style={{ ...st.td, fontWeight: 600, color: '#1a2a3a', whiteSpace: 'nowrap' }}>
+                          {opening.toFixed(1)}
+                          <button
+                            onClick={() => setOpenings(prev => prev.filter(x => x !== opening))}
+                            style={st.removeRowBtn}
+                            title="Remove opening"
+                          >
+                            &times;
+                          </button>
+                        </td>
+                        {widths.map(w => {
                           const key = `${w}_${opening}`
                           const isEdited = key in edits
                           return (
@@ -348,15 +400,42 @@ export default function SpreaderSettings({ farmId, orgId }: Props) {
                             </td>
                           )
                         })}
+                        <td style={st.td} />
                       </tr>
                     ))}
+                    {/* Add opening row */}
+                    <tr style={{ background: '#f0f7ff' }}>
+                      <td style={st.td}>
+                        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={newOpening}
+                            onChange={e => setNewOpening(e.target.value)}
+                            placeholder="+ opening"
+                            style={{ ...st.cellInput, border: '1px solid #d4cfca', width: 80 }}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') {
+                                const v = parseFloat(newOpening)
+                                if (v > 0 && !openings.includes(v)) {
+                                  setOpenings(prev => [...prev, v].sort((a, b) => a - b))
+                                  setNewOpening('')
+                                }
+                              }
+                            }}
+                          />
+                        </div>
+                      </td>
+                      {widths.map(w => <td key={w} style={st.td} />)}
+                      <td style={st.td} />
+                    </tr>
                   </tbody>
                 </table>
               </div>
 
               <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ fontSize: 12, color: '#6a7a70' }}>
-                  kg/ha at {activeSpreader.fixed_speed_kmh} km/h. Edit cells directly, then save.
+                  kg/ha at {activeSpreader.fixed_speed_kmh} km/h. Edit cells, add/remove rows and columns, then save.
                 </div>
                 {hasEdits && (
                   <button onClick={handleSaveChart} disabled={saving} style={st.chartSaveBtn}>
@@ -460,6 +539,19 @@ const st: Record<string, React.CSSProperties> = {
   },
   cellInputEdited: {
     border: '1px solid #f5c842', background: '#fef9ee',
+  },
+  removeRowBtn: {
+    background: 'none', border: 'none', color: '#d4cfca', fontSize: 12,
+    cursor: 'pointer', marginLeft: 4, padding: '0 2px', lineHeight: 1,
+  },
+  removeColBtn: {
+    background: 'none', border: 'none', color: '#d4cfca', fontSize: 11,
+    cursor: 'pointer', marginLeft: 2, padding: 0, lineHeight: 1, verticalAlign: 'middle',
+  },
+  addColInput: {
+    width: 40, border: '1px solid #d4cfca', borderRadius: 4, padding: '2px 4px',
+    fontSize: 11, textAlign: 'center' as const, outline: 'none',
+    fontFamily: 'Inter, sans-serif', background: '#fff', color: '#1a2a3a',
   },
   chartSaveBtn: {
     padding: '8px 20px', borderRadius: 8, border: 'none',
