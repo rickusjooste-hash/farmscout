@@ -651,6 +651,24 @@ export default function OrchardReportPage() {
                         )
                       })}
                     </tbody>
+                    <tfoot>
+                      <tr style={{ borderTop: '2px solid #e8e4dc' }}>
+                        <td style={{ fontWeight: 700, fontSize: 11, color: '#1a2a3a' }}>Total</td>
+                        {displaySeasons.map(s => {
+                          const issues = issuesBySeason[s] || []
+                          const totalCount = issues.reduce((sum, i) => sum + i.total_count, 0)
+                          const totalFruit = (sizeBySeason[s] || []).reduce((sum, b) => sum + b.fruit_count, 0)
+                          const totalPct = totalFruit > 0 ? (totalCount / totalFruit) * 100 : null
+                          return (
+                            <td key={s}
+                              className={s === currentSeason ? 'cur' : ''}
+                              style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 12, color: '#1a2a3a' }}>
+                              {totalPct != null && totalPct > 0 ? `${totalPct.toFixed(1)}%` : '\u2014'}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
               ) : <div className="rpt-nodata">No quality issue data available</div>}
