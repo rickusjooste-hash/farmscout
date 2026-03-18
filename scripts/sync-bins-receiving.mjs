@@ -130,12 +130,66 @@ async function downloadWorkbookFromGraph() {
   return XLSX.read(buffer, { type: 'buffer' })
 }
 
-// ── Workbook loader (Graph or local) ────────────────────────────────────────
+// ── SharePoint direct download (uses Windows session auth) ──────────────────
+
+const SHAREPOINT_URL = process.env.SHAREPOINT_DOWNLOAD_URL || ''
+const FRESH_DOWNLOAD_PATH = resolve(ROOT, '.cache', 'BinsRecieving-fresh.xlsx')
+
+async function downloadFromSharePoint() {
+  const { execSync } = await import('child_process')
+  const { mkdirSync } = await import('fs')
+
+  mkdirSync(resolve(ROOT, '.cache'), { recursive: true })
+
+  console.log(`  Downloading fresh copy from SharePoint...`)
+  const psCmd = `Invoke-WebRequest -Uri '${SHAREPOINT_URL}' -OutFile '${FRESH_DOWNLOAD_PATH.replace(/\\/g, '\\\\')}' -UseDefaultCredentials -ErrorAction Stop`
+  try {
+    execSync(`powershell -Command "${psCmd}"`, { timeout: 30_000 })
+    const { statSync } = await import('fs')
+    const size = statSync(FRESH_DOWNLOAD_PATH).size
+    if (size < 100_000) {
+      console.log(`  Warning: downloaded file is only ${size} bytes — likely a login page, falling back to local file`)
+      return null
+    }
+    console.log(`  Downloaded ${(size / 1024).toFixed(0)} KB`)
+    return XLSX.readFile(FRESH_DOWNLOAD_PATH)
+  } catch (err) {
+    console.log(`  SharePoint download failed: ${err.message} — falling back to local file`)
+    return null
+  }
+}
+
+// ── Force OneDrive to check for updates ─────────────────────────────────────
+
+async function nudgeOneDriveSync() {
+  if (FORCE_LOCAL || USE_GRAPH) return
+  const { execSync } = await import('child_process')
+  try {
+    // Restart OneDrive to force it to check for remote changes immediately
+    // (org policy sets poll interval to 6+ hours, this resets the timer)
+    console.log('  Nudging OneDrive to check for updates...')
+    execSync('powershell -Command "Stop-Process -Name OneDrive -Force -ErrorAction SilentlyContinue; Start-Sleep 2; Start-Process \\"C:\\Program Files\\Microsoft OneDrive\\OneDrive.exe\\" -ArgumentList \\"/background\\""', { timeout: 15_000 })
+    // Give OneDrive time to start and detect changes
+    await new Promise(r => setTimeout(r, 15_000))
+    console.log('  OneDrive restarted')
+  } catch (err) {
+    console.log(`  OneDrive nudge failed (non-fatal): ${err.message}`)
+  }
+}
+
+// ── Workbook loader (SharePoint > Graph > local) ────────────────────────────
 
 async function loadWorkbook() {
+  // Try SharePoint direct download first (fresh data, bypasses OneDrive sync lag)
+  if (SHAREPOINT_URL) {
+    const wb = await downloadFromSharePoint()
+    if (wb) return wb
+  }
   if (USE_GRAPH) {
     return await downloadWorkbookFromGraph()
   }
+  // Nudge OneDrive before reading local file
+  await nudgeOneDriveSync()
   console.log(`  Reading local file: ${FILE_PATH}`)
   return XLSX.readFile(FILE_PATH)
 }

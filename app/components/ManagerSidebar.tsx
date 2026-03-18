@@ -375,6 +375,7 @@ export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], 
           <a href="/production" className={cls('/production')}><span className="ms-nav-icon"><PackageIcon /></span> Production</a>
           <a href="/production/report" className={cls('/production/report')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><ClipboardCheckIcon /></span> Report</a>
           <a href="/production/settings" className={cls('/production/settings')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><ScaleIcon /></span> Bin Weights</a>
+          <a href="/receivers/new" className={cls('/receivers/new')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><PersonPlusIcon /></span> New Receiver</a>
         </>
       )}
 

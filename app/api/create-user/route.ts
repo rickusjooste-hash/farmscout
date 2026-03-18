@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     farm_id?: string
     farm_ids?: string[]
     employee_nr?: string
-    type: 'scout' | 'manager' | 'qc_worker' | 'runner' | 'applicator'
+    type: 'scout' | 'manager' | 'qc_worker' | 'runner' | 'applicator' | 'receiver'
     role?: string
     allowed_pages?: string[] | null
   }
@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true })
   }
 
-  if (type === 'qc_worker' || type === 'runner' || type === 'applicator') {
+  if (type === 'qc_worker' || type === 'runner' || type === 'applicator' || type === 'receiver') {
     // 3. Insert organisation_users
     const { error: orgUserError } = await supabase
       .from('organisation_users')
