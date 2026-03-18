@@ -104,7 +104,7 @@ export default function ImportModal({ farms, commodities, initialFarmId, onDone,
   useEffect(() => {
     if (!farmId) return
     const supabase = createClient()
-    supabase.from('orchards').select('id, name, variety, legacy_id').eq('farm_id', farmId).eq('is_active', true).order('name')
+    supabase.from('orchards').select('id, name, variety, legacy_id').eq('farm_id', farmId).eq('is_active', true).eq('status', 'active').order('name')
       .then(({ data }) => setOrchards((data || []) as Orchard[]))
   }, [farmId])
 

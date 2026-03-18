@@ -193,7 +193,8 @@ export default function OrchardAnalysisPage() {
           supabase.from('orchards')
             .select('id, name, variety, variety_group, rootstock, ha, year_planted, nr_of_trees, commodity_id, farm_id, commodities(name, code)')
             .in('farm_id', effectiveFarmIds)
-            .eq('is_active', true),
+            .eq('is_active', true)
+            .eq('status', 'active'),
           supabase.rpc('get_orchard_boundaries'),
           hasProduction
             ? supabase.rpc('get_production_bruising_summary', { p_farm_ids: effectiveFarmIds, p_season: season })

@@ -354,7 +354,8 @@ export default function ProductionPage() {
             .from('orchards')
             .select('id, name, variety, variety_group, ha, commodity_id, farm_id')
             .in('farm_id', effectiveFarmIds)
-            .eq('is_active', true),
+            .eq('is_active', true)
+            .eq('status', 'active'),
           orgId
             ? supabase.from('production_bin_weights').select('commodity_id, variety, default_weight_kg').eq('organisation_id', orgId)
             : Promise.resolve({ data: [] }),

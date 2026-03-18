@@ -95,7 +95,7 @@ export default function SectionsPage() {
     setOrchards([])
     const [{ data: sectionData }, { data: orchardData }] = await Promise.all([
       supabase.from('sections').select('*').eq('farm_id', farmId).order('section_nr'),
-      supabase.from('orchards').select('id, name, variety, legacy_id, section_id').eq('farm_id', farmId).eq('is_active', true).order('name'),
+      supabase.from('orchards').select('id, name, variety, legacy_id, section_id').eq('farm_id', farmId).eq('is_active', true).eq('status', 'active').order('name'),
     ])
     setSections(sectionData || [])
     setOrchards(orchardData || [])

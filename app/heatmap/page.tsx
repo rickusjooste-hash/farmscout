@@ -93,7 +93,7 @@ export default function HeatmapPage() {
         // Load full commodity pest list
         const { data: orchardData } = await supabase
           .from('orchards').select('commodity_id')
-          .in('farm_id', effectiveFarmIds).eq('is_active', true)
+          .in('farm_id', effectiveFarmIds).eq('is_active', true).eq('status', 'active')
         const commodityIds = [...new Set((orchardData || []).map((o: any) => o.commodity_id as string))]
         if (!commodityIds.length) { setPests([]); return }
         const { data: cpData } = await supabase

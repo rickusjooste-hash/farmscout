@@ -257,6 +257,7 @@ export default function LeafAnalysisPage() {
           .select('id, name, variety, ha, commodity_id')
           .eq('farm_id', selectedFarmId)
           .eq('is_active', true)
+          .eq('status', 'active')
           .order('name'),
         supabase.rpc('get_production_summary', {
           p_farm_ids: [selectedFarmId],

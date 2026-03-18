@@ -284,6 +284,7 @@ export default function IntelligencePage() {
       const orchardQuery = supabase.from('orchards')
         .select('id, orchard_nr, name, variety, variety_group, rootstock, ha, commodity_id, year_planted, farm_id')
         .eq('is_active', true)
+        .eq('status', 'active')
         .order('name')
       if (selectedFarmId !== 'all') orchardQuery.eq('farm_id', selectedFarmId)
       else orchardQuery.in('farm_id', activeFarmIds)

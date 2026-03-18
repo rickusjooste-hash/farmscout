@@ -412,6 +412,7 @@ export default function AdminPage() {
           <a href="/heatmap" className="nav-item"><span>🌡️</span> Heat Map</a>
           <a href="/scouts" className="nav-item"><span>👷</span> Scouts</a>
           <a href="/scouts/new" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>➕</span> New Scout</a>
+          <a href="/receivers/new" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>➕</span> New Receiver</a>
           <a href="/scouts/sections" className="nav-item" style={{ paddingLeft: 28, fontSize: 13 }}><span>🗂️</span> Sections</a>
           <a href="/admin" className="nav-item active"><span>⚙️</span> Admin</a>
           <div className="sidebar-footer">

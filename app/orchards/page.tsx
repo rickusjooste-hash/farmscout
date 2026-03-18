@@ -26,6 +26,8 @@ interface Orchard {
   legacy_id: number | null
   irrigation_type_id: string | null
   is_active: boolean
+  status: 'active' | 'planning' | 'removed'
+  target_planting_date: string | null
   commodities: { code: string; name: string } | null
   sections: { name: string; section_nr: number } | null
   irrigation_types: { name: string; efficiency: number } | null
@@ -45,7 +47,7 @@ function orchardColor(code: string | undefined) {
   return COMMODITY_COLORS[code ?? ''] ?? '#aaaaaa'
 }
 
-const ORCHARD_SELECT = 'id, name, orchard_nr, farm_id, organisation_id, commodity_id, section_id, variety, variety_group, rootstock, ha, year_planted, trees_per_ha, nr_of_trees, plant_distance, row_width, legacy_id, irrigation_type_id, is_active, commodities(code,name), sections!section_id(name,section_nr), irrigation_types(name,efficiency)'
+const ORCHARD_SELECT = 'id, name, orchard_nr, farm_id, organisation_id, commodity_id, section_id, variety, variety_group, rootstock, ha, year_planted, trees_per_ha, nr_of_trees, plant_distance, row_width, legacy_id, irrigation_type_id, is_active, status, target_planting_date, commodities(code,name), sections!section_id(name,section_nr), irrigation_types(name,efficiency)'
 
 function emptyForm() {
   return {
@@ -91,6 +93,9 @@ export default function OrchardsPage() {
   const [irrigationTypes, setIrrigationTypes] = useState<IrrigationType[]>([])
   const [refreshKey,     setRefreshKey]     = useState(0)
 
+  // ── Planning filter ───────────────────────────────────────────────────────
+  const [showPlanning, setShowPlanning] = useState(true)
+
   // ── Form state ────────────────────────────────────────────────────────────
   const [form,    setForm]    = useState(emptyForm())
   const [saving,  setSaving]  = useState(false)
@@ -117,13 +122,13 @@ export default function OrchardsPage() {
       .from('orchards')
       .select(ORCHARD_SELECT)
       .eq('farm_id', selectedFarmId)
-      .eq('is_active', true)
+      .in('status', showPlanning ? ['active', 'planning'] : ['active'])
       .order('name')
       .then(({ data, error }) => {
         console.log('[orchards] loaded:', data?.length ?? 0, 'error:', error)
         setOrchards((data as any) || [])
       })
-  }, [selectedFarmId, refreshKey])
+  }, [selectedFarmId, refreshKey, showPlanning])
 
   // ── 3. Load form dropdowns when farm changes ──────────────────────────────
   useEffect(() => {
@@ -215,6 +220,15 @@ export default function OrchardsPage() {
             const o = lookup[feature.properties.id]
             // Hide orchards not belonging to selected farm
             if (!o) return { fillOpacity: 0, color: 'transparent', weight: 0, opacity: 0 }
+            if (o.status === 'planning') {
+              return {
+                fillColor: '#f0a500',
+                fillOpacity: 0.35,
+                color: '#f0a500',
+                weight: 2.5,
+                dashArray: '8, 6',
+              }
+            }
             return {
               fillColor: orchardColor((o.commodities as any)?.code),
               fillOpacity: 0.6,
@@ -227,7 +241,13 @@ export default function OrchardsPage() {
             if (!o) return // skip non-farm orchards entirely
             lyr.on('mouseover', () => lyr.setStyle({ fillOpacity: 0.9, weight: 2.5 }))
             lyr.on('mouseout',  () => lyr.setStyle({ fillOpacity: 0.6, weight: 1.5 }))
-            lyr.on('click', () => setSelectedOrchard(o))
+            lyr.on('click', () => {
+              if (o.status === 'planning') {
+                window.location.href = `/orchards/planning/${o.id}`
+              } else {
+                setSelectedOrchard(o)
+              }
+            })
             lyr.bindTooltip(o.name, { permanent: false, direction: 'center', className: 'orchard-tooltip' })
           },
         }
@@ -527,6 +547,7 @@ ${placemarks.join('\n')}
 
   async function handleSave() {
     setSaving(true); setSaveErr(''); setSaveOk(false)
+    const isPlanning = (form as any)._status === 'planning'
     const body: Record<string, any> = {
       type: mode === 'add' ? 'create' : 'update',
       farmId: mode === 'edit' ? form.farmId : selectedFarmId,
@@ -544,6 +565,7 @@ ${placemarks.join('\n')}
       rowWidth:      form.rowWidth      ? parseFloat(form.rowWidth)      : null,
       legacyId:      form.legacyId      ? parseInt(form.legacyId)        : null,
       boundary: drawnBoundary ?? null,
+      status: isPlanning ? 'planning' : undefined,
     }
     if (mode === 'edit') body.id = editTarget!.id
 
@@ -569,7 +591,11 @@ ${placemarks.join('\n')}
 
     setSaveOk(true); setSaving(false)
     setRefreshKey(k => k + 1)
-    setTimeout(() => setMode('view'), 600)
+    if (isPlanning && orchId) {
+      setTimeout(() => { window.location.href = `/orchards/planning/${orchId}` }, 400)
+    } else {
+      setTimeout(() => setMode('view'), 600)
+    }
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -812,9 +838,26 @@ ${placemarks.join('\n')}
                 {farms.map(f => <option key={f.id} value={f.id}>{f.full_name}</option>)}
               </select>
             )}
+            {mode === 'view' && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6a7a70', cursor: 'pointer', userSelect: 'none' }}>
+                <input type="checkbox" checked={showPlanning} onChange={e => setShowPlanning(e.target.checked)}
+                  style={{ accentColor: '#f0a500' }} />
+                Show planning
+              </label>
+            )}
             {mode === 'view' && boundaryMapReady && (
               <button className="btn-cancel" onClick={exportKml} title="Export orchard boundaries as KML">
                 Export KML
+              </button>
+            )}
+            {mode === 'view' && (
+              <button className="btn-cancel" style={{ color: '#f0a500', borderColor: '#f0a500' }}
+                onClick={() => {
+                  // Create a planning orchard: set mode to add with status=planning
+                  enterAdd()
+                  setForm(f => ({ ...f, _status: 'planning' } as any))
+                }}>
+                + Plan Orchard
               </button>
             )}
             {mode === 'view' && <button className="btn-primary" onClick={enterAdd}>+ Add Orchard</button>}
@@ -828,22 +871,40 @@ ${placemarks.join('\n')}
                 <div className="orchard-list-header">{orchards.length} Orchards</div>
                 {orchards.map(o => {
                   const hasBoundary = !!boundaryMapRef.current[o.id]
+                  const isPlanning = o.status === 'planning'
                   return (
                     <div
                       key={o.id}
                       className={`orchard-list-item${selectedOrchard?.id === o.id ? ' selected' : ''}`}
-                      onClick={() => selectOrchardFromList(o)}
+                      onClick={() => {
+                        if (isPlanning) { window.location.href = `/orchards/planning/${o.id}`; return }
+                        selectOrchardFromList(o)
+                      }}
+                      style={isPlanning ? { borderLeft: '3px solid #f0a500' } : undefined}
                     >
                       <div className="orchard-list-name">
                         {o.name}{o.variety ? ` (${o.variety})` : ''}
-                        {!hasBoundary && <span className="orchard-list-no-boundary">no boundary</span>}
+                        {isPlanning && (
+                          <span style={{ display: 'inline-block', fontSize: 9, fontWeight: 700, background: '#f0a500', color: '#fff', padding: '1px 6px', borderRadius: 4, marginLeft: 6, verticalAlign: 'middle' }}>PLANNING</span>
+                        )}
+                        {!hasBoundary && !isPlanning && <span className="orchard-list-no-boundary">no boundary</span>}
                       </div>
-                      <button
-                        className="orchard-list-edit"
-                        onClick={e => { e.stopPropagation(); enterEdit(o) }}
-                      >
-                        Edit
-                      </button>
+                      {isPlanning ? (
+                        <button
+                          className="orchard-list-edit"
+                          style={{ color: '#f0a500', borderColor: '#f0a500' }}
+                          onClick={e => { e.stopPropagation(); window.location.href = `/orchards/planning/${o.id}` }}
+                        >
+                          Plan
+                        </button>
+                      ) : (
+                        <button
+                          className="orchard-list-edit"
+                          onClick={e => { e.stopPropagation(); enterEdit(o) }}
+                        >
+                          Edit
+                        </button>
+                      )}
                     </div>
                   )
                 })}

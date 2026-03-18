@@ -202,7 +202,7 @@ export default function QcBagMapPage() {
     ;(async () => {
       const { data: orchData } = await supabase
         .from('orchards').select('commodity_id')
-        .in('farm_id', effectiveFarmIds).eq('is_active', true)
+        .in('farm_id', effectiveFarmIds).eq('is_active', true).eq('status', 'active')
       const commodityIds = [...new Set((orchData || []).map((o: any) => o.commodity_id as string))]
       if (!commodityIds.length) return
       const { data: cpData } = await supabase

@@ -136,7 +136,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
   // ── Load orchards ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!contextLoaded) return
-    let q = supabase.from('orchards').select('id, name, commodity_id').eq('is_active', true)
+    let q = supabase.from('orchards').select('id, name, commodity_id').eq('is_active', true).eq('status', 'active')
     if (!isSuperAdmin && farmIds.length > 0) q = q.in('farm_id', farmIds)
     q.then(({ data }) => setOrchards((data as any) || []))
   }, [contextLoaded])

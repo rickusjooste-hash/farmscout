@@ -209,7 +209,7 @@ export default function FertilizerPage() {
       // Get orchard commodity mapping
       const { data: orchardCommData } = await supabase
         .from('orchards').select('id, name, orchard_nr, variety, commodity_id')
-        .eq('farm_id', selectedFarmId).eq('is_active', true)
+        .eq('farm_id', selectedFarmId).eq('is_active', true).eq('status', 'active')
       const orchardComm: Record<string, string> = {}
       const orchardNames: Record<string, string> = {}
       const orchardMeta: Record<string, { nr: number | null; variety: string | null }> = {}

@@ -219,7 +219,7 @@ export default function TreeScoutingAlertSummary({ farmIds }: Props) {
   // ── Fetch orchards for boundary filtering ───────────────────────────
   useEffect(() => {
     if (farmIds.length === 0) return
-    supabase.from('orchards').select('id, name').eq('is_active', true).in('farm_id', farmIds)
+    supabase.from('orchards').select('id, name').eq('is_active', true).eq('status', 'active').in('farm_id', farmIds)
       .then(({ data }) => { orchardsCacheRef.current = (data || []) as { id: string; name: string }[] })
   }, [farmIds.join(',')])  // eslint-disable-line react-hooks/exhaustive-deps
 

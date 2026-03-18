@@ -1,7 +1,25 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git:*)"
+      "Read",
+      "Find",
+      "Searh",
+      "Build",
+      "Bash(git:*)",
+      "WebSearch",
+      "WebFetch(domain:climate.com)",
+      "WebFetch(domain:hectre.com)",
+      "WebFetch(domain:support.insights.granular.ag)",
+      "Bash(xargs ls:*)",
+      "Bash(grep:*)",
+      "Bash(cat:*)",
+      "WebFetch(domain:apal.org.au)",
+      "WebFetch(domain:qaltivate.com)",
+      "WebFetch(domain:gapsystudio.com)",
+      "WebFetch(domain:www.croptracker.com)",
+      "Bash(xargs head:*)",
+      "Bash(find:*)",
+      "Bash(curl:*)"
     ]
   }
 }

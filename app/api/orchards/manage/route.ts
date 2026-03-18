@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     orchardNr, variety, varietyGroup, rootstock,
     ha, yearPlanted, treesPerHa, nrOfTrees,
     plantDistance, rowWidth, legacyId, boundary,
-    irrigationTypeId,
+    irrigationTypeId, status,
   } = body
 
   // Handle irrigation type update (lightweight, separate path)
@@ -138,5 +138,11 @@ export async function POST(req: NextRequest) {
   })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+  // Set status if provided (the upsert_orchard RPC doesn't handle status)
+  if (status && orchardId) {
+    await svc.from('orchards').update({ status }).eq('id', orchardId)
+  }
+
   return NextResponse.json({ ok: true, orchardId })
 }

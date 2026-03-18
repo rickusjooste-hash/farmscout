@@ -382,7 +382,7 @@ export default function QcDashboardPage() {
       setCommodities(comms)
 
       // Load orchards for filter dropdown
-      const oq = supabase.from('orchards').select('id, name, variety, commodity_id, farm_id').eq('is_active', true).order('name')
+      const oq = supabase.from('orchards').select('id, name, variety, commodity_id, farm_id').eq('is_active', true).eq('status', 'active').order('name')
       const { data: orchData } = ids.length > 0 ? await oq.in('farm_id', ids) : await oq
       setAllOrchards((orchData || []) as { id: string; name: string; variety: string | null; commodity_id: string; farm_id: string }[])
 
