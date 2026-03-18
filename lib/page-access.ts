@@ -26,6 +26,7 @@ export const PAGE_SECTIONS: PageSection[] = [
   { key: 'qc',          label: 'QC',                    routes: ['/qc'], module: 'qc' },
   { key: 'production',  label: 'Production',            routes: ['/production', '/receivers'], module: 'production' },
   { key: 'irrigation',  label: 'Irrigation',            routes: ['/irrigation'], module: 'irrigation' },
+  { key: 'rainfall',    label: 'Rainfall',              routes: ['/rainfall'], module: 'rainfall' },
   { key: 'admin',       label: 'Admin',                 routes: ['/admin'] },
 ]
 

@@ -264,6 +264,17 @@ function PackageIcon() {
   )
 }
 
+function CloudRainIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 16.2A4.5 4.5 0 0017.5 8h-1.8A7 7 0 104 14.9" />
+      <path d="M16 14v6" />
+      <path d="M8 14v6" />
+      <path d="M12 16v6" />
+    </svg>
+  )
+}
+
 function DropletIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -305,6 +316,7 @@ export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], 
   const hasQc = modules.includes('qc')
   const hasProduction = modules.includes('production')
   const hasIrrigation = modules.includes('irrigation')
+  const hasRainfall = modules.includes('rainfall')
 
   function cls(href: string) {
     const active = href === '/' ? pathname === '/' : pathname.startsWith(href)
@@ -365,6 +377,14 @@ export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], 
         <>
           <div className="ms-section-label">Irrigation</div>
           <a href="/irrigation" className={cls('/irrigation')}><span className="ms-nav-icon"><DropletIcon /></span> Water Balance</a>
+        </>
+      )}
+
+      {/* Rainfall section — only when org subscribes to rainfall module */}
+      {hasRainfall && show('/rainfall') && (
+        <>
+          <div className="ms-section-label">Rainfall</div>
+          <a href="/rainfall" className={cls('/rainfall')}><span className="ms-nav-icon"><CloudRainIcon /></span> Rainfall</a>
         </>
       )}
 
