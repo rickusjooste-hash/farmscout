@@ -266,7 +266,8 @@ export default function BinsAppPage() {
       const { binsSaveAndQueue, deriveSeason, getISOWeek, getWeekDay } = await import('@/lib/bins-sync')
 
       const orchard = orchards.find(o => o.id === binsOrchardId)
-      const team = teams.find(t => t.key === binsSelectedTeam)
+      const isNoCard = binsSelectedTeam === 'NO_CARD'
+      const team = isNoCard ? null : teams.find(t => t.key === binsSelectedTeam)
       const recordFarmId = orchard?.farm_id || farmId
       const farm = farms.find(f => f.id === recordFarmId)
       const { production_year, season } = deriveSeason(binsFormDate)
@@ -280,8 +281,8 @@ export default function BinsAppPage() {
         orchard_legacy_id: orchard?.legacy_id ?? null,
         orchard_name: orchard?.name || binsOrchardSearch || '',
         variety: orchard?.variety ?? null,
-        team: binsSelectedTeam || null,
-        team_name: team?.team_name ?? binsSelectedTeam ?? null,
+        team: isNoCard ? 'NO_CARD' : (binsSelectedTeam || null),
+        team_name: isNoCard ? 'No Card' : (team?.team_name ?? binsSelectedTeam ?? null),
         bins: parseFloat(binsCount) || 0,
         juice: parseFloat(juiceCount) || 0,
         total: (parseFloat(binsCount) || 0) + (parseFloat(juiceCount) || 0),
@@ -313,7 +314,8 @@ export default function BinsAppPage() {
       const { binsSaveBruisingAndQueue, deriveSeason, getISOWeek } = await import('@/lib/bins-sync')
 
       const orchard = orchards.find(o => o.id === bruisingOrchardId)
-      const team = teams.find(t => t.key === bruisingSelectedTeam)
+      const isNoCard = bruisingSelectedTeam === 'NO_CARD'
+      const team = isNoCard ? null : teams.find(t => t.key === bruisingSelectedTeam)
       const recordFarmId = orchard?.farm_id || farmId
       const farm = farms.find(f => f.id === recordFarmId)
       const { production_year, season } = deriveSeason(bruisingFormDate)
@@ -332,8 +334,8 @@ export default function BinsAppPage() {
         orchard_legacy_id: orchard?.legacy_id ?? null,
         orchard_name: orchard?.name || bruisingOrchardSearch || '',
         variety: orchard?.variety ?? null,
-        team: bruisingSelectedTeam || null,
-        team_name: team?.team_name ?? bruisingSelectedTeam ?? null,
+        team: isNoCard ? 'NO_CARD' : (bruisingSelectedTeam || null),
+        team_name: isNoCard ? 'No Card' : (team?.team_name ?? bruisingSelectedTeam ?? null),
         bruising_count: bc,
         stem_count: sc,
         injury_count: ic,
@@ -489,12 +491,13 @@ export default function BinsAppPage() {
             <div className="mb-4">
               <label className="block text-xs uppercase text-[#8a95a0] tracking-wide font-semibold mb-1.5">Team</label>
               <select
-                className="w-full px-3 py-2.5 rounded-lg border-[1.5px] border-[#d4cfca] text-sm text-[#1a2a3a] bg-white outline-none"
+                className={`w-full px-3 py-2.5 rounded-lg border-[1.5px] text-sm bg-white outline-none ${binsSelectedTeam === 'NO_CARD' ? 'border-[#e8924a] text-[#e8924a]' : 'border-[#d4cfca] text-[#1a2a3a]'}`}
                 value={binsSelectedTeam}
                 onChange={e => setBinsSelectedTeam(e.target.value)}
               >
                 <option value="">Select team...</option>
-                {teams.map(t => (
+                <option value="NO_CARD">No Card</option>
+                {teams.filter(t => t.key !== 'NO_CARD').map(t => (
                   <option key={t.key} value={t.key}>{t.team_name || t.team}</option>
                 ))}
               </select>
@@ -595,12 +598,13 @@ export default function BinsAppPage() {
             <div className="mb-4">
               <label className="block text-xs uppercase text-[#8a95a0] tracking-wide font-semibold mb-1.5">Team</label>
               <select
-                className="w-full px-3 py-2.5 rounded-lg border-[1.5px] border-[#d4cfca] text-sm text-[#1a2a3a] bg-white outline-none"
+                className={`w-full px-3 py-2.5 rounded-lg border-[1.5px] text-sm bg-white outline-none ${bruisingSelectedTeam === 'NO_CARD' ? 'border-[#e8924a] text-[#e8924a]' : 'border-[#d4cfca] text-[#1a2a3a]'}`}
                 value={bruisingSelectedTeam}
                 onChange={e => setBruisingSelectedTeam(e.target.value)}
               >
                 <option value="">Select team...</option>
-                {teams.map(t => (
+                <option value="NO_CARD">No Card</option>
+                {teams.filter(t => t.key !== 'NO_CARD').map(t => (
                   <option key={t.key} value={t.key}>{t.team_name || t.team}</option>
                 ))}
               </select>
@@ -816,7 +820,9 @@ export default function BinsAppPage() {
                         {record.received_time ? record.received_time.slice(0, 5) : '—'}
                       </td>
                       <td className="px-4 py-3 font-semibold text-[#1a2a3a]">{record.orchard_name}</td>
-                      <td className="px-4 py-3 text-[#6a7a70]">{record.team_name || record.team || '—'}</td>
+                      <td className={`px-4 py-3 ${record.team === 'NO_CARD' ? 'text-[#e8924a] font-semibold' : 'text-[#6a7a70]'}`}>
+                        {record.team === 'NO_CARD' ? 'No Card' : (record.team_name || record.team || '—')}
+                      </td>
                       <td className="px-4 py-3 text-right font-bold text-[#1a2a3a]">{record.bins}</td>
                       <td className="px-4 py-3 text-right text-[#6a7a70]">{record.juice}</td>
                       <td className="px-4 py-3 text-right font-bold text-[#2176d9]">{record.total}</td>
@@ -860,7 +866,9 @@ export default function BinsAppPage() {
                         {record.received_time ? record.received_time.slice(0, 5) : '—'}
                       </td>
                       <td className="px-4 py-3 font-semibold text-[#1a2a3a]">{record.orchard_name}</td>
-                      <td className="px-4 py-3 text-[#6a7a70]">{record.team_name || record.team || '—'}</td>
+                      <td className={`px-4 py-3 ${record.team === 'NO_CARD' ? 'text-[#e8924a] font-semibold' : 'text-[#6a7a70]'}`}>
+                        {record.team === 'NO_CARD' ? 'No Card' : (record.team_name || record.team || '—')}
+                      </td>
                       <td className="px-4 py-3 text-right text-[#1a2a3a]">{record.sample_size}</td>
                       <td className="px-4 py-3 text-right font-bold text-[#1a2a3a]">
                         {record.bruising_pct != null ? `${record.bruising_pct}%` : '—'}
