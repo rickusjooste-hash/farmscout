@@ -213,7 +213,7 @@ async function _doPush(): Promise<{ pushed: number; failed: number }> {
       const bodies = batch.map(item => {
         const parsed = JSON.parse(item.body)
         return Object.fromEntries(
-          Object.entries(parsed).filter(([k]) => !k.startsWith('_'))
+          Object.entries(parsed).filter(([k]) => !k.startsWith('_') && k !== 'id')
         )
       })
 
