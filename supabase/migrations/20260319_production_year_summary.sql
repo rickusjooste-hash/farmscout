@@ -39,11 +39,10 @@ BEGIN
       LEFT(pb.production_year, 4) AS production_year,
       SUM(pb.total) AS total_bins
     FROM production_bins pb
-    LEFT JOIN farms f ON f.id = pb.farm_id
-    LEFT JOIN orchards o ON o.id = pb.orchard_id
-    LEFT JOIN commodities c ON c.id = o.commodity_id
+    JOIN orchards o ON o.id = pb.orchard_id AND o.is_active = true
+    JOIN farms f ON f.id = pb.farm_id
+    JOIN commodities c ON c.id = o.commodity_id
     WHERE pb.farm_id = ANY(p_farm_ids)
-      AND (o.id IS NULL OR o.is_active = true)
     GROUP BY f.code, c.code, o.commodity_id,
              COALESCE(o.variety, pb.variety, '?'),
              LEFT(pb.production_year, 4)
