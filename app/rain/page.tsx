@@ -258,6 +258,7 @@ export default function RainAppPage() {
     setReadingDate(new Date().toISOString().split('T')[0])
     setSaveSuccess(false)
     setView('log')
+    if (gauges.length > 0) autoSelectGauge(gauges)
   }
 
   // ═══════════════════════════════════════════════════════════════════
