@@ -1,0 +1,27 @@
+{
+  "name": "allFarm Rain",
+  "short_name": "allFarm Rain",
+  "description": "Rainfall Gauge Capture",
+  "start_url": "/rain",
+  "scope": "/rain",
+  "display": "standalone",
+  "display_override": ["standalone"],
+  "background_color": "#eae6df",
+  "theme_color": "#2176d9",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "id": "/rain"
+}

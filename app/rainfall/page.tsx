@@ -449,7 +449,7 @@ export default function RainfallPage() {
                   <Tooltip formatter={fmtMm} />
                   <ReferenceLine y={longTermAvg} stroke="#999" strokeDasharray="6 3" label={{ value: `Avg ${Math.round(longTermAvg)}`, position: 'right', fontSize: 11, fill: '#999' }} />
                   <Bar dataKey="total" name="Annual Total" radius={[4, 4, 0, 0]} cursor="pointer"
-                    onClick={(data: { year?: number }) => { if (data?.year) setSelectedYear(data.year) }}>
+                    onClick={(_data: any, _idx: number, e: any) => { const yr = e?.year ?? e?.payload?.year; if (yr) setSelectedYear(yr) }}>
                     {annualData.map((entry) => (
                       <Cell
                         key={entry.year}
