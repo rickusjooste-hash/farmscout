@@ -328,6 +328,7 @@ export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], 
   const hasProduction = modules.includes('production')
   const hasIrrigation = modules.includes('irrigation')
   const hasRainfall = modules.includes('rainfall')
+  const hasHr = modules.includes('hr')
 
   function cls(href: string) {
     const active = href === '/' ? pathname === '/' : pathname.startsWith(href)
@@ -396,6 +397,16 @@ export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], 
         <>
           <div className="ms-section-label">Rainfall</div>
           <a href="/rainfall" className={cls('/rainfall')}><span className="ms-nav-icon"><CloudRainIcon /></span> Rainfall</a>
+        </>
+      )}
+
+      {/* HR section — only when org subscribes to hr module */}
+      {hasHr && show('/hr') && (
+        <>
+          <div className="ms-section-label">HR</div>
+          <a href="/hr" className={cls('/hr')}><span className="ms-nav-icon"><ClipboardCheckIcon /></span> HR Events</a>
+          <a href="/hr/new" className={cls('/hr/new')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><PersonPlusIcon /></span> New Event</a>
+          <a href="/hr/settings" className={cls('/hr/settings')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><GearIcon /></span> HR Settings</a>
         </>
       )}
 

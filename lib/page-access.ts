@@ -27,6 +27,7 @@ export const PAGE_SECTIONS: PageSection[] = [
   { key: 'production',  label: 'Production',            routes: ['/production', '/receivers'], module: 'production' },
   { key: 'irrigation',  label: 'Irrigation',            routes: ['/irrigation'], module: 'irrigation' },
   { key: 'rainfall',    label: 'Rainfall',              routes: ['/rainfall'], module: 'rainfall' },
+  { key: 'hr',          label: 'HR',                     routes: ['/hr'], module: 'hr' },
   { key: 'admin',       label: 'Admin',                 routes: ['/admin'] },
 ]
 
@@ -36,9 +37,9 @@ export const PAGE_SECTIONS: PageSection[] = [
 const ROLE_DEFAULT_SECTIONS: Record<string, string[] | '*'> = {
   super_admin:              '*',
   org_admin:                '*',
-  farm_manager:             ['dashboard', 'orchards', 'pests', 'inspections', 'scouts', 'settings'],
+  farm_manager:             ['dashboard', 'orchards', 'pests', 'inspections', 'scouts', 'settings', 'hr'],
   production_manager:       ['dashboard', 'orchards', 'production', 'settings'],
-  manager:                  ['dashboard', 'orchards', 'pests', 'inspections', 'scouts', 'settings'],
+  manager:                  ['dashboard', 'orchards', 'pests', 'inspections', 'scouts', 'settings', 'hr'],
   crop_protection_advisor:  [],
   horticultural_consultant: [],
 }
