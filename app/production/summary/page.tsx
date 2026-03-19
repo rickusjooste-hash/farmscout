@@ -13,6 +13,7 @@ interface RpcRow {
   farm_code: string
   commodity_code: string
   variety: string
+  ha: number
   production_year: string
   total_tons: number
 }
@@ -21,6 +22,7 @@ interface SummaryRow {
   farm: string
   commodity: string
   variety: string
+  ha: number
   yearTons: Record<string, number>
 }
 
@@ -98,7 +100,7 @@ export default function ProductionSummaryPage() {
     for (const r of rpcData) {
       const key = `${r.farm_code}|${r.commodity_code}|${r.variety}`
       if (!map[key]) {
-        map[key] = { farm: r.farm_code, commodity: r.commodity_code, variety: r.variety, yearTons: {} }
+        map[key] = { farm: r.farm_code, commodity: r.commodity_code, variety: r.variety, ha: r.ha || 0, yearTons: {} }
       }
       map[key].yearTons[r.production_year] = (map[key].yearTons[r.production_year] || 0) + r.total_tons
       yearSet.add(r.production_year)
@@ -125,18 +127,19 @@ export default function ProductionSummaryPage() {
   async function handleExport() {
     const XLSX = await import('xlsx')
 
-    const header = ['Farm', 'Commodity', 'Variety', ...years]
+    const header = ['Farm', 'Commodity', 'Variety', 'Ha', ...years]
     const data = rows.map(r => [
       r.farm,
       r.commodity,
       r.variety,
+      r.ha || 0,
       ...years.map(y => r.yearTons[y] || 0),
     ])
-    data.push(['', '', 'Total', ...years.map(y => Math.round((yearTotals[y] || 0) * 1000) / 1000)])
+    data.push(['', '', 'Total', rows.reduce((sum, r) => sum + r.ha, 0), ...years.map(y => Math.round((yearTotals[y] || 0) * 1000) / 1000)])
 
     const ws = XLSX.utils.aoa_to_sheet([header, ...data])
     ws['!cols'] = [
-      { wch: 8 }, { wch: 12 }, { wch: 16 },
+      { wch: 8 }, { wch: 12 }, { wch: 16 }, { wch: 8 },
       ...years.map(() => ({ wch: 14 })),
     ]
 
@@ -182,6 +185,7 @@ export default function ProductionSummaryPage() {
                   <th style={s.th}>Farm</th>
                   <th style={s.th}>Commodity</th>
                   <th style={s.th}>Variety</th>
+                  <th style={s.thRight}>Ha</th>
                   {years.map(y => (
                     <th key={y} style={s.thRight}>{y}</th>
                   ))}
@@ -201,6 +205,7 @@ export default function ProductionSummaryPage() {
                       </span>
                     </td>
                     <td style={s.td}>{r.variety}</td>
+                    <td style={s.tdRight}>{r.ha ? r.ha.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : ''}</td>
                     {years.map(y => (
                       <td key={y} style={s.tdRight}>{fmt(r.yearTons[y])}</td>
                     ))}
@@ -210,6 +215,7 @@ export default function ProductionSummaryPage() {
               <tfoot>
                 <tr>
                   <td style={s.tfootTd} colSpan={3}>Total</td>
+                  <td style={s.tfootRight}>{rows.reduce((sum, r) => sum + r.ha, 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
                   {years.map(y => (
                     <td key={y} style={s.tfootRight}>{fmt(yearTotals[y])}</td>
                   ))}
