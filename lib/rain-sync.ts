@@ -5,7 +5,9 @@ import {
   rainGetPendingQueue,
   rainDeleteFromQueue,
   getRainDB,
+  rainGetAll,
   type RainReading,
+  type RainGauge,
   type RainSyncQueueItem,
 } from './rain-db'
 
@@ -233,6 +235,9 @@ async function _doPush(): Promise<{ pushed: number; failed: number }> {
           await rainDeleteFromQueue(item.id!)
         }
         pushed += batch.length
+
+        // Fire-and-forget WhatsApp notification
+        _notifySyncedReadings(bodies).catch(() => {})
       } else {
         const errText = await res.text()
         throw new Error(`HTTP ${res.status}: ${errText}`)
@@ -262,6 +267,49 @@ async function _doPush(): Promise<{ pushed: number; failed: number }> {
 
   console.log(`[RainSync] Done: ${pushed} pushed, ${failed} failed`)
   return { pushed, failed }
+}
+
+// ── WhatsApp notification (fire-and-forget) ──────────────────────────
+
+async function _notifySyncedReadings(
+  bodies: Record<string, unknown>[]
+): Promise<void> {
+  if (bodies.length === 0) return
+
+  // Group readings by gauge_id
+  const byGauge: Record<string, { date: string; value_mm: number }[]> = {}
+  for (const b of bodies) {
+    const gid = b.gauge_id as string
+    if (!gid) continue
+    if (!byGauge[gid]) byGauge[gid] = []
+    byGauge[gid].push({
+      date: b.reading_date as string,
+      value_mm: Number(b.value_mm) || 0,
+    })
+  }
+
+  // Look up gauge names from IndexedDB
+  const gauges: RainGauge[] = await rainGetAll('gauges')
+  const gaugeMap = new Map(gauges.map(g => [g.id, g]))
+  const farmId = localStorage.getItem('rainapp_farm_id') || ''
+
+  for (const [gaugeId, readings] of Object.entries(byGauge)) {
+    const gauge = gaugeMap.get(gaugeId)
+    const gaugeName = gauge?.name || 'Unknown gauge'
+    const fid = gauge?.farm_id || farmId
+
+    if (!fid) continue
+
+    fetch('/api/rain/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        farm_id: fid,
+        gauge_name: gaugeName,
+        readings,
+      }),
+    }).catch(() => {}) // silent — never block sync
+  }
 }
 
 // ── Count pending ─────────────────────────────────────────────────────
