@@ -28,6 +28,7 @@ BEGIN
     LEFT JOIN orchards o ON o.id = pb.orchard_id
     LEFT JOIN commodities c ON c.id = o.commodity_id
     WHERE pb.farm_id = ANY(p_farm_ids)
+      AND (o.id IS NULL OR o.is_active = true)
     GROUP BY f.code, c.code, o.commodity_id,
              COALESCE(o.variety, pb.variety, '?'),
              LEFT(pb.production_year, 4)
