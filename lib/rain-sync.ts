@@ -160,13 +160,13 @@ export async function rainSaveAndQueue(reading: RainReading): Promise<void> {
 
   await rainPut('readings', reading)
 
-  // Strip internal fields for the API payload
-  const { _syncStatus, ...payload } = reading
+  // Strip internal/local-only fields for the API payload
+  const { _syncStatus, id: _localId, ...payload } = reading
 
   await rainAddToQueue({
     tableName: 'rain_readings',
     method: 'POST',
-    url: `${SUPABASE_REST}/rain_readings`,
+    url: `${SUPABASE_REST}/rain_readings?on_conflict=gauge_id,reading_date`,
     headers: {
       apikey: anonKey,
       Authorization: `Bearer ${token}`,
@@ -217,7 +217,7 @@ async function _doPush(): Promise<{ pushed: number; failed: number }> {
         )
       })
 
-      const res = await fetch(`${SUPABASE_REST}/rain_readings`, {
+      const res = await fetch(`${SUPABASE_REST}/rain_readings?on_conflict=gauge_id,reading_date`, {
         method: 'POST',
         headers: {
           apikey: anonKey,
