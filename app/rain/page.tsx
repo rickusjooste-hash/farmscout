@@ -368,7 +368,7 @@ export default function RainAppPage() {
   // ═══════════════════════════════════════════════════════════════════
 
   return (
-    <div className="flex flex-col min-h-dvh bg-[#eae6df]">
+    <div className="flex flex-col h-dvh bg-[#eae6df] overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-5 pb-4">
         <div>
@@ -429,9 +429,9 @@ export default function RainAppPage() {
         </div>
       </div>
 
-      {/* Recent readings */}
-      <div className="bg-white rounded-xl border border-[#e8e4dc] mx-4 mb-4 overflow-hidden">
-        <div className="px-4 pt-4 pb-2 text-xs font-semibold text-[#8a95a0] uppercase tracking-wider">
+      {/* Recent readings — scrollable */}
+      <div className="flex-1 min-h-0 mx-4 mb-4 bg-white rounded-xl border border-[#e8e4dc] flex flex-col overflow-hidden">
+        <div className="px-4 pt-4 pb-2 text-xs font-semibold text-[#8a95a0] uppercase tracking-wider shrink-0">
           Recent Readings
           {selectedGaugeName && gauges.length > 1 && (
             <span className="normal-case tracking-normal font-normal"> — {selectedGaugeName}</span>
@@ -440,7 +440,7 @@ export default function RainAppPage() {
         {recentReadings.length === 0 ? (
           <div className="text-sm text-[#8a95a0] py-6 text-center">No readings yet</div>
         ) : (
-          <div>
+          <div className="overflow-y-auto">
             {recentReadings.map(r => (
               <div key={r.id} className="flex items-center justify-between px-4 py-3 border-t border-[#f0ede8]">
                 <div>
@@ -463,9 +463,6 @@ export default function RainAppPage() {
           </div>
         )}
       </div>
-
-      {/* Spacer */}
-      <div className="flex-1" />
 
       {/* Big Log Reading button */}
       <div className="px-4 pb-6">
