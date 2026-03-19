@@ -2,28 +2,20 @@
 
 import { createClient } from '@/lib/supabase-auth'
 import { usePageGuard } from '@/lib/usePageGuard'
+import { useOrgModules } from '@/lib/useOrgModules'
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
 import MobileNav from '@/app/components/MobileNav'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-interface Farm { id: string; code: string }
-interface BinRow {
-  farm_id: string
-  orchard_id: string | null
-  variety: string | null
-  total: number
+interface RpcRow {
+  farm_code: string
+  commodity_code: string
+  variety: string
   production_year: string
+  total_tons: number
 }
-interface OrchardRef {
-  id: string
-  variety: string | null
-  commodity_id: string
-  farm_id: string
-}
-interface Commodity { id: string; code: string }
-interface BinWeight { commodity_id: string; variety: string | null; default_weight_kg: number }
 
 interface SummaryRow {
   farm: string
@@ -32,18 +24,41 @@ interface SummaryRow {
   yearTons: Record<string, number>
 }
 
+// ── Inline styles (matches other production pages) ─────────────────────────
+
+const s: Record<string, React.CSSProperties> = {
+  page:       { display: 'flex', minHeight: '100vh', background: '#f4f1eb', fontFamily: 'Inter, system-ui, sans-serif', color: '#1a2a3a' },
+  main:       { flex: 1, padding: 40, overflowY: 'auto', minWidth: 0, paddingBottom: 100 },
+  pageHeader: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap' as const, gap: 16 },
+  pageTitle:  { fontSize: 32, fontWeight: 700, color: '#1a2a3a', letterSpacing: '-0.5px', lineHeight: 1 },
+  pageSub:    { fontSize: 14, color: '#8a95a0', marginTop: 6 },
+  exportBtn:  { padding: '8px 18px', background: '#2e7d32', color: '#fff', fontSize: 13, fontWeight: 600, borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'inherit' },
+  card:       { background: '#fff', borderRadius: 12, border: '1px solid #e8e4dc', overflow: 'auto' },
+  table:      { width: '100%', borderCollapse: 'collapse' as const, fontSize: 13, minWidth: 600 },
+  th:         { textAlign: 'left' as const, padding: '10px 12px', fontWeight: 600, color: '#7a8a80', fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.06em', background: '#f9f7f3', borderBottom: '1px solid #e8e4dc' },
+  thRight:    { textAlign: 'right' as const, padding: '10px 12px', fontWeight: 600, color: '#7a8a80', fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.06em', background: '#f9f7f3', borderBottom: '1px solid #e8e4dc' },
+  td:         { padding: '8px 12px', borderBottom: '1px solid #f0ede8', color: '#3a4a40' },
+  tdRight:    { padding: '8px 12px', borderBottom: '1px solid #f0ede8', color: '#3a4a40', textAlign: 'right' as const, fontVariantNumeric: 'tabular-nums' },
+  tdFarm:     { padding: '8px 12px', borderBottom: '1px solid #f0ede8', fontWeight: 600, color: '#1a2a3a' },
+  tfootTd:    { padding: '10px 12px', fontWeight: 700, color: '#1a2a3a', background: '#f9f7f3', borderTop: '2px solid #d4cfca' },
+  tfootRight: { padding: '10px 12px', fontWeight: 700, color: '#1a2a3a', background: '#f9f7f3', borderTop: '2px solid #d4cfca', textAlign: 'right' as const, fontVariantNumeric: 'tabular-nums' },
+  loading:    { color: '#8a95a0', textAlign: 'center' as const, padding: '80px 0' },
+}
+
+const commColor: Record<string, string> = {
+  AP: '#2e7d32', PR: '#1565c0', CI: '#e65100', STN: '#6a1b9a',
+  NE: '#c62828', PE: '#ad1457', SF: '#4e342e',
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default function ProductionSummaryPage() {
-  const { farmIds, isSuperAdmin, contextLoaded } = usePageGuard()
-  const [allFarms, setAllFarms] = useState<Farm[]>([])
-  const [orchards, setOrchards] = useState<OrchardRef[]>([])
-  const [commodities, setCommodities] = useState<Commodity[]>([])
-  const [binRows, setBinRows] = useState<BinRow[]>([])
-  const [binWeights, setBinWeights] = useState<BinWeight[]>([])
+  const { farmIds, isSuperAdmin, contextLoaded, allowedRoutes } = usePageGuard()
+  const modules = useOrgModules()
+  const [rpcData, setRpcData] = useState<RpcRow[]>([])
   const [loading, setLoading] = useState(true)
 
-  // ── Load data ──────────────────────────────────────────────────────────
+  // ── Load data via RPC ──────────────────────────────────────────────────
 
   useEffect(() => {
     if (!contextLoaded) return
@@ -62,93 +77,39 @@ export default function ProductionSummaryPage() {
     }
     if (effectiveFarmIds.length === 0) { setLoading(false); return }
 
-    const [farmsRes, orchRes, commRes, binsRes, weightsRes] = await Promise.all([
-      supabase.from('farms').select('id, code').in('id', effectiveFarmIds),
-      supabase.from('orchards').select('id, variety, commodity_id, farm_id').in('farm_id', effectiveFarmIds),
-      supabase.from('commodities').select('id, code'),
-      supabase.from('production_bins').select('farm_id, orchard_id, variety, total, production_year').in('farm_id', effectiveFarmIds),
-      supabase.from('production_bin_weights').select('commodity_id, variety, default_weight_kg'),
-    ])
+    const { data, error } = await supabase.rpc('get_production_year_summary', {
+      p_farm_ids: effectiveFarmIds,
+    })
 
-    setAllFarms(farmsRes.data || [])
-    setOrchards(orchRes.data || [])
-    setCommodities(commRes.data || [])
-    setBinRows(binsRes.data || [])
-    setBinWeights(weightsRes.data || [])
+    if (error) {
+      console.error('[Summary] RPC error:', error.message)
+    } else {
+      setRpcData(data || [])
+    }
     setLoading(false)
   }, [farmIds, isSuperAdmin, contextLoaded])
 
-  // ── Build lookups ──────────────────────────────────────────────────────
-
-  const farmLookup = useMemo(() => {
-    const m: Record<string, string> = {}
-    allFarms.forEach(f => { m[f.id] = f.code })
-    return m
-  }, [allFarms])
-
-  const orchardLookup = useMemo(() => {
-    const m: Record<string, OrchardRef> = {}
-    orchards.forEach(o => { m[o.id] = o })
-    return m
-  }, [orchards])
-
-  const commLookup = useMemo(() => {
-    const m: Record<string, string> = {}
-    commodities.forEach(c => { m[c.id] = c.code })
-    return m
-  }, [commodities])
-
-  // Bin weight lookup (commodity+variety → weight, commodity-only fallback, then 400)
-  const getBinWeight = useCallback((commodityId: string | null, variety: string | null): number => {
-    if (commodityId) {
-      const match = binWeights.find(w => w.commodity_id === commodityId && w.variety === variety)
-      if (match) return match.default_weight_kg
-      const commMatch = binWeights.find(w => w.commodity_id === commodityId && !w.variety)
-      if (commMatch) return commMatch.default_weight_kg
-    }
-    return 400
-  }, [binWeights])
-
-  // ── Aggregate into pivot rows ──────────────────────────────────────────
+  // ── Pivot into rows ────────────────────────────────────────────────────
 
   const { rows, years } = useMemo(() => {
-    const map: Record<string, { farm: string; commodity: string; variety: string; commodityId: string; yearBins: Record<string, number> }> = {}
+    const map: Record<string, SummaryRow> = {}
+    const yearSet = new Set<string>()
 
-    for (const b of binRows) {
-      const farmCode = farmLookup[b.farm_id] || '?'
-      const orch = b.orchard_id ? orchardLookup[b.orchard_id] : null
-      const commCode = orch ? (commLookup[orch.commodity_id] || '?') : '?'
-      const variety = (orch?.variety || b.variety || '?').toUpperCase()
-      const year = b.production_year?.slice(0, 4) || '?'
-
-      const key = `${farmCode}|${commCode}|${variety}`
+    for (const r of rpcData) {
+      const key = `${r.farm_code}|${r.commodity_code}|${r.variety}`
       if (!map[key]) {
-        map[key] = { farm: farmCode, commodity: commCode, variety, commodityId: orch?.commodity_id || '', yearBins: {} }
+        map[key] = { farm: r.farm_code, commodity: r.commodity_code, variety: r.variety, yearTons: {} }
       }
-      map[key].yearBins[year] = (map[key].yearBins[year] || 0) + (b.total || 0)
+      map[key].yearTons[r.production_year] = (map[key].yearTons[r.production_year] || 0) + r.total_tons
+      yearSet.add(r.production_year)
     }
 
-    // Collect all years
-    const yearSet = new Set<string>()
-    Object.values(map).forEach(r => Object.keys(r.yearBins).forEach(y => yearSet.add(y)))
     const sortedYears = Array.from(yearSet).sort()
-
-    // Convert bins → tons
-    const result: SummaryRow[] = Object.values(map).map(r => {
-      const weight = getBinWeight(r.commodityId, r.variety)
-      const yearTons: Record<string, number> = {}
-      for (const y of sortedYears) {
-        const bins = r.yearBins[y] || 0
-        yearTons[y] = Math.round((bins * weight / 1000) * 1000) / 1000
-      }
-      return { farm: r.farm, commodity: r.commodity, variety: r.variety, yearTons }
-    })
-
-    // Sort: farm → commodity → variety
+    const result = Object.values(map)
     result.sort((a, b) => a.farm.localeCompare(b.farm) || a.commodity.localeCompare(b.commodity) || a.variety.localeCompare(b.variety))
 
     return { rows: result, years: sortedYears }
-  }, [binRows, farmLookup, orchardLookup, commLookup, getBinWeight])
+  }, [rpcData])
 
   // Year totals
   const yearTotals = useMemo(() => {
@@ -171,15 +132,12 @@ export default function ProductionSummaryPage() {
       r.variety,
       ...years.map(y => r.yearTons[y] || 0),
     ])
-    // Totals row
     data.push(['', '', 'Total', ...years.map(y => Math.round((yearTotals[y] || 0) * 1000) / 1000)])
 
     const ws = XLSX.utils.aoa_to_sheet([header, ...data])
-
-    // Column widths
     ws['!cols'] = [
       { wch: 8 }, { wch: 12 }, { wch: 16 },
-      ...years.map(() => ({ wch: 12 })),
+      ...years.map(() => ({ wch: 14 })),
     ]
 
     const wb = XLSX.utils.book_new()
@@ -189,87 +147,78 @@ export default function ProductionSummaryPage() {
 
   // ── Render ─────────────────────────────────────────────────────────────
 
-  // Color code for commodity
-  const commColor: Record<string, string> = {
-    AP: '#2e7d32', PR: '#1565c0', CI: '#e65100', STN: '#6a1b9a',
-    NE: '#c62828', PE: '#ad1457', SF: '#4e342e',
-  }
+  const fmt = (n: number) => n ? n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 3 }) : ''
 
   return (
-    <>
+    <div style={s.page}>
       <ManagerSidebarStyles />
-      <ManagerSidebar />
-      <MobileNav />
-      <main className="ms-main">
-        <div className="p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Production Summary</h1>
-              <p className="text-sm text-gray-500 mt-1">Total tons by farm, commodity, and variety across production years</p>
-            </div>
-            <button
-              onClick={handleExport}
-              disabled={loading || rows.length === 0}
-              className="px-4 py-2 bg-green-700 text-white text-sm font-semibold rounded-lg hover:bg-green-800 disabled:opacity-50 transition-colors"
-            >
-              Export to Excel
-            </button>
-          </div>
+      <ManagerSidebar isSuperAdmin={isSuperAdmin} modules={modules} allowedRoutes={allowedRoutes} />
+      <MobileNav isSuperAdmin={isSuperAdmin} modules={modules} />
 
-          {loading ? (
-            <div className="text-gray-400 text-center py-20">Loading...</div>
-          ) : rows.length === 0 ? (
-            <div className="text-gray-400 text-center py-20">No production data found</div>
-          ) : (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-auto">
-              <table className="w-full text-sm border-collapse min-w-[600px]">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="text-left px-3 py-2.5 font-semibold text-gray-600 sticky left-0 bg-gray-50 z-10">Farm</th>
-                    <th className="text-left px-3 py-2.5 font-semibold text-gray-600">Commodity</th>
-                    <th className="text-left px-3 py-2.5 font-semibold text-gray-600">Variety</th>
-                    {years.map(y => (
-                      <th key={y} className="text-right px-3 py-2.5 font-semibold text-gray-600">{y}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r, i) => (
-                    <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="px-3 py-2 font-semibold text-gray-800 sticky left-0 bg-white z-10">{r.farm}</td>
-                      <td className="px-3 py-2">
-                        <span
-                          className="text-xs font-bold px-1.5 py-0.5 rounded"
-                          style={{ color: commColor[r.commodity] || '#555', background: `${commColor[r.commodity] || '#555'}15` }}
-                        >
-                          {r.commodity}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-gray-700">{r.variety}</td>
-                      {years.map(y => (
-                        <td key={y} className="px-3 py-2 text-right tabular-nums text-gray-700">
-                          {r.yearTons[y] ? r.yearTons[y].toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 3 }) : ''}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-gray-50 border-t-2 border-gray-300 font-bold">
-                    <td className="px-3 py-2.5 sticky left-0 bg-gray-50 z-10" colSpan={3}>Total</td>
-                    {years.map(y => (
-                      <td key={y} className="px-3 py-2.5 text-right tabular-nums text-gray-900">
-                        {(yearTotals[y] || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 3 })}
-                      </td>
-                    ))}
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          )}
+      <main style={s.main}>
+        <div style={s.pageHeader}>
+          <div>
+            <div style={s.pageTitle}>Production Summary</div>
+            <div style={s.pageSub}>Total tons by farm, commodity &amp; variety across production years</div>
+          </div>
+          <button
+            style={{ ...s.exportBtn, opacity: loading || rows.length === 0 ? 0.5 : 1 }}
+            onClick={handleExport}
+            disabled={loading || rows.length === 0}
+          >
+            Export to Excel
+          </button>
         </div>
+
+        {loading ? (
+          <div style={s.loading}>Loading...</div>
+        ) : rows.length === 0 ? (
+          <div style={s.loading}>No production data found</div>
+        ) : (
+          <div style={s.card}>
+            <table style={s.table}>
+              <thead>
+                <tr>
+                  <th style={s.th}>Farm</th>
+                  <th style={s.th}>Commodity</th>
+                  <th style={s.th}>Variety</th>
+                  {years.map(y => (
+                    <th key={y} style={s.thRight}>{y}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={i}>
+                    <td style={s.tdFarm}>{r.farm}</td>
+                    <td style={s.td}>
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                        color: commColor[r.commodity] || '#555',
+                        background: `${commColor[r.commodity] || '#555'}18`,
+                      }}>
+                        {r.commodity}
+                      </span>
+                    </td>
+                    <td style={s.td}>{r.variety}</td>
+                    {years.map(y => (
+                      <td key={y} style={s.tdRight}>{fmt(r.yearTons[y])}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td style={s.tfootTd} colSpan={3}>Total</td>
+                  {years.map(y => (
+                    <td key={y} style={s.tfootRight}>{fmt(yearTotals[y])}</td>
+                  ))}
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
       </main>
-    </>
+    </div>
   )
 }
