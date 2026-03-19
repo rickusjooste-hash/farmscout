@@ -293,6 +293,17 @@ function ScaleIcon() {
   )
 }
 
+function TableIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M3 9h18" />
+      <path d="M3 15h18" />
+      <path d="M9 3v18" />
+    </svg>
+  )
+}
+
 /* ── allFarm Logo SVG ── */
 function AllFarmLogo() {
   return (
@@ -394,6 +405,7 @@ export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], 
           <div className="ms-section-label">Production</div>
           <a href="/production" className={cls('/production')}><span className="ms-nav-icon"><PackageIcon /></span> Production</a>
           <a href="/production/receiving" className={cls('/production/receiving')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><LayersIcon /></span> Receiving</a>
+          <a href="/production/summary" className={cls('/production/summary')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><TableIcon /></span> Summary</a>
           <a href="/production/report" className={cls('/production/report')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><ClipboardCheckIcon /></span> Report</a>
           <a href="/production/settings" className={cls('/production/settings')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><ScaleIcon /></span> Bin Weights</a>
           <a href="/receivers/new" className={cls('/receivers/new')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><PersonPlusIcon /></span> New Receiver</a>
