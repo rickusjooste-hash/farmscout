@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     `🌧 Rain logged at ${gauge_name}`,
     ...lines,
     `Total: ${total}mm`,
-    `— FarmScout`,
+    `— allFarm`,
   ].join('\n')
 
   // Send WhatsApp via Twilio REST API
