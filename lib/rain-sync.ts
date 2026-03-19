@@ -212,12 +212,19 @@ async function _doPush(): Promise<{ pushed: number; failed: number }> {
   for (let i = 0; i < queue.length; i += BATCH_SIZE) {
     const batch = queue.slice(i, i + BATCH_SIZE)
     try {
-      const bodies = batch.map(item => {
+      const allBodies = batch.map(item => {
         const parsed = JSON.parse(item.body)
         return Object.fromEntries(
           Object.entries(parsed).filter(([k]) => !k.startsWith('_') && k !== 'id')
         )
       })
+
+      // Deduplicate by gauge_id+reading_date — last write wins
+      const deduped = new Map<string, Record<string, unknown>>()
+      for (const b of allBodies) {
+        deduped.set(`${b.gauge_id}_${b.reading_date}`, b)
+      }
+      const bodies = Array.from(deduped.values())
 
       const res = await fetch(`${SUPABASE_REST}/rain_readings?on_conflict=gauge_id,reading_date`, {
         method: 'POST',
