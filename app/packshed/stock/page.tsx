@@ -9,7 +9,6 @@ import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSi
 // ── Types ──────────────────────────────────────────────────────────────────
 
 interface Packhouse { id: string; code: string; name: string }
-interface OrchardRef { id: string; name: string; orchard_nr: number | null }
 interface BoxType { id: string; code: string; name: string; cartons_per_pallet: number }
 interface Size { id: string; label: string; sort_order: number }
 interface ValidCombo { box_type_id: string; size_id: string }
@@ -20,7 +19,6 @@ export default function FloorStockPage() {
   const modules = useOrgModules()
 
   const [packhouses, setPackhouses] = useState<Packhouse[]>([])
-  const [orchards, setOrchards] = useState<OrchardRef[]>([])
   const [boxTypes, setBoxTypes] = useState<BoxType[]>([])
   const [sizes, setSizes] = useState<Size[]>([])
   const [validCombos, setValidCombos] = useState<ValidCombo[]>([])
@@ -31,7 +29,6 @@ export default function FloorStockPage() {
   const [loading, setLoading] = useState(true)
 
   const [selectedPackhouse, setSelectedPackhouse] = useState('')
-  const [selectedOrchard, setSelectedOrchard] = useState('')
   const [stockDate, setStockDate] = useState(new Date().toISOString().split('T')[0])
 
   // ── Load reference data ──────────────────────────────────────────────
@@ -42,26 +39,20 @@ export default function FloorStockPage() {
   }, [contextLoaded])
 
   useEffect(() => {
-    if (selectedPackhouse && selectedOrchard && stockDate) {
-      loadStockData()
-    }
-  }, [selectedPackhouse, selectedOrchard, stockDate])
+    if (selectedPackhouse && stockDate) loadStockData()
+  }, [selectedPackhouse, stockDate])
 
   async function loadReferenceData() {
-    const [phRes, orchRes, btRes, szRes, comboRes] = await Promise.all([
+    const [phRes, btRes, szRes, comboRes] = await Promise.all([
       supabase.from('packhouses').select('id,code,name').eq('is_active', true).order('code'),
-      supabase.from('orchards').select('id,name,orchard_nr').eq('is_active', true).order('orchard_nr'),
       supabase.from('packout_box_types').select('id,code,name,cartons_per_pallet').eq('is_active', true).order('code'),
       supabase.from('packout_sizes').select('id,label,sort_order').eq('is_active', true).order('sort_order'),
       supabase.from('packout_box_type_sizes').select('box_type_id,size_id').eq('is_active', true),
     ])
-
     setPackhouses(phRes.data || [])
-    setOrchards(orchRes.data || [])
     setBoxTypes(btRes.data || [])
     setSizes(szRes.data || [])
     setValidCombos(comboRes.data || [])
-
     if (phRes.data?.length && !selectedPackhouse) setSelectedPackhouse(phRes.data[0].id)
     setLoading(false)
   }
@@ -72,7 +63,6 @@ export default function FloorStockPage() {
       .from('packout_floor_stock')
       .select('box_type_id,size_id,carton_count')
       .eq('packhouse_id', selectedPackhouse)
-      .eq('orchard_id', selectedOrchard)
       .eq('stock_date', stockDate)
 
     const cells = new Map<string, number>()
@@ -151,11 +141,10 @@ export default function FloorStockPage() {
       .from('packout_floor_stock')
       .select('box_type_id,size_id,carton_count')
       .eq('packhouse_id', selectedPackhouse)
-      .eq('orchard_id', selectedOrchard)
       .eq('stock_date', yDate)
 
     if (!data || data.length === 0) {
-      alert('No floor stock found for this orchard yesterday')
+      alert('No floor stock found for yesterday')
       return
     }
 
@@ -170,10 +159,6 @@ export default function FloorStockPage() {
   // ── Save ────────────────────────────────────────────────────────────
 
   async function handleSave() {
-    if (!selectedOrchard) {
-      alert('Please select an orchard')
-      return
-    }
     setSaving(true)
 
     const { data: phData } = await supabase.from('packhouses').select('organisation_id').eq('id', selectedPackhouse).single()
@@ -190,7 +175,6 @@ export default function FloorStockPage() {
         rows.push({
           organisation_id: orgId,
           packhouse_id: selectedPackhouse,
-          orchard_id: selectedOrchard,
           stock_date: stockDate,
           box_type_id: bt.id,
           size_id: sz.id,
@@ -202,7 +186,7 @@ export default function FloorStockPage() {
     if (rows.length > 0) {
       const { error } = await supabase
         .from('packout_floor_stock')
-        .upsert(rows, { onConflict: 'organisation_id,packhouse_id,orchard_id,stock_date,box_type_id,size_id' })
+        .upsert(rows, { onConflict: 'organisation_id,packhouse_id,stock_date,box_type_id,size_id' })
 
       if (error) {
         console.error('Save error:', error)
@@ -219,8 +203,6 @@ export default function FloorStockPage() {
 
   if (!contextLoaded) return null
 
-  const selectedOrchardName = orchards.find(o => o.id === selectedOrchard)?.name
-
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f5f7fa', fontFamily: 'Inter, sans-serif' }}>
       <ManagerSidebarStyles />
@@ -231,7 +213,7 @@ export default function FloorStockPage() {
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 700, color: '#1a2a3a', margin: 0 }}>Floor Stock</h1>
             <p style={{ fontSize: 13, color: '#8a95a0', margin: '4px 0 0' }}>
-              Count partial pallets on the floor per orchard
+              Count partial pallets on the floor — shared across orchards
             </p>
           </div>
 
@@ -240,106 +222,82 @@ export default function FloorStockPage() {
               {packhouses.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
 
-            <select
-              style={{ ...s.select, minWidth: 160, borderColor: selectedOrchard ? '#d4d8de' : '#e85a4a' }}
-              value={selectedOrchard}
-              onChange={e => setSelectedOrchard(e.target.value)}
-            >
-              <option value="">-- Select Orchard --</option>
-              {orchards.map(o => (
-                <option key={o.id} value={o.id}>
-                  {o.orchard_nr ? `${o.orchard_nr} – ` : ''}{o.name}
-                </option>
-              ))}
-            </select>
-
             <input type="date" style={s.select} value={stockDate} onChange={e => setStockDate(e.target.value)} />
 
-            <button style={s.btnSecondary} onClick={copyFromYesterday} disabled={!selectedOrchard}>
+            <button style={s.btnSecondary} onClick={copyFromYesterday}>
               Copy Yesterday
             </button>
 
             <button
-              style={{ ...s.btnPrimary, opacity: dirty && selectedOrchard ? 1 : 0.5 }}
+              style={{ ...s.btnPrimary, opacity: dirty ? 1 : 0.5 }}
               onClick={handleSave}
-              disabled={!dirty || saving || !selectedOrchard}
+              disabled={!dirty || saving}
             >
               {saving ? 'Saving...' : 'Save'}
             </button>
           </div>
         </div>
 
-        {!selectedOrchard ? (
-          <div style={{ padding: 40, textAlign: 'center', color: '#8a95a0' }}>
-            Select an orchard to enter floor stock
-          </div>
-        ) : loading ? (
+        {loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: '#8a95a0' }}>Loading...</div>
         ) : activeBoxTypes.length === 0 ? (
           <div style={{ padding: 40, textAlign: 'center', color: '#8a95a0' }}>
             No box types configured. Run the Paltrack sync to auto-derive box types and sizes.
           </div>
         ) : (
-          <>
-            {selectedOrchardName && (
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#2176d9', marginBottom: 12 }}>
-                {selectedOrchardName} — {stockDate}
-              </div>
-            )}
-            <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb', overflow: 'auto' }}>
-              <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ background: '#f8f9fb' }}>
-                    <th style={s.th}>Box Type</th>
-                    {activeSizes.map(sz => (
-                      <th key={sz.id} style={{ ...s.th, textAlign: 'center', minWidth: 60 }}>{sz.label}</th>
-                    ))}
-                    <th style={{ ...s.th, textAlign: 'center', background: '#eef2f7' }}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activeBoxTypes.map(bt => (
-                    <tr key={bt.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                      <td style={{ ...s.td, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                        {bt.code}
-                        <span style={{ fontWeight: 400, color: '#8a95a0', fontSize: 11, marginLeft: 6 }}>
-                          ({bt.cartons_per_pallet}/plt)
-                        </span>
-                      </td>
-                      {activeSizes.map(sz => {
-                        const key = cellKey(bt.id, sz.id)
-                        const isValid = validSet.has(key)
-                        if (!isValid) return <td key={sz.id} style={{ ...s.td, background: '#f8f8f8' }} />
-                        const val = getCellValue(bt.id, sz.id)
-                        return (
-                          <td key={sz.id} style={s.td}>
-                            <input
-                              type="number" min={0} style={s.cellInput}
-                              value={val || ''}
-                              onChange={e => setCellValue(bt.id, sz.id, parseInt(e.target.value) || 0)}
-                              onFocus={e => e.target.select()}
-                            />
-                          </td>
-                        )
-                      })}
-                      <td style={{ ...s.td, textAlign: 'center', fontWeight: 700, background: '#eef2f7' }}>
-                        {rowTotal(bt.id) || ''}
-                      </td>
-                    </tr>
+          <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb', overflow: 'auto' }}>
+            <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: '#f8f9fb' }}>
+                  <th style={s.th}>Box Type</th>
+                  {activeSizes.map(sz => (
+                    <th key={sz.id} style={{ ...s.th, textAlign: 'center', minWidth: 60 }}>{sz.label}</th>
                   ))}
-                </tbody>
-                <tfoot>
-                  <tr style={{ background: '#eef2f7', fontWeight: 700 }}>
-                    <td style={s.td}>Total</td>
-                    {activeSizes.map(sz => (
-                      <td key={sz.id} style={{ ...s.td, textAlign: 'center' }}>{colTotal(sz.id) || ''}</td>
-                    ))}
-                    <td style={{ ...s.td, textAlign: 'center', fontSize: 15 }}>{grandTotal || 0}</td>
+                  <th style={{ ...s.th, textAlign: 'center', background: '#eef2f7' }}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeBoxTypes.map(bt => (
+                  <tr key={bt.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                    <td style={{ ...s.td, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      {bt.code}
+                      <span style={{ fontWeight: 400, color: '#8a95a0', fontSize: 11, marginLeft: 6 }}>
+                        ({bt.cartons_per_pallet}/plt)
+                      </span>
+                    </td>
+                    {activeSizes.map(sz => {
+                      const key = cellKey(bt.id, sz.id)
+                      const isValid = validSet.has(key)
+                      if (!isValid) return <td key={sz.id} style={{ ...s.td, background: '#f8f8f8' }} />
+                      const val = getCellValue(bt.id, sz.id)
+                      return (
+                        <td key={sz.id} style={s.td}>
+                          <input
+                            type="number" min={0} style={s.cellInput}
+                            value={val || ''}
+                            onChange={e => setCellValue(bt.id, sz.id, parseInt(e.target.value) || 0)}
+                            onFocus={e => e.target.select()}
+                          />
+                        </td>
+                      )
+                    })}
+                    <td style={{ ...s.td, textAlign: 'center', fontWeight: 700, background: '#eef2f7' }}>
+                      {rowTotal(bt.id) || ''}
+                    </td>
                   </tr>
-                </tfoot>
-              </table>
-            </div>
-          </>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr style={{ background: '#eef2f7', fontWeight: 700 }}>
+                  <td style={s.td}>Total</td>
+                  {activeSizes.map(sz => (
+                    <td key={sz.id} style={{ ...s.td, textAlign: 'center' }}>{colTotal(sz.id) || ''}</td>
+                  ))}
+                  <td style={{ ...s.td, textAlign: 'center', fontSize: 15 }}>{grandTotal || 0}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         )}
       </main>
     </div>

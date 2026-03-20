@@ -13,8 +13,8 @@ interface BoxType { id: string; code: string; name: string; pack_code: string; g
 interface Size { id: string; label: string; sort_order: number }
 interface ValidCombo { box_type_id: string; size_id: string }
 interface PalletRow { box_type_id: string | null; size_id: string | null; carton_count: number; orchard_id: string | null; orchard_code: string | null; variety: string | null }
-interface StockCell { box_type_id: string; size_id: string; carton_count: number; orchard_id: string | null }
-interface BinWeight { category: string; net_weight_kg: number; seq: number; bin_type: string; gross_weight_kg: number; tare_weight_kg: number; orchard_id: string | null }
+interface StockCell { box_type_id: string; size_id: string; carton_count: number }
+interface BinWeight { category: string; net_weight_kg: number; seq: number; bin_type: string; gross_weight_kg: number; tare_weight_kg: number; orchard_id: string | null; bin_count: number }
 interface OrchardRef { id: string; name: string; orchard_nr: number | null }
 
 interface SessionRow {
@@ -89,9 +89,9 @@ export default function DailyPackoutPage() {
 
     const [palRes, fsToday, fsYest, bwRes, sessRes] = await Promise.all([
       supabase.from('packout_pallets').select('box_type_id,size_id,carton_count,orchard_id,orchard_code,variety').eq('packhouse_id', selectedPackhouse).eq('pack_date', packDate),
-      supabase.from('packout_floor_stock').select('box_type_id,size_id,carton_count,orchard_id').eq('packhouse_id', selectedPackhouse).eq('stock_date', packDate),
-      supabase.from('packout_floor_stock').select('box_type_id,size_id,carton_count,orchard_id').eq('packhouse_id', selectedPackhouse).eq('stock_date', yDate),
-      supabase.from('packout_bin_weights').select('category,net_weight_kg,seq,bin_type,gross_weight_kg,tare_weight_kg,orchard_id').eq('packhouse_id', selectedPackhouse).eq('weigh_date', packDate).order('category').order('seq'),
+      supabase.from('packout_floor_stock').select('box_type_id,size_id,carton_count').eq('packhouse_id', selectedPackhouse).eq('stock_date', packDate),
+      supabase.from('packout_floor_stock').select('box_type_id,size_id,carton_count').eq('packhouse_id', selectedPackhouse).eq('stock_date', yDate),
+      supabase.from('packout_bin_weights').select('category,net_weight_kg,seq,bin_type,gross_weight_kg,tare_weight_kg,orchard_id,bin_count').eq('packhouse_id', selectedPackhouse).eq('weigh_date', packDate).order('category').order('seq'),
       supabase.from('packout_daily_sessions').select('id,orchard_id,variety,bins_packed,start_time,end_time,smous_weight_kg').eq('packhouse_id', selectedPackhouse).eq('pack_date', packDate),
     ])
 
@@ -232,15 +232,9 @@ export default function DailyPackoutPage() {
     return pallets.filter(p => p.orchard_id === selectedOrchard)
   }, [pallets, selectedOrchard])
 
-  const filteredFloorToday = useMemo(() => {
-    if (selectedOrchard === 'all') return floorStockToday
-    return floorStockToday.filter(f => f.orchard_id === selectedOrchard)
-  }, [floorStockToday, selectedOrchard])
-
-  const filteredFloorYest = useMemo(() => {
-    if (selectedOrchard === 'all') return floorStockYesterday
-    return floorStockYesterday.filter(f => f.orchard_id === selectedOrchard)
-  }, [floorStockYesterday, selectedOrchard])
+  // Floor stock is per-packhouse (shared pool, not per-orchard)
+  const filteredFloorToday = floorStockToday
+  const filteredFloorYest = floorStockYesterday
 
   const filteredBinWeights = useMemo(() => {
     if (selectedOrchard === 'all') return binWeights
@@ -293,10 +287,14 @@ export default function DailyPackoutPage() {
     return groups
   }, [filteredBinWeights])
 
+  function catTotalBins(cat: string): number {
+    return (binsByCategory[cat] || []).reduce((s, b) => s + (b.bin_count || 1), 0)
+  }
+
   function catAvg(cat: string): number {
-    const bins = binsByCategory[cat] || []
-    if (bins.length === 0) return 0
-    return bins.reduce((s, b) => s + b.net_weight_kg, 0) / bins.length
+    const totalBins = catTotalBins(cat)
+    if (totalBins === 0) return 0
+    return catTotal(cat) / totalBins
   }
 
   function catTotal(cat: string): number {
@@ -532,8 +530,8 @@ export default function DailyPackoutPage() {
 
             {/* KPI strip */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 28 }}>
-              <KPI label="Bins Packed" value={totalBinsPacked || binsByCategory.pack.length} sub={`Avg ${avgBinWeight.toFixed(1)} kg/bin`} />
-              <KPI label="Total KG In" value={Math.round(totalKgIn).toLocaleString()} sub={totalBinsPacked ? `${totalBinsPacked} bins` : 'from weighed bins'} color="#2176d9" />
+              <KPI label="Bins Packed" value={totalBinsPacked || catTotalBins('pack')} sub={`Avg ${avgBinWeight.toFixed(1)} kg/bin`} />
+              <KPI label="Total KG In" value={Math.round(totalKgIn).toLocaleString()} sub={totalBinsPacked ? `${totalBinsPacked} bins` : `${catTotalBins('pack')} bins weighed`} color="#2176d9" />
               <KPI label="Net Cartons" value={totalCartonsOut.toLocaleString()} sub="packed today" />
               <KPI label="Conversion" value={totalKgIn > 0 ? `${conversionPct.toFixed(1)}%` : '-'} sub="cartons / KG in" color={conversionPct > 80 ? '#4caf72' : conversionPct > 0 ? '#e6a817' : '#8a95a0'} />
               <KPI label="Loss" value={totalKgIn > 0 ? `${lossPct.toFixed(1)}%` : '-'} sub="unaccounted" color={lossPct < 5 && totalKgIn > 0 ? '#4caf72' : totalKgIn > 0 ? '#e85a4a' : '#8a95a0'} />
@@ -549,11 +547,12 @@ export default function DailyPackoutPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 28 }}>
               {(['pack', 'juice', 'rot'] as const).map(cat => {
                 const bins = binsByCategory[cat] || []
+                const binCount = catTotalBins(cat)
                 const colors = { pack: '#2176d9', juice: '#e6a817', rot: '#e85a4a' }
                 return (
                   <div key={cat} style={{ background: '#fff', borderRadius: 10, border: '1px solid #e5e7eb', padding: 16 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', marginBottom: 8 }}>
-                      {cat} Bins ({bins.length})
+                      {cat} Bins ({binCount})
                     </div>
                     {bins.length === 0 ? (
                       <div style={{ color: '#d4d8de', fontSize: 13 }}>No bins weighed</div>
@@ -578,7 +577,7 @@ export default function DailyPackoutPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 600, color: '#8a95a0', textTransform: 'uppercase', marginBottom: 8 }}>KG In</div>
-                  <MBRow label={`${totalBinsPacked || binsByCategory.pack.length} bins × ${avgBinWeight.toFixed(1)} kg`} value={totalKgIn} />
+                  <MBRow label={`${totalBinsPacked || catTotalBins('pack')} bins × ${avgBinWeight.toFixed(1)} kg`} value={totalKgIn} />
                   <MBRow label="Total KG In" value={totalKgIn} bold />
                 </div>
                 <div>
