@@ -141,7 +141,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
     q.then(({ data }) => setOrchards((data as any) || []))
   }, [contextLoaded])
 
-  // ── Load season chart data (via RPC — no row-limit issues) ────────────
+  // ── Load season chart data (paginated to avoid PostgREST row limit) ──
   useEffect(() => {
     if (!contextLoaded) return
     async function loadChart() {
@@ -149,35 +149,40 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
       const now = new Date()
       const yr = now.getFullYear()
       const mo = now.getMonth() + 1
-      const startYr = mo < 8 ? yr - 1 : yr
-      const endYr = startYr + 1
+      const seasonStart = `${mo < 8 ? yr - 1 : yr}-08-01`
 
-      const { data, error } = await supabase.rpc('get_pest_trend', {
-        p_from: `${startYr}-08-01`,
-        p_to: `${endYr}-07-31`,
-        p_farm_id: null,
-        p_commodity_id: null,
-      })
+      // Paginate to get all rows (PostgREST default limit is 1000)
+      const allData: any[] = []
+      const PAGE = 1000
+      for (let offset = 0; ; offset += PAGE) {
+        const { data, error } = await supabase
+          .from('trap_counts')
+          .select('pest_id, count, pests(name), trap_inspections!inner(inspected_at)')
+          .gte('trap_inspections.inspected_at', seasonStart)
+          .gt('count', 0)
+          .range(offset, offset + PAGE - 1)
+        if (error || !data?.length) break
+        allData.push(...data)
+        if (data.length < PAGE) break
+      }
 
-      if (error || !data?.length) { setChartLoading(false); return }
+      if (!allData.length) { setChartLoading(false); return }
 
       const weekPestMap: Record<string, Record<string, number>> = {}
-      const allPestSet = new Set<string>()
+      const pestNameById: Record<string, string> = {}
 
-      data.forEach((row: any) => {
-        const { week_label, pest_name, total_count } = row
-        if (!week_label || !pest_name) return
-        allPestSet.add(pest_name)
-        if (!weekPestMap[week_label]) weekPestMap[week_label] = {}
-        weekPestMap[week_label][pest_name] = (weekPestMap[week_label][pest_name] || 0) + total_count
+      allData.forEach((c: any) => {
+        const inspAt = c.trap_inspections?.inspected_at
+        if (!inspAt) return
+        const wk = getISOWeekKey(new Date(inspAt))
+        const name = c.pests?.name || 'Unknown'
+        pestNameById[c.pest_id] = name
+        if (!weekPestMap[wk]) weekPestMap[wk] = {}
+        weekPestMap[wk][name] = (weekPestMap[wk][name] || 0) + c.count
       })
 
-      const allPestNames = [...allPestSet].sort()
-      const sortedWeeks = Object.keys(weekPestMap).sort((a, b) => {
-        const [ya, wa] = a.split('-W').map(Number)
-        const [yb, wb] = b.split('-W').map(Number)
-        return ya !== yb ? ya - yb : wa - wb
-      })
+      const allPestNames = [...new Set(Object.values(pestNameById))].sort()
+      const sortedWeeks = Object.keys(weekPestMap).sort()
       const rows = sortedWeeks.map(wk => {
         const row: Record<string, number | string> = { week: 'W' + wk.split('-W')[1] }
         allPestNames.forEach(p => { row[p] = weekPestMap[wk][p] || 0 })
