@@ -141,7 +141,7 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
     q.then(({ data }) => setOrchards((data as any) || []))
   }, [contextLoaded])
 
-  // ── Load season chart data ────────────────────────────────────────────
+  // ── Load season chart data (via RPC — no row-limit issues) ────────────
   useEffect(() => {
     if (!contextLoaded) return
     async function loadChart() {
@@ -149,34 +149,35 @@ export default function OrchardPressureMap({ initialPestId }: { initialPestId?: 
       const now = new Date()
       const yr = now.getFullYear()
       const mo = now.getMonth() + 1
-      const seasonStart = `${mo < 8 ? yr - 1 : yr}-08-01`
+      const startYr = mo < 8 ? yr - 1 : yr
+      const endYr = startYr + 1
 
-      // Single query: join trap_counts → trap_inspections for date filter
-      // Avoids passing hundreds of IDs in the URL; RLS scopes to org
-      const { data, error } = await supabase
-        .from('trap_counts')
-        .select('pest_id, count, pests(name), trap_inspections!inner(inspected_at)')
-        .gte('trap_inspections.inspected_at', seasonStart)
-        .gt('count', 0)
-        .limit(5000)
+      const { data, error } = await supabase.rpc('get_pest_trend', {
+        p_from: `${startYr}-08-01`,
+        p_to: `${endYr}-07-31`,
+        p_farm_id: null,
+        p_commodity_id: null,
+      })
 
       if (error || !data?.length) { setChartLoading(false); return }
 
       const weekPestMap: Record<string, Record<string, number>> = {}
-      const pestNameById: Record<string, string> = {}
+      const allPestSet = new Set<string>()
 
-      data.forEach((c: any) => {
-        const inspAt = c.trap_inspections?.inspected_at
-        if (!inspAt) return
-        const wk = getISOWeekKey(new Date(inspAt))
-        const name = c.pests?.name || 'Unknown'
-        pestNameById[c.pest_id] = name
-        if (!weekPestMap[wk]) weekPestMap[wk] = {}
-        weekPestMap[wk][name] = (weekPestMap[wk][name] || 0) + c.count
+      data.forEach((row: any) => {
+        const { week_label, pest_name, total_count } = row
+        if (!week_label || !pest_name) return
+        allPestSet.add(pest_name)
+        if (!weekPestMap[week_label]) weekPestMap[week_label] = {}
+        weekPestMap[week_label][pest_name] = (weekPestMap[week_label][pest_name] || 0) + total_count
       })
 
-      const allPestNames = [...new Set(Object.values(pestNameById))].sort()
-      const sortedWeeks = Object.keys(weekPestMap).sort()
+      const allPestNames = [...allPestSet].sort()
+      const sortedWeeks = Object.keys(weekPestMap).sort((a, b) => {
+        const [ya, wa] = a.split('-W').map(Number)
+        const [yb, wb] = b.split('-W').map(Number)
+        return ya !== yb ? ya - yb : wa - wb
+      })
       const rows = sortedWeeks.map(wk => {
         const row: Record<string, number | string> = { week: 'W' + wk.split('-W')[1] }
         allPestNames.forEach(p => { row[p] = weekPestMap[wk][p] || 0 })
