@@ -194,7 +194,7 @@ export default function NewHrEventPage() {
   // ── Submit ────────────────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!selectedEmployee || !eventTypeId || !eventDate || !selectedFarm) return
+    if (!selectedEmployee || !eventTypeId || !eventDate || !selectedFarm || !categoryId) return
     setSaving(true)
 
     let photoUrl: string | null = null
@@ -311,8 +311,8 @@ export default function NewHrEventPage() {
 
           {/* Reason Category */}
           <div style={{ marginBottom: 20 }}>
-            <label style={labelStyle}>Reason Category</label>
-            <select value={categoryId} onChange={e => setCategoryId(e.target.value)} style={inputStyle}>
+            <label style={labelStyle}>Reason Category *</label>
+            <select value={categoryId} onChange={e => setCategoryId(e.target.value)} required style={inputStyle}>
               <option value="">Select category...</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
@@ -410,7 +410,7 @@ export default function NewHrEventPage() {
 
           {/* Submit */}
           <div style={{ display: 'flex', gap: 12 }}>
-            <button type="submit" disabled={saving || !selectedEmployee || !eventTypeId}
+            <button type="submit" disabled={saving || !selectedEmployee || !eventTypeId || !categoryId}
               style={{
                 background: saving ? '#999' : '#2176d9', color: '#fff', padding: '12px 28px',
                 borderRadius: 8, border: 'none', fontSize: 14, fontWeight: 600, cursor: saving ? 'default' : 'pointer',
