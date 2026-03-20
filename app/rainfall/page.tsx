@@ -6,6 +6,12 @@ import { useOrgModules } from '@/lib/useOrgModules'
 import { useEffect, useState, useMemo } from 'react'
 import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
 import MobileNav from '@/app/components/MobileNav'
+import RainMetricCards from '@/app/components/rainfall/RainMetricCards'
+import RainHeatmap from '@/app/components/rainfall/RainHeatmap'
+import SeasonalWheel from '@/app/components/rainfall/SeasonalWheel'
+import GaugeComparison from '@/app/components/rainfall/GaugeComparison'
+import DryStreakMeter from '@/app/components/rainfall/DryStreakMeter'
+import SeasonBudgetTracker from '@/app/components/rainfall/SeasonBudgetTracker'
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, ReferenceLine, Cell,
@@ -20,11 +26,50 @@ interface Farm { id: string; code: string; name: string }
 interface Gauge { id: string; farm_id: string; name: string }
 interface Reading { gauge_id: string; reading_date: string; value_mm: number }
 
+interface Season {
+  label: string
+  startDate: string
+  endDate: string
+  year: number
+}
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
 const GAUGE_COLORS: Record<string, string> = {
   "Mouton's Valley": '#2176d9',
   'Stawelklip': '#4caf72',
   'MorningSide': '#e8924a',
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function getCurrentSeason(): Season {
+  const yr = new Date().getFullYear()
+  return {
+    label: `${yr}`,
+    startDate: `${yr}-01-01`,
+    endDate: `${yr}-12-31`,
+    year: yr,
+  }
+}
+
+function median(arr: number[]): number {
+  if (arr.length === 0) return 0
+  const sorted = [...arr].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+}
+
+function isMonthlyReading(r: Reading): boolean {
+  const d = new Date(r.reading_date + 'T00:00:00')
+  return d.getDate() === 1 && d.getFullYear() < 2024
+}
+
+function seasonWeek(date: Date, year: number): number {
+  const start = new Date(year, 0, 1) // Jan 1
+  const diff = Math.floor((date.getTime() - start.getTime()) / 86400000)
+  if (diff < 0) return 0
+  return Math.min(52, Math.floor(diff / 7) + 1)
 }
 
 // ── Main Page ──────────────────────────────────────────────────────────────
@@ -32,6 +77,7 @@ const GAUGE_COLORS: Record<string, string> = {
 export default function RainfallPage() {
   const { farmIds, isSuperAdmin, contextLoaded, allowedRoutes } = usePageGuard()
   const modules = useOrgModules()
+  const season = getCurrentSeason()
 
   const [farms, setFarms] = useState<Farm[]>([])
   const [effectiveFarmIds, setEffectiveFarmIds] = useState<string[]>([])
@@ -65,7 +111,7 @@ export default function RainfallPage() {
     load()
   }, [contextLoaded, farmIds, isSuperAdmin])
 
-  // ── Load gauges + readings (once) ────────────────────────────────────────
+  // ── Load gauges + readings (paginated) ─────────────────────────────────
 
   useEffect(() => {
     if (effectiveFarmIds.length === 0) return
@@ -81,7 +127,6 @@ export default function RainfallPage() {
 
       if (!gData || gData.length === 0) return
       const gaugeIds = gData.map(g => g.id)
-      // Supabase caps at 1000 rows per request; paginate to get all ~1,300
       let allReadings: Reading[] = []
       let page = 0
       while (true) {
@@ -100,7 +145,7 @@ export default function RainfallPage() {
     load()
   }, [effectiveFarmIds])
 
-  // ── Filtered gauges ──────────────────────────────────────────────────────
+  // ── Filtered data ──────────────────────────────────────────────────────
 
   const filteredGauges = useMemo(() => {
     let g = gauges
@@ -116,10 +161,158 @@ export default function RainfallPage() {
     [readings, filteredGaugeIds],
   )
 
-  // Reset gauge selection when farm changes
   useEffect(() => { setSelectedGauge(null) }, [selectedFarm])
 
-  // ── Available years ──────────────────────────────────────────────────────
+  const gaugeOptions = useMemo(() => {
+    if (selectedFarm) return gauges.filter(g => g.farm_id === selectedFarm)
+    return gauges
+  }, [gauges, selectedFarm])
+
+  // ── Season readings ────────────────────────────────────────────────────
+
+  const seasonReadings = useMemo(
+    () => filteredReadings.filter(r => r.reading_date >= season.startDate && r.reading_date <= season.endDate),
+    [filteredReadings, season],
+  )
+
+  const hasDailyData = useMemo(
+    () => seasonReadings.some(r => !isMonthlyReading(r)),
+    [seasonReadings],
+  )
+
+  // ── Season total ───────────────────────────────────────────────────────
+
+  const seasonTotal = useMemo(
+    () => Math.round(seasonReadings.reduce((sum, r) => sum + r.value_mm, 0) * 10) / 10,
+    [seasonReadings],
+  )
+
+  // ── Monthly medians (per calendar month, across all years) ─────────────
+
+  const monthlyMedians = useMemo(() => {
+    const byYearMonth: Record<string, number> = {}
+    filteredReadings.forEach(r => {
+      const d = new Date(r.reading_date + 'T00:00:00')
+      const key = `${d.getFullYear()}-${d.getMonth()}`
+      byYearMonth[key] = (byYearMonth[key] || 0) + r.value_mm
+    })
+    const monthValues: Record<number, number[]> = {}
+    for (let m = 0; m < 12; m++) monthValues[m] = []
+    Object.entries(byYearMonth).forEach(([key, total]) => {
+      const m = parseInt(key.split('-')[1])
+      monthValues[m].push(total)
+    })
+    return Array.from({ length: 12 }, (_, m) => ({
+      month: MONTHS[m],
+      median: Math.round(median(monthValues[m]) * 10) / 10,
+    }))
+  }, [filteredReadings])
+
+  // ── Full season median (sum of 12 monthly medians) ─────────────────────
+
+  const fullSeasonMedian = useMemo(
+    () => monthlyMedians.reduce((sum, m) => sum + m.median, 0),
+    [monthlyMedians],
+  )
+
+  // ── Median to date (prorated current month) ────────────────────────────
+
+  const medianToDate = useMemo(() => {
+    const now = new Date()
+    const currentMonth = now.getMonth()
+    let total = 0
+    for (let m = 0; m < 12; m++) {
+      if (m === currentMonth) {
+        const daysInMonth = new Date(now.getFullYear(), currentMonth + 1, 0).getDate()
+        total += monthlyMedians[m].median * (now.getDate() / daysInMonth)
+        break
+      }
+      total += monthlyMedians[m].median
+    }
+    return Math.round(total * 10) / 10
+  }, [monthlyMedians])
+
+  // ── Last rain event ────────────────────────────────────────────────────
+
+  const lastRainEvent = useMemo(() => {
+    const withRain = filteredReadings.filter(r => r.value_mm > 0)
+    if (withRain.length === 0) return null
+    const last = withRain[withRain.length - 1]
+    return {
+      date: last.reading_date,
+      mm: last.value_mm,
+      daysAgo: Math.floor((Date.now() - new Date(last.reading_date + 'T00:00:00').getTime()) / 86400000),
+    }
+  }, [filteredReadings])
+
+  // ── Wettest day this season (daily data only) ──────────────────────────
+
+  const wettestDay = useMemo(() => {
+    const daily = seasonReadings.filter(r => !isMonthlyReading(r))
+    if (daily.length === 0) return null
+    const max = daily.reduce((best, r) => r.value_mm > best.value_mm ? r : best, daily[0])
+    return { date: max.reading_date, mm: max.value_mm }
+  }, [seasonReadings])
+
+  // ── Current dry streak (consecutive dry days from today backwards) ─────
+
+  const currentDryDays = useMemo(() => {
+    if (!hasDailyData) return 0
+    // Find the most recent date with rain across all gauges
+    const dailyTotals: Record<string, number> = {}
+    filteredReadings
+      .filter(r => !isMonthlyReading(r))
+      .forEach(r => { dailyTotals[r.reading_date] = (dailyTotals[r.reading_date] || 0) + r.value_mm })
+    const lastRainDate = Object.entries(dailyTotals)
+      .filter(([, v]) => v > 0)
+      .map(([d]) => d)
+      .sort((a, b) => b.localeCompare(a))[0]
+    if (!lastRainDate) return 0
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const diff = Math.floor((today.getTime() - new Date(lastRainDate + 'T00:00:00').getTime()) / 86400000)
+    return Math.max(0, diff)
+  }, [filteredReadings, hasDailyData])
+
+  // ── Seasonal wheel data ────────────────────────────────────────────────
+
+  const wheelData = useMemo(() => {
+    const byYearMonth: Record<string, number> = {}
+    const years = new Set<number>()
+    filteredReadings.forEach(r => {
+      const d = new Date(r.reading_date + 'T00:00:00')
+      const key = `${d.getFullYear()}-${d.getMonth()}`
+      byYearMonth[key] = (byYearMonth[key] || 0) + r.value_mm
+      years.add(d.getFullYear())
+    })
+    const nYears = years.size || 1
+    const avgByMonth = new Array(12).fill(0)
+    Object.entries(byYearMonth).forEach(([key, total]) => {
+      const m = parseInt(key.split('-')[1])
+      avgByMonth[m] += total
+    })
+    for (let i = 0; i < 12; i++) avgByMonth[i] = Math.round((avgByMonth[i] / nYears) * 10) / 10
+
+    const currentByMonth = new Array(12).fill(0)
+    seasonReadings.forEach(r => {
+      const m = new Date(r.reading_date + 'T00:00:00').getMonth()
+      currentByMonth[m] += r.value_mm
+    })
+
+    return MONTHS.map((name, i) => ({
+      month: name,
+      average: avgByMonth[i],
+      current: Math.round(currentByMonth[i] * 10) / 10,
+    }))
+  }, [filteredReadings, seasonReadings])
+
+  const yearsOfData = useMemo(() => {
+    const years = new Set<number>()
+    filteredReadings.forEach(r => years.add(new Date(r.reading_date + 'T00:00:00').getFullYear()))
+    return years.size
+  }, [filteredReadings])
+
+  // ── Available years (for year selector) ──────────────────────────────
 
   const availableYears = useMemo(() => {
     const ys = new Set<number>()
@@ -130,52 +323,17 @@ export default function RainfallPage() {
 
   // Ensure selectedYear is valid
   useEffect(() => {
-    if (!availableYears.includes(selectedYear)) {
-      setSelectedYear(availableYears[0])
-    }
+    if (!availableYears.includes(selectedYear)) setSelectedYear(availableYears[0])
   }, [availableYears, selectedYear])
 
-  // ── Gauge selector options (filtered by farm) ────────────────────────────
-
-  const gaugeOptions = useMemo(() => {
-    if (selectedFarm) return gauges.filter(g => g.farm_id === selectedFarm)
-    return gauges
-  }, [gauges, selectedFarm])
-
-  // ── KPIs ─────────────────────────────────────────────────────────────────
+  // ── Year readings ──────────────────────────────────────────────────────
 
   const yearReadings = useMemo(
     () => filteredReadings.filter(r => new Date(r.reading_date + 'T00:00:00').getFullYear() === selectedYear),
     [filteredReadings, selectedYear],
   )
 
-  const yearTotal = useMemo(
-    () => yearReadings.reduce((sum, r) => sum + r.value_mm, 0),
-    [yearReadings],
-  )
-
-  const longTermAvg = useMemo(() => {
-    // Annual totals per year
-    const byYear: Record<number, number> = {}
-    filteredReadings.forEach(r => {
-      const y = new Date(r.reading_date + 'T00:00:00').getFullYear()
-      byYear[y] = (byYear[y] || 0) + r.value_mm
-    })
-    const years = Object.keys(byYear)
-    if (years.length === 0) return 0
-    const total = Object.values(byYear).reduce((a, b) => a + b, 0)
-    return total / years.length
-  }, [filteredReadings])
-
-  const pctOfAvg = longTermAvg > 0 ? (yearTotal / longTermAvg) * 100 : 0
-  const pctColor = pctOfAvg >= 80 ? '#4caf72' : pctOfAvg >= 60 ? '#f5c842' : '#e85a4a'
-
-  const lastReading = useMemo(() => {
-    if (filteredReadings.length === 0) return null
-    return filteredReadings[filteredReadings.length - 1]
-  }, [filteredReadings])
-
-  // ── Chart 1: Monthly rainfall (selected year) ───────────────────────────
+  // ── Chart: Monthly Rainfall (selected year) ───────────────────────────
 
   const monthlyData = useMemo(() => {
     const byMonth = new Array(12).fill(0)
@@ -183,17 +341,14 @@ export default function RainfallPage() {
       const m = new Date(r.reading_date + 'T00:00:00').getMonth()
       byMonth[m] += r.value_mm
     })
-
     // Long-term monthly averages
     const ltByMonthYear: Record<string, number> = {}
     const ltYears = new Set<number>()
     filteredReadings.forEach(r => {
       const d = new Date(r.reading_date + 'T00:00:00')
-      const y = d.getFullYear()
-      const m = d.getMonth()
-      const key = `${y}-${m}`
+      const key = `${d.getFullYear()}-${d.getMonth()}`
       ltByMonthYear[key] = (ltByMonthYear[key] || 0) + r.value_mm
-      ltYears.add(y)
+      ltYears.add(d.getFullYear())
     })
     const nYears = ltYears.size || 1
     const ltAvg = new Array(12).fill(0)
@@ -210,7 +365,7 @@ export default function RainfallPage() {
     }))
   }, [yearReadings, filteredReadings])
 
-  // ── Chart 2: Annual trend ────────────────────────────────────────────────
+  // ── Chart: Annual Trend ────────────────────────────────────────────────
 
   const annualData = useMemo(() => {
     const byYear: Record<number, number> = {}
@@ -223,22 +378,24 @@ export default function RainfallPage() {
       .sort((a, b) => a.year - b.year)
   }, [filteredReadings])
 
-  // ── Chart 3: Gauge comparison (conditional) ──────────────────────────────
+  const longTermAvg = useMemo(() => {
+    if (annualData.length === 0) return 0
+    return annualData.reduce((a, b) => a + b.total, 0) / annualData.length
+  }, [annualData])
 
-  const showGaugeComparison = filteredGauges.length > 1 && !selectedGauge
+  // ── Chart: Gauge Comparison (monthly, selected year) ───────────────────
+
+  const showOldGaugeComparison = filteredGauges.length > 1 && !selectedGauge
 
   const gaugeComparisonData = useMemo(() => {
-    if (!showGaugeComparison) return []
-
+    if (!showOldGaugeComparison) return []
     const byGaugeMonth: Record<string, Record<number, number>> = {}
     filteredGauges.forEach(g => { byGaugeMonth[g.id] = {} })
-
     yearReadings.forEach(r => {
       if (!byGaugeMonth[r.gauge_id]) return
       const m = new Date(r.reading_date + 'T00:00:00').getMonth()
       byGaugeMonth[r.gauge_id][m] = (byGaugeMonth[r.gauge_id][m] || 0) + r.value_mm
     })
-
     return MONTHS.map((name, i) => {
       const row: Record<string, string | number> = { name }
       filteredGauges.forEach(g => {
@@ -246,66 +403,101 @@ export default function RainfallPage() {
       })
       return row
     })
-  }, [showGaugeComparison, filteredGauges, yearReadings])
+  }, [showOldGaugeComparison, filteredGauges, yearReadings])
 
-  // ── Monthly breakdown table ──────────────────────────────────────────────
+  // ── Dry streaks by year (longest streak in current month per year) ─────
 
-  const breakdownTable = useMemo(() => {
-    // Per gauge per month for selected year
-    const byGaugeMonth: Record<string, number[]> = {}
-    filteredGauges.forEach(g => { byGaugeMonth[g.id] = new Array(12).fill(0) })
+  const dryStreakData = useMemo(() => {
+    const currentMonth = new Date().getMonth()
+    const monthName = MONTHS[currentMonth]
 
-    yearReadings.forEach(r => {
-      if (!byGaugeMonth[r.gauge_id]) return
-      const m = new Date(r.reading_date + 'T00:00:00').getMonth()
-      byGaugeMonth[r.gauge_id][m] += r.value_mm
-    })
+    const byYear: Record<number, Reading[]> = {}
+    filteredReadings
+      .filter(r => !isMonthlyReading(r))
+      .forEach(r => {
+        const d = new Date(r.reading_date + 'T00:00:00')
+        if (d.getMonth() !== currentMonth) return
+        const y = d.getFullYear()
+        if (!byYear[y]) byYear[y] = []
+        byYear[y].push(r)
+      })
 
-    // Long-term monthly avg (across all years)
-    const ltMonthYear: Record<string, number> = {}
-    const ltYears = new Set<number>()
+    const streaks = Object.entries(byYear).map(([yearStr, rds]) => {
+      const sorted = rds.sort((a, b) => a.reading_date.localeCompare(b.reading_date))
+      let maxStreak = 0, current = 0
+      for (const r of sorted) {
+        if (r.value_mm === 0) { current++; maxStreak = Math.max(maxStreak, current) }
+        else { current = 0 }
+      }
+      return { year: parseInt(yearStr), streak: maxStreak }
+    }).sort((a, b) => a.year - b.year)
+
+    const avgStreak = streaks.length > 0
+      ? Math.round(streaks.reduce((s, x) => s + x.streak, 0) / streaks.length)
+      : 0
+
+    return { streaks, avgStreak, currentMonth: monthName }
+  }, [filteredReadings])
+
+  // ── Cumulative weekly data for season budget ───────────────────────────
+
+  const cumulativeData = useMemo(() => {
+    const currentYear = season.year
+
+    // Historical: per-year weekly totals (exclude current year)
+    const historicalYears: Record<number, number[]> = {}
     filteredReadings.forEach(r => {
       const d = new Date(r.reading_date + 'T00:00:00')
-      const key = `${d.getFullYear()}-${d.getMonth()}`
-      ltMonthYear[key] = (ltMonthYear[key] || 0) + r.value_mm
-      ltYears.add(d.getFullYear())
+      const yr = d.getFullYear()
+      if (yr === currentYear) return
+      if (!historicalYears[yr]) historicalYears[yr] = new Array(53).fill(0)
+      const w = seasonWeek(d, yr)
+      if (w > 0) historicalYears[yr][w] += r.value_mm
     })
-    const nYears = ltYears.size || 1
-    const ltAvg = new Array(12).fill(0)
-    for (const [key, val] of Object.entries(ltMonthYear)) {
-      const m = parseInt(key.split('-')[1])
-      ltAvg[m] += val
-    }
-    for (let i = 0; i < 12; i++) ltAvg[i] = ltAvg[i] / nYears
 
-    const rows = MONTHS.map((name, i) => {
-      const row: Record<string, string | number> = { month: name }
-      filteredGauges.forEach(g => {
-        row[g.name] = Math.round(byGaugeMonth[g.id][i] * 10) / 10
+    // Median cumulative at each week
+    const medianCum: number[] = [0]
+    for (let w = 1; w <= 52; w++) {
+      const cumsAtWeek: number[] = []
+      Object.values(historicalYears).forEach(weeklyTotals => {
+        let cum = 0
+        for (let i = 1; i <= w; i++) cum += (weeklyTotals[i] || 0)
+        cumsAtWeek.push(cum)
       })
-      // Average across visible gauges this year
-      const vals = filteredGauges.map(g => byGaugeMonth[g.id][i])
-      row['avg'] = vals.length > 0 ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10 : 0
-      row['ltAvg'] = Math.round(ltAvg[i] * 10) / 10
-      return row
-    })
+      medianCum.push(cumsAtWeek.length > 0 ? median(cumsAtWeek) : 0)
+    }
 
-    // Totals row
-    const totalRow: Record<string, string | number> = { month: 'Total' }
-    filteredGauges.forEach(g => {
-      totalRow[g.name] = Math.round(byGaugeMonth[g.id].reduce((a, b) => a + b, 0) * 10) / 10
+    // Actual cumulative for current year
+    const actualWeekly = new Array(53).fill(0)
+    seasonReadings.forEach(r => {
+      const d = new Date(r.reading_date + 'T00:00:00')
+      const w = seasonWeek(d, currentYear)
+      if (w > 0) actualWeekly[w] += r.value_mm
     })
-    const avgArr = filteredGauges.map(g => byGaugeMonth[g.id].reduce((a, b) => a + b, 0))
-    totalRow['avg'] = avgArr.length > 0 ? Math.round((avgArr.reduce((a, b) => a + b, 0) / avgArr.length) * 10) / 10 : 0
-    totalRow['ltAvg'] = Math.round(ltAvg.reduce((a, b) => a + b, 0) * 10) / 10
-    rows.push(totalRow)
+    const actualCum: number[] = [0]
+    let cum = 0
+    for (let w = 1; w <= 52; w++) {
+      cum += actualWeekly[w]
+      actualCum.push(cum)
+    }
 
-    return rows
-  }, [filteredGauges, yearReadings, filteredReadings])
+    const currentWeek = seasonWeek(new Date(), currentYear)
+    return Array.from({ length: Math.max(1, currentWeek) }, (_, i) => ({
+      weekLabel: `W${i + 1}`,
+      actualCumMm: Math.round(actualCum[i + 1] * 10) / 10,
+      medianCumMm: Math.round(medianCum[i + 1] * 10) / 10,
+    }))
+  }, [filteredReadings, seasonReadings, season])
 
   // ── Render ───────────────────────────────────────────────────────────────
 
   if (!contextLoaded) return null
+
+  const showGaugeComparison = filteredGauges.length > 1 && !selectedGauge
+
+  const totalSeasonDays = Math.floor(
+    (new Date(season.endDate + 'T00:00:00').getTime() - new Date(season.startDate + 'T00:00:00').getTime()) / 86400000,
+  ) + 1
 
   return (
     <>
@@ -314,6 +506,7 @@ export default function RainfallPage() {
         @media (max-width: 768px) {
           .rain-main { padding: 16px !important; padding-bottom: 80px !important; }
           .rain-kpi-strip { grid-template-columns: repeat(2, 1fr) !important; }
+          .rain-two-col { grid-template-columns: 1fr !important; }
         }
       `}</style>
 
@@ -324,13 +517,12 @@ export default function RainfallPage() {
           <div style={s.pageHeader}>
             <div>
               <h1 style={s.pageTitle}>Rainfall</h1>
-              <div style={s.pageSub}>Historic and current rainfall across gauges</div>
+              <div style={s.pageSub}>{season.label} calendar year</div>
             </div>
           </div>
 
           {/* Controls */}
           <div style={s.controls}>
-            {/* Farm pills */}
             <div style={s.filterGroup}>
               <button
                 style={selectedFarm === null ? s.pillActive : s.pill}
@@ -351,7 +543,6 @@ export default function RainfallPage() {
 
             <div style={s.divider} />
 
-            {/* Gauge dropdown */}
             <select
               style={s.select}
               value={selectedGauge || ''}
@@ -365,7 +556,6 @@ export default function RainfallPage() {
 
             <div style={s.divider} />
 
-            {/* Year dropdown */}
             <select
               style={s.select}
               value={selectedYear}
@@ -377,53 +567,70 @@ export default function RainfallPage() {
             </select>
           </div>
 
-          {/* KPI strip */}
-          <div style={s.kpiStrip} className="rain-kpi-strip">
-            <div style={s.kpiCard}>
-              <div style={s.kpiAccent} />
-              <div style={s.kpiLabel}>Year Total</div>
-              <div style={s.kpiValue}>
-                {yearTotal > 0 ? Math.round(yearTotal).toLocaleString() : '—'}
-                <span style={s.kpiUnit}>mm</span>
-              </div>
-            </div>
-            <div style={s.kpiCard}>
-              <div style={s.kpiAccent} />
-              <div style={s.kpiLabel}>Long-term Average</div>
-              <div style={s.kpiValue}>
-                {longTermAvg > 0 ? Math.round(longTermAvg).toLocaleString() : '—'}
-                <span style={s.kpiUnit}>mm/yr</span>
-              </div>
-            </div>
-            <div style={s.kpiCard}>
-              <div style={{ ...s.kpiAccent, background: `linear-gradient(90deg, ${pctColor}, ${pctColor}88)` }} />
-              <div style={s.kpiLabel}>% of Average</div>
-              <div style={{ ...s.kpiValue, color: pctColor }}>
-                {pctOfAvg > 0 ? `${Math.round(pctOfAvg)}%` : '—'}
-              </div>
-            </div>
-            <div style={s.kpiCard}>
-              <div style={s.kpiAccent} />
-              <div style={s.kpiLabel}>Last Reading</div>
-              <div style={s.kpiValue}>
-                {lastReading ? (
-                  <>
-                    {lastReading.value_mm}
-                    <span style={s.kpiUnit}>mm</span>
-                  </>
-                ) : '—'}
-              </div>
-              {lastReading && (
-                <div style={{ fontSize: 12, color: '#8a95a0', marginTop: 4 }}>
-                  {new Date(lastReading.reading_date + 'T00:00:00').toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </div>
-              )}
-            </div>
+          {/* KPI cards */}
+          <RainMetricCards
+            seasonTotal={seasonTotal}
+            medianSeasonTotal={medianToDate}
+            lastRainDate={lastRainEvent?.date || null}
+            lastRainMm={lastRainEvent?.mm || 0}
+            daysAgo={lastRainEvent?.daysAgo ?? null}
+            wettestDayDate={wettestDay?.date || null}
+            wettestDayMm={wettestDay?.mm || 0}
+            dryDays={currentDryDays}
+            totalSeasonDays={totalSeasonDays}
+            hasDailyData={hasDailyData}
+          />
+
+          {/* Heatmap — hero */}
+          <RainHeatmap
+            readings={filteredReadings}
+            gauges={filteredGauges}
+            gaugeColors={GAUGE_COLORS}
+          />
+
+          {/* Two-col row 1 */}
+          <div style={s.twoCol} className="rain-two-col">
+            <SeasonalWheel data={wheelData} yearsOfData={yearsOfData} />
+            {showGaugeComparison ? (
+              <GaugeComparison
+                readings={filteredReadings}
+                gauges={filteredGauges}
+                gaugeColors={GAUGE_COLORS}
+              />
+            ) : (
+              <SeasonBudgetTracker
+                actualMm={seasonTotal}
+                fullSeasonMedian={fullSeasonMedian}
+                medianToDate={medianToDate}
+                cumulativeData={cumulativeData}
+                seasonLabel={season.label}
+              />
+            )}
           </div>
 
-          {/* Chart 1: Monthly Rainfall */}
+          {/* Two-col row 2 */}
+          <div style={s.twoCol} className="rain-two-col">
+            <DryStreakMeter
+              currentStreak={currentDryDays}
+              streaksByYear={dryStreakData.streaks}
+              currentMonth={dryStreakData.currentMonth}
+              avgStreak={dryStreakData.avgStreak}
+              hasDailyData={hasDailyData}
+            />
+            {showGaugeComparison && (
+              <SeasonBudgetTracker
+                actualMm={seasonTotal}
+                fullSeasonMedian={fullSeasonMedian}
+                medianToDate={medianToDate}
+                cumulativeData={cumulativeData}
+                seasonLabel={season.label}
+              />
+            )}
+          </div>
+
+          {/* Monthly Rainfall chart */}
           <div style={s.chartCard}>
-            <div style={s.chartTitle}>Monthly Rainfall — {selectedYear}</div>
+            <div style={s.chartTitle}>Monthly Rainfall &mdash; {selectedYear}</div>
             <ResponsiveContainer width="100%" height={280}>
               <ComposedChart data={monthlyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e8e4dc" />
@@ -437,7 +644,7 @@ export default function RainfallPage() {
             </ResponsiveContainer>
           </div>
 
-          {/* Chart 2: Annual Trend */}
+          {/* Annual Rainfall Trend */}
           {annualData.length > 1 && (
             <div style={s.chartCard}>
               <div style={s.chartTitle}>Annual Rainfall Trend</div>
@@ -449,7 +656,7 @@ export default function RainfallPage() {
                   <Tooltip formatter={fmtMm} />
                   <ReferenceLine y={longTermAvg} stroke="#999" strokeDasharray="6 3" label={{ value: `Avg ${Math.round(longTermAvg)}`, position: 'right', fontSize: 11, fill: '#999' }} />
                   <Bar dataKey="total" name="Annual Total" radius={[4, 4, 0, 0]} cursor="pointer"
-                    onClick={(_data: any, _idx: number, e: any) => { const yr = e?.year ?? e?.payload?.year; if (yr) setSelectedYear(yr) }}>
+                    onClick={(data: any) => { const yr = data?.year ?? data?.payload?.year; if (yr) setSelectedYear(yr) }}>
                     {annualData.map((entry) => (
                       <Cell
                         key={entry.year}
@@ -463,10 +670,10 @@ export default function RainfallPage() {
             </div>
           )}
 
-          {/* Chart 3: Gauge Comparison */}
-          {showGaugeComparison && gaugeComparisonData.length > 0 && (
+          {/* Gauge Comparison (monthly) */}
+          {showOldGaugeComparison && gaugeComparisonData.length > 0 && (
             <div style={s.chartCard}>
-              <div style={s.chartTitle}>Gauge Comparison — {selectedYear}</div>
+              <div style={s.chartTitle}>Gauge Comparison &mdash; {selectedYear}</div>
               <ResponsiveContainer width="100%" height={280}>
                 <ComposedChart data={gaugeComparisonData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e8e4dc" />
@@ -486,40 +693,6 @@ export default function RainfallPage() {
               </ResponsiveContainer>
             </div>
           )}
-
-          {/* Monthly Breakdown Table */}
-          <div style={s.chartCard}>
-            <div style={s.chartTitle}>Monthly Breakdown — {selectedYear}</div>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={s.table}>
-                <thead>
-                  <tr>
-                    <th style={s.th}>Month</th>
-                    {filteredGauges.map(g => (
-                      <th key={g.id} style={s.thRight}>{g.name}</th>
-                    ))}
-                    {filteredGauges.length > 1 && <th style={s.thRight}>Avg</th>}
-                    <th style={s.thRight}>LT Avg</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {breakdownTable.map((row, i) => {
-                    const isTotal = row.month === 'Total'
-                    return (
-                      <tr key={i} style={isTotal ? { fontWeight: 700, borderTop: '2px solid #d4cfca' } : {}}>
-                        <td style={s.td}>{row.month}</td>
-                        {filteredGauges.map(g => (
-                          <td key={g.id} style={s.tdRight}>{row[g.name] || 0}</td>
-                        ))}
-                        {filteredGauges.length > 1 && <td style={s.tdRight}>{row.avg}</td>}
-                        <td style={s.tdRight}>{row.ltAvg}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </main>
         <MobileNav modules={modules} />
       </div>
@@ -541,17 +714,7 @@ const s: Record<string, React.CSSProperties> = {
   pillActive:  { padding: '6px 14px', borderRadius: 20, border: '1px solid #2176d9', background: '#2176d9', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
   divider:     { width: 1, height: 24, background: '#d4cfca' },
   select:      { padding: '6px 12px', borderRadius: 8, border: '1px solid #d4cfca', background: '#fff', fontSize: 13, fontFamily: 'inherit', color: '#1a2a3a', cursor: 'pointer' },
-  kpiStrip:    { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 28 },
-  kpiCard:     { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '20px 24px', position: 'relative' as const, overflow: 'hidden' },
-  kpiAccent:   { position: 'absolute' as const, top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #2176d9, #a0c4f0)' },
-  kpiLabel:    { fontSize: 12, color: '#8a95a0', textTransform: 'uppercase' as const, letterSpacing: '0.06em', fontWeight: 600, marginBottom: 8 },
-  kpiValue:    { fontSize: 32, fontWeight: 700, color: '#1a2a3a', lineHeight: 1 },
-  kpiUnit:     { fontSize: 14, color: '#8a95a0', fontWeight: 400, marginLeft: 4 },
+  twoCol:      { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 },
   chartCard:   { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '20px 24px', marginBottom: 20 },
   chartTitle:  { fontSize: 15, fontWeight: 700, color: '#1a2a3a', marginBottom: 16 },
-  table:       { width: '100%', borderCollapse: 'collapse' as const, fontSize: 13 },
-  th:          { textAlign: 'left' as const, padding: '8px 12px', borderBottom: '2px solid #d4cfca', color: '#8a95a0', fontWeight: 600, fontSize: 12, textTransform: 'uppercase' as const, letterSpacing: '0.04em' },
-  thRight:     { textAlign: 'right' as const, padding: '8px 12px', borderBottom: '2px solid #d4cfca', color: '#8a95a0', fontWeight: 600, fontSize: 12, textTransform: 'uppercase' as const, letterSpacing: '0.04em' },
-  td:          { padding: '8px 12px', borderBottom: '1px solid #f0ede8' },
-  tdRight:     { textAlign: 'right' as const, padding: '8px 12px', borderBottom: '1px solid #f0ede8' },
 }
