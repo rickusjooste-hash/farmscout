@@ -381,7 +381,7 @@ export default function DailyPackoutPage() {
     })
 
     // Download
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' })
+    const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     const orchName = filteredSessions[0]?.orchard_name || 'packout'
