@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import type { RainGauge, RainReading, Dam, DamCapacityRow, DamLevelReading } from '@/lib/rain-db'
 
-type View = 'home' | 'log' | 'dam'
+type View = 'landing' | 'home' | 'log' | 'dam'
 
 export default function RainAppPage() {
-  const [view, setView] = useState<View>('home')
+  const [view, setView] = useState<View>('landing')
   const [isOnline, setIsOnline] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
@@ -389,7 +389,7 @@ export default function RainAppPage() {
       setDamSaveSuccess(true)
       setTimeout(() => {
         setDamSaveSuccess(false)
-        setView('home')
+        setView('landing')
       }, 1200)
     } catch (err) {
       console.error('[RainApp] Dam save error:', err)
@@ -419,7 +419,7 @@ export default function RainAppPage() {
             </div>
             <button
               className="text-sm text-[#8a95a0] px-3 py-1.5 rounded-lg border border-[#d4cfca] bg-white"
-              onClick={() => setView('home')}
+              onClick={() => setView('landing')}
             >Cancel</button>
           </div>
 
@@ -652,16 +652,90 @@ export default function RainAppPage() {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // HOME / LANDING VIEW
+  // LANDING VIEW — choose Rain or Dam Levels
   // ═══════════════════════════════════════════════════════════════════
+
+  if (view === 'landing') {
+    return (
+      <div className="flex flex-col h-dvh bg-[#eae6df] overflow-hidden">
+        <div className="flex items-center justify-between px-4 pt-5 pb-4">
+          <div>
+            <div className="text-2xl font-extrabold text-[#2176d9] tracking-wide">allFarm Rain</div>
+            <div className="text-xs text-[#8a95a0]">{userName}</div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
+            {pendingCount > 0 && (
+              <span className="bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                {pendingCount}
+              </span>
+            )}
+            <button
+              className="text-xs text-[#2176d9] font-semibold disabled:opacity-50"
+              onClick={handleSync}
+              disabled={syncing || !isOnline}
+            >
+              {syncing ? 'Syncing...' : 'Sync'}
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 flex flex-col justify-center px-6 gap-5">
+          <button
+            className="bg-[#2176d9] text-white rounded-2xl p-8 text-center active:bg-[#1a65c0] transition-colors shadow-lg"
+            onClick={() => setView('home')}
+          >
+            <div className="text-5xl mb-3">&#127783;</div>
+            <div className="text-2xl font-extrabold">Rain</div>
+            <div className="text-sm opacity-80 mt-1">Rainfall gauge readings</div>
+          </button>
+
+          {dams.length > 0 && (
+            <button
+              className="bg-[#1a5fb8] text-white rounded-2xl p-8 text-center active:bg-[#144a96] transition-colors shadow-lg"
+              onClick={() => {
+                setDamDate(new Date().toISOString().split('T')[0])
+                setDamPenNo('')
+                setDamQuarter(0)
+                setDamSaveSuccess(false)
+                setDamGpsStatus('')
+                if (dams.length > 0) autoSelectDam(dams)
+                setView('dam')
+              }}
+            >
+              <div className="text-5xl mb-3">&#127754;</div>
+              <div className="text-2xl font-extrabold">Dam Levels</div>
+              <div className="text-sm opacity-80 mt-1">Record dam pen readings</div>
+            </button>
+          )}
+        </div>
+
+        <div className="text-center pb-4">
+          <button className="text-xs text-[#8a95a0]" onClick={handleLogout}>Sign out</button>
+        </div>
+      </div>
+    )
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // RAIN HOME VIEW
+  // ═══════════════════════════════════════════════════════════════════
+
+  if (view !== 'home') return null
 
   return (
     <div className="flex flex-col h-dvh bg-[#eae6df] overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-5 pb-4">
-        <div>
-          <div className="text-2xl font-extrabold text-[#2176d9] tracking-wide">allFarm Rain</div>
-          <div className="text-xs text-[#8a95a0]">{userName}</div>
+        <div className="flex items-center gap-3">
+          <button
+            className="text-sm text-[#8a95a0] px-2 py-1 rounded-lg border border-[#d4cfca] bg-white"
+            onClick={() => setView('landing')}
+          >&larr;</button>
+          <div>
+            <div className="text-2xl font-extrabold text-[#2176d9] tracking-wide">Rain</div>
+            <div className="text-xs text-[#8a95a0]">{userName}</div>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <span className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
@@ -670,13 +744,6 @@ export default function RainAppPage() {
               {pendingCount}
             </span>
           )}
-          <button
-            className="text-xs text-[#2176d9] font-semibold disabled:opacity-50"
-            onClick={handleSync}
-            disabled={syncing || !isOnline}
-          >
-            {syncing ? 'Syncing...' : 'Sync'}
-          </button>
         </div>
       </div>
 
@@ -752,38 +819,14 @@ export default function RainAppPage() {
         )}
       </div>
 
-      {/* Action buttons */}
-      <div className="px-4 pb-3">
+      {/* Log Reading button */}
+      <div className="px-4 pb-6">
         <button
           className="w-full bg-[#2176d9] text-white text-xl font-bold py-5 rounded-xl active:bg-[#1a65c0] transition-colors shadow-lg"
           onClick={openLogView}
         >
           Log Reading
         </button>
-      </div>
-
-      {dams.length > 0 && (
-        <div className="px-4 pb-6">
-          <button
-            className="w-full bg-[#1a5fb8] text-white text-lg font-bold py-4 rounded-xl active:bg-[#144a96] transition-colors shadow"
-            onClick={() => {
-              setDamDate(new Date().toISOString().split('T')[0])
-              setDamPenNo('')
-              setDamQuarter(0)
-              setDamSaveSuccess(false)
-              setDamGpsStatus('')
-              if (dams.length > 0) autoSelectDam(dams)
-              setView('dam')
-            }}
-          >
-            Dam Levels
-          </button>
-        </div>
-      )}
-
-      {/* Sign out */}
-      <div className="text-center pb-4">
-        <button className="text-xs text-[#8a95a0]" onClick={handleLogout}>Sign out</button>
       </div>
     </div>
   )
