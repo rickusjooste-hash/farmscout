@@ -9,6 +9,7 @@ import {
   type RainReading,
   type RainGauge,
   type RainSyncQueueItem,
+  type DamLevelReading,
 } from './rain-db'
 
 const SUPABASE_URL = 'https://agktzdeskpyevurhabpg.supabase.co'
@@ -101,6 +102,30 @@ export async function pullRainReferenceData(
       const gauges = await res.json()
       if (gauges.length > 0) await rainPutMany('gauges', gauges)
       console.log(`[RainSync] Pulled ${gauges.length} gauges`)
+    }
+
+    // Pull dams + capacity tables
+    const [damRes, capRes] = await Promise.all([
+      fetch(
+        `${SUPABASE_REST}/dams?farm_id=in.${farmIdFilter}&is_active=eq.true&select=id,farm_id,name,lat,lng,max_capacity_m3&order=name`,
+        { headers }
+      ),
+      fetch(
+        `${SUPABASE_REST}/dam_capacity_table?select=id,dam_id,pen_no,m3,gallons,pct,sort_order&order=dam_id,sort_order`,
+        { headers }
+      ),
+    ])
+
+    if (damRes.ok) {
+      const dams = await damRes.json()
+      if (dams.length > 0) await rainPutMany('dams', dams)
+      console.log(`[RainSync] Pulled ${dams.length} dams`)
+    }
+
+    if (capRes.ok) {
+      const caps = await capRes.json()
+      if (caps.length > 0) await rainPutMany('dam_capacity', caps)
+      console.log(`[RainSync] Pulled ${caps.length} dam capacity rows`)
     }
 
     return { success: true }
@@ -328,4 +353,33 @@ export async function countPendingRainRecords(): Promise<number> {
   } catch {
     return 0
   }
+}
+
+// ── Dam level save & queue ────────────────────────────────────────────
+
+export async function damSaveAndQueue(reading: DamLevelReading): Promise<void> {
+  const token = getToken()
+  const anonKey = getAnonKey()
+  const orgId = getOrgId()
+
+  await rainPut('dam_readings', reading)
+
+  const { _syncStatus, id: _localId, ...payload } = reading
+
+  await rainAddToQueue({
+    tableName: 'dam_level_readings',
+    method: 'POST',
+    url: `${SUPABASE_REST}/dam_level_readings?on_conflict=dam_id,reading_date`,
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Prefer: 'resolution=merge-duplicates',
+    },
+    body: JSON.stringify({ ...payload, organisation_id: orgId }),
+    localId: reading.id,
+    synced: false,
+    retries: 0,
+    createdAt: new Date().toISOString(),
+  })
 }

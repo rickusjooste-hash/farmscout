@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import type { RainGauge, RainReading } from '@/lib/rain-db'
+import type { RainGauge, RainReading, Dam, DamCapacityRow, DamLevelReading } from '@/lib/rain-db'
 
-type View = 'home' | 'log'
+type View = 'home' | 'log' | 'dam'
 
 export default function RainAppPage() {
   const [view, setView] = useState<View>('home')
@@ -23,6 +23,18 @@ export default function RainAppPage() {
   const [saving, setSaving] = useState(false)
   const [gpsStatus, setGpsStatus] = useState('')
   const [saveSuccess, setSaveSuccess] = useState(false)
+
+  // Dam state
+  const [dams, setDams] = useState<Dam[]>([])
+  const [damCapacity, setDamCapacity] = useState<DamCapacityRow[]>([])
+  const [damReadings, setDamReadings] = useState<DamLevelReading[]>([])
+  const [selectedDam, setSelectedDam] = useState('')
+  const [damDate, setDamDate] = useState('')
+  const [damPenNo, setDamPenNo] = useState('')
+  const [damQuarter, setDamQuarter] = useState(0)
+  const [damGpsStatus, setDamGpsStatus] = useState('')
+  const [damSaving, setDamSaving] = useState(false)
+  const [damSaveSuccess, setDamSaveSuccess] = useState(false)
 
   // ── Init ────────────────────────────────────────────────────────────
 
@@ -71,12 +83,18 @@ export default function RainAppPage() {
   const loadData = useCallback(async () => {
     try {
       const { rainGetAll } = await import('@/lib/rain-db')
-      const [allGauges, allReadings] = await Promise.all([
+      const [allGauges, allReadings, allDams, allDamCap, allDamReadings] = await Promise.all([
         rainGetAll('gauges'),
         rainGetAll('readings'),
+        rainGetAll('dams'),
+        rainGetAll('dam_capacity'),
+        rainGetAll('dam_readings'),
       ])
       setGauges(allGauges)
       setReadings(allReadings.sort((a, b) => b.reading_date.localeCompare(a.reading_date)))
+      setDams(allDams)
+      setDamCapacity(allDamCap)
+      setDamReadings(allDamReadings.sort((a, b) => b.reading_date.localeCompare(a.reading_date)))
 
       if (allGauges.length > 0 && !selectedGauge) {
         autoSelectGauge(allGauges)
@@ -259,6 +277,276 @@ export default function RainAppPage() {
     setSaveSuccess(false)
     setView('log')
     if (gauges.length > 0) autoSelectGauge(gauges)
+  }
+
+  // ── Dam helpers ────────────────────────────────────────────────────
+
+  function autoSelectDam(allDams: Dam[]) {
+    if (!('geolocation' in navigator)) {
+      setSelectedDam(allDams[0].id)
+      return
+    }
+    setDamGpsStatus('Locating...')
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords
+        let nearest: Dam | null = null
+        let nearestDist = Infinity
+        for (const d of allDams) {
+          if (d.lat == null || d.lng == null) continue
+          const dist = haversineMetres(latitude, longitude, d.lat, d.lng)
+          if (dist < nearestDist) { nearestDist = dist; nearest = d }
+        }
+        if (nearest) {
+          setSelectedDam(nearest.id)
+          const distStr = nearestDist < 1000 ? `${Math.round(nearestDist)}m` : `${(nearestDist / 1000).toFixed(1)}km`
+          setDamGpsStatus(`${nearest.name} (${distStr})`)
+        } else {
+          setSelectedDam(allDams[0].id)
+          setDamGpsStatus('')
+        }
+      },
+      () => {
+        setSelectedDam(allDams[0].id)
+        setDamGpsStatus('GPS unavailable')
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    )
+  }
+
+  function getDamCapacity(damId: string): DamCapacityRow[] {
+    return damCapacity
+      .filter(c => c.dam_id === damId)
+      .sort((a, b) => a.sort_order - b.sort_order)
+  }
+
+  function interpolateDamLevel(damId: string, penNo: number, quarter: number): { m3: number; gallons: number; pct: number } | null {
+    const cap = getDamCapacity(damId)
+    if (cap.length === 0) return null
+
+    // Find the pen row and the next pen row (next = one pen higher number = lower water)
+    const penRow = cap.find(c => c.pen_no === penNo)
+    if (!penRow) return null
+
+    if (quarter === 0) {
+      return { m3: penRow.m3, gallons: penRow.gallons, pct: penRow.pct }
+    }
+
+    // Find the next lower pen (higher pen_no = lower water level)
+    const nextPen = cap.find(c => c.pen_no === penNo + 1)
+    if (!nextPen) {
+      // No next pen — just return this pen's values
+      return { m3: penRow.m3, gallons: penRow.gallons, pct: penRow.pct }
+    }
+
+    // Interpolate: quarter/4 of the way from penRow toward nextPen (lower)
+    // pen 6 = 58061, pen 7 = 43561. "6 1/4" = 58061 - 0.25*(58061-43561) = 54436
+    const frac = quarter / 4
+    const m3 = penRow.m3 - frac * (penRow.m3 - nextPen.m3)
+    const gallons = penRow.gallons - frac * (penRow.gallons - nextPen.gallons)
+    const pct = penRow.pct - frac * (penRow.pct - nextPen.pct)
+
+    return { m3: Math.round(m3 * 10) / 10, gallons: Math.round(gallons), pct: Math.round(pct * 10) / 10 }
+  }
+
+  const damComputed = useMemo(() => {
+    if (!selectedDam || !damPenNo) return null
+    const pen = parseInt(damPenNo)
+    if (isNaN(pen)) return null
+    return interpolateDamLevel(selectedDam, pen, damQuarter)
+  }, [selectedDam, damPenNo, damQuarter, damCapacity])
+
+  async function handleDamSave() {
+    if (!selectedDam || !damPenNo || !damComputed) return
+    setDamSaving(true)
+    try {
+      const userId = localStorage.getItem('rainapp_user_id') || ''
+      const pen = parseInt(damPenNo)
+      const id = `${selectedDam}_${damDate}`
+
+      const reading: DamLevelReading = {
+        id,
+        dam_id: selectedDam,
+        reading_date: damDate,
+        pen_no: pen,
+        quarter: damQuarter,
+        computed_m3: damComputed.m3,
+        computed_gallons: damComputed.gallons,
+        computed_pct: damComputed.pct,
+        _syncStatus: 'pending',
+      }
+
+      const { damSaveAndQueue } = await import('@/lib/rain-sync')
+      await damSaveAndQueue(reading)
+      await loadData()
+
+      if (navigator.onLine) {
+        const { rainPushPendingRecords } = await import('@/lib/rain-sync')
+        await rainPushPendingRecords()
+        await refreshPendingCount()
+      }
+
+      setDamSaveSuccess(true)
+      setTimeout(() => {
+        setDamSaveSuccess(false)
+        setView('home')
+      }, 1200)
+    } catch (err) {
+      console.error('[RainApp] Dam save error:', err)
+    }
+    setDamSaving(false)
+  }
+
+  const selectedDamName = dams.find(d => d.id === selectedDam)?.name || ''
+  const selectedDamCap = getDamCapacity(selectedDam)
+
+  // Recent dam readings
+  const recentDamReadings = damReadings.slice(0, 20)
+
+  // ═══════════════════════════════════════════════════════════════════
+  // DAM LEVEL VIEW
+  // ═══════════════════════════════════════════════════════════════════
+
+  if (view === 'dam') {
+    return (
+      <div className="flex flex-col h-dvh bg-[#eae6df]" style={{ overscrollBehavior: 'none' }}>
+        {/* Fixed header */}
+        <div className="shrink-0">
+          <div className="flex items-center justify-between px-4 pt-4 pb-2">
+            <div>
+              <div className="text-2xl font-extrabold text-[#1a5fb8] tracking-wide">Dam Level</div>
+              <div className="text-xs text-[#8a95a0]">{userName}</div>
+            </div>
+            <button
+              className="text-sm text-[#8a95a0] px-3 py-1.5 rounded-lg border border-[#d4cfca] bg-white"
+              onClick={() => setView('home')}
+            >Cancel</button>
+          </div>
+
+          {/* Dam selector */}
+          <div className="flex gap-1.5 px-4 pb-2 flex-wrap">
+            {dams.map(d => (
+              <button
+                key={d.id}
+                className={`flex-1 py-2.5 rounded-lg text-xs font-semibold text-center ${
+                  selectedDam === d.id
+                    ? 'bg-[#1a5fb8] text-white'
+                    : 'bg-white text-[#5a6a60] border border-[#d4cfca]'
+                }`}
+                onClick={() => setSelectedDam(d.id)}
+              >
+                {d.name}
+              </button>
+            ))}
+          </div>
+          {damGpsStatus && (
+            <div className="text-[10px] text-[#8a95a0] px-4 pb-1">{damGpsStatus}</div>
+          )}
+
+          {/* Date */}
+          <div className="px-4 pb-2">
+            <input
+              className="w-full px-3 py-2.5 rounded-lg border border-[#d4cfca] text-sm text-[#1a2a3a] bg-white"
+              type="date"
+              value={damDate}
+              onChange={e => setDamDate(e.target.value)}
+            />
+          </div>
+
+          {/* Pen + Quarter input */}
+          <div className="px-4 pb-2 flex gap-3">
+            <div className="flex-1">
+              <label className="text-[10px] font-semibold text-[#8a95a0] uppercase">Pen No</label>
+              <select
+                className="w-full px-3 py-2.5 rounded-lg border border-[#d4cfca] text-sm text-[#1a2a3a] bg-white mt-1"
+                value={damPenNo}
+                onChange={e => setDamPenNo(e.target.value)}
+              >
+                <option value="">--</option>
+                {selectedDamCap.map(c => (
+                  <option key={c.pen_no} value={c.pen_no}>
+                    {c.pen_no === 0 ? 'S/KOP' : c.pen_no}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={{ width: 120 }}>
+              <label className="text-[10px] font-semibold text-[#8a95a0] uppercase">Quarter</label>
+              <div className="flex gap-1 mt-1">
+                {[0, 1, 2, 3].map(q => (
+                  <button
+                    key={q}
+                    className={`flex-1 py-2.5 rounded-lg text-sm font-bold ${
+                      damQuarter === q
+                        ? 'bg-[#1a5fb8] text-white'
+                        : 'bg-white text-[#5a6a60] border border-[#d4cfca]'
+                    }`}
+                    onClick={() => setDamQuarter(q)}
+                  >
+                    {q === 0 ? '0' : `${q}/4`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Computed result */}
+        <div className="px-4 pb-2">
+          {damComputed ? (
+            <div className="bg-white rounded-xl border-2 border-[#1a5fb8] py-4 text-center">
+              <div className="text-4xl font-extrabold text-[#1a5fb8]">
+                {damComputed.pct.toFixed(1)}<span className="text-lg font-normal text-[#8a95a0] ml-1">%</span>
+              </div>
+              <div className="text-sm text-[#8a95a0] mt-1">
+                {Math.round(damComputed.m3).toLocaleString()} m3 | {Math.round(damComputed.gallons).toLocaleString()} gal
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-[#d4cfca] py-4 text-center text-[#d4cfca]">
+              Select pen number
+            </div>
+          )}
+        </div>
+
+        {/* Recent readings for this dam */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pb-2">
+          <div className="text-[10px] font-semibold text-[#8a95a0] uppercase mb-1">Recent — {selectedDamName}</div>
+          {recentDamReadings
+            .filter(r => r.dam_id === selectedDam)
+            .slice(0, 6)
+            .map(r => (
+              <div key={r.id} className="flex items-center justify-between py-2 border-b border-[#e8e4dc]">
+                <div className="text-sm text-[#1a2a3a]">
+                  {new Date(r.reading_date + 'T00:00:00').toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: '2-digit' })}
+                </div>
+                <div className="text-sm">
+                  <span className="font-bold text-[#1a5fb8]">{r.computed_pct?.toFixed(1)}%</span>
+                  <span className="text-[#8a95a0] ml-2">pen {r.pen_no}{r.quarter > 0 ? ` ${r.quarter}/4` : ''}</span>
+                </div>
+              </div>
+            ))}
+        </div>
+
+        {/* Success flash */}
+        {damSaveSuccess && (
+          <div className="mx-4 mb-1 bg-green-50 border-2 border-green-300 rounded-xl px-3 py-2 text-center text-green-700 text-base font-bold">
+            Saved!
+          </div>
+        )}
+
+        {/* Save button */}
+        <div className="shrink-0 px-4 pb-4 pt-2">
+          <button
+            className="w-full bg-[#1a5fb8] text-white text-lg font-bold py-4 rounded-xl disabled:opacity-50 active:bg-[#144a96]"
+            onClick={handleDamSave}
+            disabled={damSaving || !damComputed || !selectedDam}
+          >
+            {damSaving ? 'Saving...' : `Save Level (${damComputed ? damComputed.pct.toFixed(1) + '%' : '-'})`}
+          </button>
+        </div>
+      </div>
+    )
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -464,8 +752,8 @@ export default function RainAppPage() {
         )}
       </div>
 
-      {/* Big Log Reading button */}
-      <div className="px-4 pb-6">
+      {/* Action buttons */}
+      <div className="px-4 pb-3">
         <button
           className="w-full bg-[#2176d9] text-white text-xl font-bold py-5 rounded-xl active:bg-[#1a65c0] transition-colors shadow-lg"
           onClick={openLogView}
@@ -473,6 +761,25 @@ export default function RainAppPage() {
           Log Reading
         </button>
       </div>
+
+      {dams.length > 0 && (
+        <div className="px-4 pb-6">
+          <button
+            className="w-full bg-[#1a5fb8] text-white text-lg font-bold py-4 rounded-xl active:bg-[#144a96] transition-colors shadow"
+            onClick={() => {
+              setDamDate(new Date().toISOString().split('T')[0])
+              setDamPenNo('')
+              setDamQuarter(0)
+              setDamSaveSuccess(false)
+              setDamGpsStatus('')
+              if (dams.length > 0) autoSelectDam(dams)
+              setView('dam')
+            }}
+          >
+            Dam Levels
+          </button>
+        </div>
+      )}
 
       {/* Sign out */}
       <div className="text-center pb-4">

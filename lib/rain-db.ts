@@ -18,6 +18,37 @@ export interface RainReading {
   _syncStatus?: string
 }
 
+export interface Dam {
+  id: string
+  farm_id: string
+  name: string
+  lat: number | null
+  lng: number | null
+  max_capacity_m3: number | null
+}
+
+export interface DamCapacityRow {
+  id: string
+  dam_id: string
+  pen_no: number
+  m3: number
+  gallons: number
+  pct: number
+  sort_order: number
+}
+
+export interface DamLevelReading {
+  id: string
+  dam_id: string
+  reading_date: string
+  pen_no: number
+  quarter: number
+  computed_m3: number | null
+  computed_gallons: number | null
+  computed_pct: number | null
+  _syncStatus?: string
+}
+
 export interface RainSyncQueueItem {
   id?: number
   tableName: string
@@ -43,6 +74,9 @@ interface RainDB extends DBSchema {
     value: RainReading
     indexes: { 'by_gauge': string; 'by_date': string }
   }
+  dams: { key: string; value: Dam }
+  dam_capacity: { key: string; value: DamCapacityRow; indexes: { 'by_dam': string } }
+  dam_readings: { key: string; value: DamLevelReading; indexes: { 'by_dam': string; 'by_date': string } }
   sync_queue: {
     key: number
     value: RainSyncQueueItem
@@ -57,8 +91,8 @@ let _db: IDBPDatabase<RainDB> | null = null
 export async function getRainDB(): Promise<IDBPDatabase<RainDB>> {
   if (_db) return _db
 
-  _db = await openDB<RainDB>('farmscout-rain', 1, {
-    upgrade(db) {
+  _db = await openDB<RainDB>('farmscout-rain', 2, {
+    upgrade(db, oldVersion) {
       if (!db.objectStoreNames.contains('gauges')) {
         db.createObjectStore('gauges', { keyPath: 'id' })
       }
@@ -73,6 +107,21 @@ export async function getRainDB(): Promise<IDBPDatabase<RainDB>> {
           autoIncrement: true,
         })
         s.createIndex('by_synced', 'synced')
+      }
+      // v2: dam level stores
+      if (oldVersion < 2) {
+        if (!db.objectStoreNames.contains('dams')) {
+          db.createObjectStore('dams', { keyPath: 'id' })
+        }
+        if (!db.objectStoreNames.contains('dam_capacity')) {
+          const s = db.createObjectStore('dam_capacity', { keyPath: 'id' })
+          s.createIndex('by_dam', 'dam_id')
+        }
+        if (!db.objectStoreNames.contains('dam_readings')) {
+          const s = db.createObjectStore('dam_readings', { keyPath: 'id' })
+          s.createIndex('by_dam', 'dam_id')
+          s.createIndex('by_date', 'reading_date')
+        }
       }
     },
   })
