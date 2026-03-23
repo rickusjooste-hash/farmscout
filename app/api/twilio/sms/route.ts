@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
   // Also store it so we can check via API
   const timestamp = new Date().toISOString()
-  globalThis.__lastSms = { from, to, body, timestamp }
+  ;(globalThis as Record<string, unknown>).__lastSms = { from, to, body, timestamp }
 
   return new NextResponse(
     '<Response><Message>Received</Message></Response>',
