@@ -345,48 +345,40 @@ export default function QcHome() {
       setBleConnected(true)
 
       ;(navigator as any).bluetooth.addEventListener('advertisementreceived', (event: any) => {
+        // Debug: log all advertisement data
+        const debugParts: string[] = [`Device: ${event.device?.name || event.device?.id || '?'}`]
+        if (event.manufacturerData) {
+          event.manufacturerData.forEach((dv: DataView, key: number) => {
+            const hex = [...new Uint8Array(dv.buffer)].map(b => b.toString(16).padStart(2, '0')).join(' ')
+            debugParts.push(`MFR[${key.toString(16)}]: ${hex}`)
+          })
+        }
+        if (event.serviceData) {
+          event.serviceData.forEach((dv: DataView, key: string) => {
+            const hex = [...new Uint8Array(dv.buffer)].map(b => b.toString(16).padStart(2, '0')).join(' ')
+            debugParts.push(`SVC[${key}]: ${hex}`)
+          })
+        }
+        console.log('[BLE ADV]', debugParts.join(' | '))
+
         // Try manufacturer data
+        // Parse SmartChef SC02 manufacturer data (key 0x10CA)
         if (event.manufacturerData) {
           event.manufacturerData.forEach((dataView: DataView, key: number) => {
             const bytes = new Uint8Array(dataView.buffer)
-            // SmartChef protocol in advertisement: look for weight data
-            // Try parsing as SmartChef format
-            if (bytes.length >= 7 && bytes[0] === 0xCA) {
-              const attributes = bytes[3]
-              const locked = attributes & 0b00000001
-              if (!locked) return
-              const decimalsKey = attributes & 0b00000110
-              const decimals: Record<number, number> = { 0b000: 0, 0b010: 1, 0b100: 2, 0b110: 3 }
-              const dec = decimals[decimalsKey] ?? 1
-              const sign = attributes & 0b10000000 ? -1 : 1
-              const rawG = Math.round(((bytes[5] << 8) + bytes[6]) * sign / (10 ** dec))
-              if (rawG <= 0) return
+            // SC02 format: byte[0]=0x0f, byte[1]=status (03=locked, 02=unstable), bytes[4-5]=weight MSB/LSB
+            if (bytes.length >= 6 && bytes[0] === 0x0F) {
+              const locked = bytes[1] === 0x03
+              if (!locked) return  // only use stable readings
+              const rawWeight = (bytes[4] << 8) + bytes[5]
+              const weightG = Math.round(rawWeight / 10)  // convert to grams (divide by 10)
+              if (weightG <= 0) return
               if (Date.now() - confirmDismissedAt.current < 1000) return
-              weightBuffer.current = [...weightBuffer.current.slice(-4), rawG]
+              weightBuffer.current = [...weightBuffer.current.slice(-4), weightG]
               const buf = weightBuffer.current
               if (buf.length >= 3 && Math.max(...buf) - Math.min(...buf) <= 2) {
-                setConfirmingWeight(rawG); setConfirmingBin(findSizeBin(rawG, sessionBinsRef.current))
+                setConfirmingWeight(weightG); setConfirmingBin(findSizeBin(weightG, sessionBinsRef.current))
                 setShowWeightConfirm(true); weightBuffer.current = []
-              }
-            }
-          })
-        }
-
-        // Also try service data
-        if (event.serviceData) {
-          event.serviceData.forEach((dataView: DataView) => {
-            const bytes = new Uint8Array(dataView.buffer)
-            if (bytes.length >= 2) {
-              // Try raw weight parsing
-              const rawG = (bytes[bytes.length - 2] << 8) + bytes[bytes.length - 1]
-              if (rawG > 0 && rawG < 2000) {
-                if (Date.now() - confirmDismissedAt.current < 1000) return
-                weightBuffer.current = [...weightBuffer.current.slice(-4), rawG]
-                const buf = weightBuffer.current
-                if (buf.length >= 3 && Math.max(...buf) - Math.min(...buf) <= 2) {
-                  setConfirmingWeight(rawG); setConfirmingBin(findSizeBin(rawG, sessionBinsRef.current))
-                  setShowWeightConfirm(true); weightBuffer.current = []
-                }
               }
             }
           })
