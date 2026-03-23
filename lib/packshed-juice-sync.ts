@@ -103,10 +103,9 @@ export async function pullJuiceReferenceData(
       ),
       // Juice defects: same as QC issues — commodity_pests where category = 'qc_issue'
       // Join with pests to get names
-      // Pull QC issues for apples (primary packing commodity)
-      // TODO: make commodity configurable per packhouse/session
+      // Pull QC issues + picking issues for apples
       fetch(
-        `${SUPABASE_REST}/commodity_pests?category=eq.qc_issue&is_active=eq.true&commodity_id=eq.568df904-f53b-4171-9d84-033f58d07023&select=pest_id,display_name,display_name_af,display_order,commodity_id&order=display_order`,
+        `${SUPABASE_REST}/commodity_pests?category=in.(qc_issue,picking_issue)&is_active=eq.true&commodity_id=eq.568df904-f53b-4171-9d84-033f58d07023&select=pest_id,display_name,display_name_af,display_order,commodity_id&order=display_order`,
         { headers }
       ),
     ])
