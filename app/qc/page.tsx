@@ -312,7 +312,10 @@ export default function QcHome() {
 
   async function connectScale() {
     try {
-      const device = await (navigator as any).bluetooth.requestDevice({ filters: [{ namePrefix: 'SC' }, { namePrefix: 'smartchef' }, { namePrefix: 'Chipsea-BLE' }, { namePrefix: 'Reflex' }], optionalServices: [SCALE_SERVICE] })
+      const device = await (navigator as any).bluetooth.requestDevice({
+        filters: [{ namePrefix: 'SC' }, { namePrefix: 'smartchef' }, { namePrefix: 'Chipsea' }, { namePrefix: 'Reflex' }],
+        optionalServices: [SCALE_SERVICE],
+      })
       const server = await device.gatt!.connect()
       const char = await (await server.getPrimaryService(SCALE_SERVICE)).getCharacteristic(WEIGHT_CHAR)
       await char.startNotifications()
