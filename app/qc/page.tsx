@@ -311,32 +311,10 @@ export default function QcHome() {
   }
 
   async function connectScale() {
-    // Try GATT connection first, fall back to advertisement scanning
-    try {
-      const device = await (navigator as any).bluetooth.requestDevice({
-        filters: [{ namePrefix: 'SC' }, { namePrefix: 'smartchef' }, { namePrefix: 'Chipsea' }, { namePrefix: 'Reflex' }],
-        optionalServices: [SCALE_SERVICE],
-      })
-      try {
-        const server = await device.gatt!.connect()
-        const char = await (await server.getPrimaryService(SCALE_SERVICE)).getCharacteristic(WEIGHT_CHAR)
-        await char.startNotifications()
-        char.addEventListener('characteristicvaluechanged', handleWeightNotification)
-        bleCharRef.current = char; setBleConnected(true)
-        return
-      } catch {
-        // GATT failed — try advertisement scanning
-        console.log('[BLE] GATT failed, trying advertisement scan...')
-      }
-    } catch (err: any) {
-      // requestDevice failed or was cancelled
-      if (err.name === 'NotFoundError') return
-    }
-
-    // Fall back to advertisement scanning (requires chrome://flags/#enable-experimental-web-platform-features)
+    // Use advertisement scanning directly (SmartChef SC02 is broadcast-only)
     try {
       if (!(navigator as any).bluetooth?.requestLEScan) {
-        alert('BLE advertisement scanning not available.\n\nEnable it in Chrome:\n1. Go to chrome://flags\n2. Search "Experimental Web Platform features"\n3. Enable it\n4. Relaunch Chrome')
+        alert('BLE scanning not available.\n\nEnable in Chrome:\n1. Go to chrome://flags\n2. Search "Experimental Web Platform features"\n3. Enable it\n4. Relaunch Chrome')
         return
       }
       const scan = await (navigator as any).bluetooth.requestLEScan({
