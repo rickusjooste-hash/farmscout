@@ -40,6 +40,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|manifest(?:-[a-z-]+)?\\.json|sw.js|icon-192.png|icon-512.png|scout|qc(?:$|/login)|runner(?:$|/login)|fert(?:$|/login)|bins(?:$|/login)|rain(?:$|/login)|packshed/(?:weigh|juice)(?:$|/login)|api/scout|api/weather/ingest|api/weather/aquacheck|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest(?:-[a-z-]+)?\\.json|sw.js|icon-192.png|icon-512.png|icon-manager-192.png|icon-manager-512.png|scout|qc(?:$|/login)|runner(?:$|/login)|fert(?:$|/login)|bins(?:$|/login)|rain(?:$|/login)|packshed/(?:weigh|juice)(?:$|/login)|api/scout|api/weather/ingest|api/weather/aquacheck|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
