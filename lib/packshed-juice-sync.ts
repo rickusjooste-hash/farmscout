@@ -125,7 +125,12 @@ export async function pullJuiceReferenceData(
 
     if (defectRes.ok) {
       const commodityPests = await defectRes.json()
-      // Deduplicate by pest_id (same pest may appear for multiple commodities)
+      // Clear old defect types before re-populating
+      const db = await getJuiceDB()
+      const tx = db.transaction('defect_types', 'readwrite')
+      await tx.store.clear()
+      await tx.done
+
       const seen = new Set<string>()
       const defectTypes = []
       for (const cp of commodityPests) {

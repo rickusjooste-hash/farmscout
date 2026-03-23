@@ -109,8 +109,10 @@ export default function PackshedJuicePage() {
 
   // ── Filter defects to juice-relevant ones ─────────────────────────
 
-  // Show all defect types — user counts only the ones that apply
-  const activeDefects = defectTypes
+  // Sort by display_order from QC settings
+  const activeDefects = useMemo(() => {
+    return [...defectTypes].sort((a, b) => (a.display_order || 99) - (b.display_order || 99))
+  }, [defectTypes])
 
   // ── Today's data ──────────────────────────────────────────────────
 
