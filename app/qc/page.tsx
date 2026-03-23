@@ -311,17 +311,90 @@ export default function QcHome() {
   }
 
   async function connectScale() {
+    // Try GATT connection first, fall back to advertisement scanning
     try {
       const device = await (navigator as any).bluetooth.requestDevice({
         filters: [{ namePrefix: 'SC' }, { namePrefix: 'smartchef' }, { namePrefix: 'Chipsea' }, { namePrefix: 'Reflex' }],
         optionalServices: [SCALE_SERVICE],
       })
-      const server = await device.gatt!.connect()
-      const char = await (await server.getPrimaryService(SCALE_SERVICE)).getCharacteristic(WEIGHT_CHAR)
-      await char.startNotifications()
-      char.addEventListener('characteristicvaluechanged', handleWeightNotification)
-      bleCharRef.current = char; setBleConnected(true)
-    } catch (err: any) { alert(`Could not connect to scale: ${err.message}`) }
+      try {
+        const server = await device.gatt!.connect()
+        const char = await (await server.getPrimaryService(SCALE_SERVICE)).getCharacteristic(WEIGHT_CHAR)
+        await char.startNotifications()
+        char.addEventListener('characteristicvaluechanged', handleWeightNotification)
+        bleCharRef.current = char; setBleConnected(true)
+        return
+      } catch {
+        // GATT failed — try advertisement scanning
+        console.log('[BLE] GATT failed, trying advertisement scan...')
+      }
+    } catch (err: any) {
+      // requestDevice failed or was cancelled
+      if (err.name === 'NotFoundError') return
+    }
+
+    // Fall back to advertisement scanning (requires chrome://flags/#enable-experimental-web-platform-features)
+    try {
+      if (!(navigator as any).bluetooth?.requestLEScan) {
+        alert('BLE advertisement scanning not available.\n\nEnable it in Chrome:\n1. Go to chrome://flags\n2. Search "Experimental Web Platform features"\n3. Enable it\n4. Relaunch Chrome')
+        return
+      }
+      const scan = await (navigator as any).bluetooth.requestLEScan({
+        filters: [{ namePrefix: 'SC' }],
+      })
+      setBleConnected(true)
+
+      ;(navigator as any).bluetooth.addEventListener('advertisementreceived', (event: any) => {
+        // Try manufacturer data
+        if (event.manufacturerData) {
+          event.manufacturerData.forEach((dataView: DataView, key: number) => {
+            const bytes = new Uint8Array(dataView.buffer)
+            // SmartChef protocol in advertisement: look for weight data
+            // Try parsing as SmartChef format
+            if (bytes.length >= 7 && bytes[0] === 0xCA) {
+              const attributes = bytes[3]
+              const locked = attributes & 0b00000001
+              if (!locked) return
+              const decimalsKey = attributes & 0b00000110
+              const decimals: Record<number, number> = { 0b000: 0, 0b010: 1, 0b100: 2, 0b110: 3 }
+              const dec = decimals[decimalsKey] ?? 1
+              const sign = attributes & 0b10000000 ? -1 : 1
+              const rawG = Math.round(((bytes[5] << 8) + bytes[6]) * sign / (10 ** dec))
+              if (rawG <= 0) return
+              if (Date.now() - confirmDismissedAt.current < 1000) return
+              weightBuffer.current = [...weightBuffer.current.slice(-4), rawG]
+              const buf = weightBuffer.current
+              if (buf.length >= 3 && Math.max(...buf) - Math.min(...buf) <= 2) {
+                setConfirmingWeight(rawG); setConfirmingBin(findSizeBin(rawG, sessionBinsRef.current))
+                setShowWeightConfirm(true); weightBuffer.current = []
+              }
+            }
+          })
+        }
+
+        // Also try service data
+        if (event.serviceData) {
+          event.serviceData.forEach((dataView: DataView) => {
+            const bytes = new Uint8Array(dataView.buffer)
+            if (bytes.length >= 2) {
+              // Try raw weight parsing
+              const rawG = (bytes[bytes.length - 2] << 8) + bytes[bytes.length - 1]
+              if (rawG > 0 && rawG < 2000) {
+                if (Date.now() - confirmDismissedAt.current < 1000) return
+                weightBuffer.current = [...weightBuffer.current.slice(-4), rawG]
+                const buf = weightBuffer.current
+                if (buf.length >= 3 && Math.max(...buf) - Math.min(...buf) <= 2) {
+                  setConfirmingWeight(rawG); setConfirmingBin(findSizeBin(rawG, sessionBinsRef.current))
+                  setShowWeightConfirm(true); weightBuffer.current = []
+                }
+              }
+            }
+          })
+        }
+      })
+    } catch (err: any) {
+      alert(`Scale scan error: ${err.message}\n\nMake sure chrome://flags "Experimental Web Platform features" is enabled.`)
+    }
   }
 
   function handleWeightNotification(event: Event) {
