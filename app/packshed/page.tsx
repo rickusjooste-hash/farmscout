@@ -54,6 +54,8 @@ export default function DailyPackoutPage() {
   const [editBinType, setEditBinType] = useState<'plastic' | 'wood'>('plastic')
   const [savingWeigh, setSavingWeigh] = useState(false)
 
+  const [juiceDefects, setJuiceDefects] = useState<{ name: string; count: number; pct: number }[]>([])
+
   const [selectedPackhouse, setSelectedPackhouse] = useState('')
   const [selectedOrchard, setSelectedOrchard] = useState<string>('all')
   const [packDate, setPackDate] = useState(new Date().toISOString().split('T')[0])
@@ -106,6 +108,55 @@ export default function DailyPackoutPage() {
     setFloorStockToday(fsToday.data || [])
     setFloorStockYesterday(fsYest.data || [])
     setBinWeights(bwRes.data || [])
+
+    // Fetch juice samples + defects for this date and packhouse
+    const { data: juiceSamples } = await supabase
+      .from('packout_juice_samples')
+      .select('id,sample_size,orchard_id')
+      .eq('packhouse_id', selectedPackhouse)
+      .eq('sample_date', packDate)
+
+    if (juiceSamples && juiceSamples.length > 0) {
+      const sampleIds = juiceSamples.map(s => s.id)
+      const { data: defects } = await supabase
+        .from('packout_juice_defects')
+        .select('pest_id,count')
+        .in('sample_id', sampleIds)
+
+      if (defects && defects.length > 0) {
+        // Aggregate by pest_id, lookup names
+        const byPest = new Map<string, number>()
+        for (const d of defects) {
+          byPest.set(d.pest_id, (byPest.get(d.pest_id) || 0) + d.count)
+        }
+        const pestIds = [...byPest.keys()]
+        const { data: pests } = await supabase.from('pests').select('id,name').in('id', pestIds)
+        const pestNames = new Map((pests || []).map(p => [p.id, p.name]))
+
+        // Also try commodity_pests for Afrikaans names
+        const { data: cpests } = await supabase
+          .from('commodity_pests')
+          .select('pest_id,display_name_af')
+          .in('pest_id', pestIds)
+          .eq('category', 'qc_issue')
+        const afNames = new Map((cpests || []).map(c => [c.pest_id, c.display_name_af]))
+
+        const totalSampled = defects.reduce((s, d) => s + d.count, 0)
+        const defectList = [...byPest.entries()]
+          .map(([pid, count]) => ({
+            name: afNames.get(pid) || pestNames.get(pid) || 'Unknown',
+            count,
+            pct: totalSampled > 0 ? count / totalSampled : 0,
+          }))
+          .sort((a, b) => b.count - a.count)
+
+        setJuiceDefects(defectList)
+      } else {
+        setJuiceDefects([])
+      }
+    } else {
+      setJuiceDefects([])
+    }
 
     // Build session rows: merge saved sessions with orchards from pallets
     const savedSessions = sessRes.data || []
@@ -357,10 +408,6 @@ export default function DailyPackoutPage() {
       ...s,
       pct: totalSizeCtns > 0 ? s.count / totalSizeCtns : 0,
     }))
-
-    // Juice defects — TODO: fetch from packout_juice_samples for this date
-    // For now, empty
-    const juiceDefects: { name: string; count: number; pct: number }[] = []
 
     const pdfBytes = await generatePackoutPdf({
       packDate,
