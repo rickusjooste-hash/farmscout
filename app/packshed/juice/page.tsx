@@ -226,64 +226,66 @@ export default function PackshedJuicePage() {
     const totalDefects = defectCounts.reduce((s, d) => s + d.count, 0)
 
     return (
-      <div className="flex flex-col h-dvh bg-[#eae6df] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 pt-4 pb-2">
-          <div>
-            <div className="text-2xl font-extrabold text-[#2176d9] tracking-wide">New Sample</div>
-            <div className="text-xs text-[#8a95a0]">{userName}</div>
+      <div className="flex flex-col h-dvh bg-[#eae6df]" style={{ overscrollBehavior: 'none', touchAction: 'pan-x pan-y' }}>
+        {/* Fixed header */}
+        <div className="shrink-0 bg-[#eae6df] z-10">
+          <div className="flex items-center justify-between px-4 pt-4 pb-2">
+            <div>
+              <div className="text-2xl font-extrabold text-[#2176d9] tracking-wide">New Sample</div>
+              <div className="text-xs text-[#8a95a0]">{userName}</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                className={`text-xs px-2 py-1 rounded ${lang === 'af' ? 'bg-[#2176d9] text-white' : 'bg-white text-[#8a95a0] border border-[#d4cfca]'}`}
+                onClick={() => setLang('af')}
+              >AF</button>
+              <button
+                className={`text-xs px-2 py-1 rounded ${lang === 'en' ? 'bg-[#2176d9] text-white' : 'bg-white text-[#8a95a0] border border-[#d4cfca]'}`}
+                onClick={() => setLang('en')}
+              >EN</button>
+              <button
+                className="text-sm text-[#8a95a0] px-3 py-1.5 rounded-lg border border-[#d4cfca] bg-white"
+                onClick={() => setView('home')}
+              >Cancel</button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              className={`text-xs px-2 py-1 rounded ${lang === 'af' ? 'bg-[#2176d9] text-white' : 'bg-white text-[#8a95a0] border border-[#d4cfca]'}`}
-              onClick={() => setLang('af')}
-            >AF</button>
-            <button
-              className={`text-xs px-2 py-1 rounded ${lang === 'en' ? 'bg-[#2176d9] text-white' : 'bg-white text-[#8a95a0] border border-[#d4cfca]'}`}
-              onClick={() => setLang('en')}
-            >EN</button>
-            <button
-              className="text-sm text-[#8a95a0] px-3 py-1.5 rounded-lg border border-[#d4cfca] bg-white"
-              onClick={() => setView('home')}
-            >Cancel</button>
+
+          {/* Date picker */}
+          <div className="px-4 pb-2">
+            <input
+              className="w-full px-3 py-2 rounded-lg border border-[#d4cfca] text-sm text-[#1a2a3a] bg-white"
+              type="date"
+              value={sampleDate}
+              onChange={e => setSampleDate(e.target.value)}
+            />
+          </div>
+
+          {/* Orchard selector */}
+          <div className="px-4 pb-2">
+            <select
+              className={`w-full px-3 py-2.5 rounded-lg border text-sm text-[#1a2a3a] bg-white ${selectedOrchard ? 'border-[#d4cfca]' : 'border-[#e85a4a]'}`}
+              value={selectedOrchard}
+              onChange={e => setSelectedOrchard(e.target.value)}
+            >
+              <option value="">-- Kies Boord / Select Orchard --</option>
+              {orchards.map(o => (
+                <option key={o.id} value={o.id}>
+                  {o.orchard_nr != null ? `${o.orchard_nr} ` : ''}{o.name}{o.variety ? ` (${o.variety})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Total count */}
+          <div className="px-4 pb-2 flex items-center justify-between">
+            <div className="text-sm text-[#8a95a0]">
+              Totaal: <span className="font-bold text-[#1a2a3a] text-lg">{totalDefects}</span> vrugte
+            </div>
           </div>
         </div>
 
-        {/* Date picker */}
-        <div className="px-4 pb-2">
-          <input
-            className="w-full px-3 py-2 rounded-lg border border-[#d4cfca] text-sm text-[#1a2a3a] bg-white"
-            type="date"
-            value={sampleDate}
-            onChange={e => setSampleDate(e.target.value)}
-          />
-        </div>
-
-        {/* Orchard selector */}
-        <div className="px-4 pb-2">
-          <select
-            className={`w-full px-3 py-2.5 rounded-lg border text-sm text-[#1a2a3a] bg-white ${selectedOrchard ? 'border-[#d4cfca]' : 'border-[#e85a4a]'}`}
-            value={selectedOrchard}
-            onChange={e => setSelectedOrchard(e.target.value)}
-          >
-            <option value="">-- Kies Boord / Select Orchard --</option>
-            {orchards.map(o => (
-              <option key={o.id} value={o.id}>
-                {o.orchard_nr != null ? `${o.orchard_nr} ` : ''}{o.name}{o.variety ? ` (${o.variety})` : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Total count */}
-        <div className="px-4 pb-2 flex items-center justify-between">
-          <div className="text-sm text-[#8a95a0]">
-            Totaal: <span className="font-bold text-[#1a2a3a] text-lg">{totalDefects}</span> vrugte
-          </div>
-        </div>
-
-        {/* Defect counter grid */}
-        <div className="flex-1 overflow-y-auto px-4 pb-2">
+        {/* Scrollable defect list */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pb-2">
           <div className="space-y-1.5">
             {defectCounts.map(d => (
               <div key={d.pest_id} className="flex items-center bg-white rounded-xl border border-[#e8e4dc] px-4 py-3">
@@ -309,7 +311,7 @@ export default function PackshedJuicePage() {
           </div>
 
           {/* Notes */}
-          <div className="mt-3">
+          <div className="mt-3 pb-2">
             <textarea
               className="w-full px-3 py-2.5 rounded-lg border border-[#d4cfca] text-sm text-[#1a2a3a] bg-white resize-none"
               rows={2}
@@ -320,22 +322,22 @@ export default function PackshedJuicePage() {
           </div>
         </div>
 
-        {/* Success flash */}
-        {saveSuccess && (
-          <div className="mx-4 mb-1 bg-green-50 border-2 border-green-300 rounded-xl px-3 py-2 text-center text-green-700 text-base font-bold">
-            Sample saved!
+        {/* Fixed bottom: success flash + save button */}
+        <div className="shrink-0 bg-[#eae6df] z-10">
+          {saveSuccess && (
+            <div className="mx-4 mb-1 bg-green-50 border-2 border-green-300 rounded-xl px-3 py-2 text-center text-green-700 text-base font-bold">
+              Sample saved!
+            </div>
+          )}
+          <div className="px-4 pb-4 pt-2">
+            <button
+              className="w-full bg-[#2176d9] text-white text-lg font-bold py-4 rounded-xl disabled:opacity-50 active:bg-[#1a65c0]"
+              onClick={handleSave}
+              disabled={saving || totalDefects === 0 || !selectedOrchard}
+            >
+              {saving ? 'Saving...' : `Save Sample (${totalDefects} fruit)`}
+            </button>
           </div>
-        )}
-
-        {/* Save button */}
-        <div className="px-4 pb-4">
-          <button
-            className="w-full bg-[#2176d9] text-white text-lg font-bold py-4 rounded-xl disabled:opacity-50 active:bg-[#1a65c0]"
-            onClick={handleSave}
-            disabled={saving || totalDefects === 0 || !selectedOrchard}
-          >
-            {saving ? 'Saving...' : `Save Sample (${totalDefects} fruit)`}
-          </button>
         </div>
       </div>
     )

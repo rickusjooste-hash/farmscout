@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export default function PackshedJuiceLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <style>{`html, body { background: #eae6df !important; }`}</style>
+      <style>{`html, body { background: #eae6df !important; overscroll-behavior: none; }`}</style>
       <PackshedJuiceSwRegister />
       {children}
     </>
