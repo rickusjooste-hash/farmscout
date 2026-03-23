@@ -110,7 +110,7 @@ def sync_reference_data(conn):
             MAX(s.CTN_QTY) as cartons_per_pallet,
             RTRIM(p.LONG_DESC) as pack_desc,
             p.NET_MASS as weight_per_carton
-        FROM stock s
+        FROM in_det s
         LEFT JOIN pack p ON p.PACK = s.PACK AND p.COMMODITY = s.COMMODITY
             AND p.ORGZN = s.ORGZN
         WHERE s.SEASON = ?
@@ -162,10 +162,10 @@ def sync_reference_data(conn):
         SELECT DISTINCT RTRIM(SIZE_COUNT) as size_count
         FROM sizes
         WHERE COMMODITY = 'AP' AND ACTIVE = 'Y'
-          AND PACK IN (SELECT DISTINCT PACK FROM stock WHERE SEASON = ?)
+          AND PACK IN (SELECT DISTINCT PACK FROM in_det WHERE SEASON = ?)
         UNION
         SELECT DISTINCT RTRIM(SIZE_COUNT)
-        FROM stock
+        FROM in_det
         WHERE SEASON = ?
         ORDER BY 1
     ''', SEASON, SEASON)
@@ -205,7 +205,7 @@ def sync_reference_data(conn):
         SELECT DISTINCT RTRIM(PACK) as pack_code, RTRIM(SIZE_COUNT) as size_count
         FROM sizes
         WHERE COMMODITY = 'AP' AND ACTIVE = 'Y'
-          AND PACK IN (SELECT DISTINCT PACK FROM stock WHERE SEASON = ?)
+          AND PACK IN (SELECT DISTINCT PACK FROM in_det WHERE SEASON = ?)
         ORDER BY pack_code, size_count
     ''', SEASON)
 
@@ -277,10 +277,10 @@ def sync_pallets(conn):
     """Import completed pallets from Paltrack stock table."""
     cursor = conn.cursor()
 
-    log.info("Pulling pallets from Paltrack stock (season %s)...", SEASON)
+    log.info("Pulling pallets from Paltrack (last 7 days)...")
     cursor.execute('''
         SELECT
-            STOCK_ID,
+            IN_DET_ID,
             RTRIM(PALLET_ID) as pallet_id,
             RTRIM(PACKH_CODE) as packh_code,
             RTRIM(FARM) as farm,
@@ -293,9 +293,9 @@ def sync_pallets(conn):
             CTN_QTY,
             CAST(INTAKE_DATE AS DATE) as pack_date,
             RTRIM(SEASON) as season
-        FROM stock
-        WHERE SEASON = ?
-        ORDER BY STOCK_ID
+        FROM in_det
+        WHERE SEASON = ? AND INTAKE_DATE >= DATEADD(day, -7, GETDATE())
+        ORDER BY IN_DET_ID
     ''', SEASON)
 
     rows = cursor.fetchall()
@@ -311,7 +311,7 @@ def sync_pallets(conn):
         pack_date = str(row.pack_date) if row.pack_date else None
         payload.append({
             'organisation_id': ORG_ID,
-            'paltrack_id': str(row.STOCK_ID),
+            'paltrack_id': str(row.IN_DET_ID),
             'pallet_nr': row.pallet_id,
             'pack_date': pack_date,
             'carton_count': row.CTN_QTY or 0,
