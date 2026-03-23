@@ -99,7 +99,7 @@ export async function pullWeighReferenceData(
         { headers }
       ),
       fetch(
-        `${SUPABASE_REST}/orchards?farm_id=in.${farmIdFilter}&is_active=eq.true&select=id,name,orchard_nr,farm_id&order=orchard_nr`,
+        `${SUPABASE_REST}/orchards?farm_id=in.${farmIdFilter}&is_active=eq.true&select=id,name,orchard_nr,variety,farm_id&order=orchard_nr`,
         { headers }
       ),
     ])

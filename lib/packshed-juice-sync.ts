@@ -134,9 +134,12 @@ export async function pullJuiceReferenceData(
             name: cp.display_name || 'Unknown',
             name_af: cp.display_name_af || cp.display_name || 'Unknown',
             pest_id: cp.pest_id,
+            display_order: cp.display_order ?? 99,
           })
         }
       }
+      // Sort by display_order
+      defectTypes.sort((a, b) => a.display_order - b.display_order)
       if (defectTypes.length > 0) await juicePutMany('defect_types', defectTypes)
       console.log(`[JuiceSync] Pulled ${defectTypes.length} defect types (QC issues)`)
     }

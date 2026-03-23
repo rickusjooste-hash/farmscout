@@ -152,7 +152,10 @@ export default function PackshedWeighPage() {
   // ── Save ──────────────────────────────────────────────────────────
 
   async function handleSave() {
-    if (!selectedPackhouse || !grossWeight || gross <= totalTare) return
+    if (!selectedPackhouse || !selectedOrchard || !grossWeight || gross <= totalTare) {
+      if (!selectedOrchard) alert('Select an orchard first')
+      return
+    }
 
     setSaving(true)
     try {
@@ -323,14 +326,14 @@ export default function PackshedWeighPage() {
         {/* Orchard selector */}
         <div className="px-4 pb-2">
           <select
-            className="w-full px-3 py-2.5 rounded-lg border border-[#d4cfca] text-sm text-[#1a2a3a] bg-white"
+            className={`w-full px-3 py-2.5 rounded-lg border text-sm text-[#1a2a3a] bg-white ${selectedOrchard ? 'border-[#d4cfca]' : 'border-[#e85a4a]'}`}
             value={selectedOrchard}
             onChange={e => setSelectedOrchard(e.target.value)}
           >
-            <option value="">-- Orchard (optional) --</option>
+            <option value="">-- Select Orchard --</option>
             {orchards.map(o => (
               <option key={o.id} value={o.id}>
-                {o.orchard_nr ? `${o.orchard_nr} – ` : ''}{o.name}
+                {o.orchard_nr != null ? `${o.orchard_nr} ` : ''}{o.name}{o.variety ? ` (${o.variety})` : ''}
               </option>
             ))}
           </select>
@@ -388,7 +391,7 @@ export default function PackshedWeighPage() {
           <button
             className="w-full bg-[#2176d9] text-white text-lg font-bold py-4 rounded-xl disabled:opacity-50 active:bg-[#1a65c0]"
             onClick={handleSave}
-            disabled={saving || !grossWeight || gross <= totalTare}
+            disabled={saving || !grossWeight || gross <= totalTare || !selectedOrchard}
           >
             {saving ? 'Saving...' : `Save ${category.charAt(0).toUpperCase() + category.slice(1)} Bin`}
           </button>

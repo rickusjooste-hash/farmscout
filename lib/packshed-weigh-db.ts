@@ -13,6 +13,7 @@ export interface PackshedOrchard {
   id: string
   name: string
   orchard_nr: number | null
+  variety: string | null
   farm_id: string
 }
 

@@ -22,6 +22,7 @@ export interface JuiceDefectType {
   name: string
   name_af: string
   pest_id: string
+  display_order: number
 }
 
 export interface JuiceSample {

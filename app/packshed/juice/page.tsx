@@ -143,7 +143,10 @@ export default function PackshedJuicePage() {
   // ── Save sample ───────────────────────────────────────────────────
 
   async function handleSave() {
-    if (!selectedPackhouse) return
+    if (!selectedPackhouse || !selectedOrchard) {
+      if (!selectedOrchard) alert('Select an orchard first')
+      return
+    }
 
     const totalDefectsCount = defectCounts.reduce((s, d) => s + d.count, 0)
     if (totalDefectsCount === 0) return
@@ -257,11 +260,11 @@ export default function PackshedJuicePage() {
         {/* Orchard selector */}
         <div className="px-4 pb-2">
           <select
-            className="w-full px-3 py-2.5 rounded-lg border border-[#d4cfca] text-sm text-[#1a2a3a] bg-white"
+            className={`w-full px-3 py-2.5 rounded-lg border text-sm text-[#1a2a3a] bg-white ${selectedOrchard ? 'border-[#d4cfca]' : 'border-[#e85a4a]'}`}
             value={selectedOrchard}
             onChange={e => setSelectedOrchard(e.target.value)}
           >
-            <option value="">-- Boord / Orchard --</option>
+            <option value="">-- Kies Boord / Select Orchard --</option>
             {orchards.map(o => (
               <option key={o.id} value={o.id}>
                 {o.orchard_nr != null ? `${o.orchard_nr} ` : ''}{o.name}{o.variety ? ` (${o.variety})` : ''}
@@ -327,7 +330,7 @@ export default function PackshedJuicePage() {
           <button
             className="w-full bg-[#2176d9] text-white text-lg font-bold py-4 rounded-xl disabled:opacity-50 active:bg-[#1a65c0]"
             onClick={handleSave}
-            disabled={saving || totalDefects === 0}
+            disabled={saving || totalDefects === 0 || !selectedOrchard}
           >
             {saving ? 'Saving...' : `Save Sample (${totalDefects} fruit)`}
           </button>
