@@ -14,7 +14,7 @@ interface Size { id: string; label: string; sort_order: number }
 interface ValidCombo { box_type_id: string; size_id: string }
 interface PalletRow { box_type_id: string | null; size_id: string | null; carton_count: number; orchard_id: string | null; orchard_code: string | null; variety: string | null }
 interface StockCell { box_type_id: string; size_id: string; carton_count: number }
-interface BinWeight { category: string; net_weight_kg: number; seq: number; bin_type: string; gross_weight_kg: number; tare_weight_kg: number; orchard_id: string | null; bin_count: number }
+interface BinWeight { id: string; category: string; net_weight_kg: number; seq: number; bin_type: string; gross_weight_kg: number; tare_weight_kg: number; orchard_id: string | null; bin_count: number }
 interface OrchardRef { id: string; name: string; orchard_nr: number | null }
 
 interface SessionRow {
@@ -47,6 +47,12 @@ export default function DailyPackoutPage() {
   const [binWeights, setBinWeights] = useState<BinWeight[]>([])
   const [sessions, setSessions] = useState<SessionRow[]>([])
   const [savingSessions, setSavingSessions] = useState(false)
+  const [weighTableOpen, setWeighTableOpen] = useState(false)
+  const [editingWeighId, setEditingWeighId] = useState<string | null>(null)
+  const [editGross, setEditGross] = useState('')
+  const [editBinCount, setEditBinCount] = useState(2)
+  const [editBinType, setEditBinType] = useState<'plastic' | 'wood'>('plastic')
+  const [savingWeigh, setSavingWeigh] = useState(false)
 
   const [selectedPackhouse, setSelectedPackhouse] = useState('')
   const [selectedOrchard, setSelectedOrchard] = useState<string>('all')
@@ -91,7 +97,7 @@ export default function DailyPackoutPage() {
       supabase.from('packout_pallets').select('box_type_id,size_id,carton_count,orchard_id,orchard_code,variety').eq('packhouse_id', selectedPackhouse).eq('pack_date', packDate),
       supabase.from('packout_floor_stock').select('box_type_id,size_id,carton_count').eq('packhouse_id', selectedPackhouse).eq('stock_date', packDate),
       supabase.from('packout_floor_stock').select('box_type_id,size_id,carton_count').eq('packhouse_id', selectedPackhouse).eq('stock_date', yDate),
-      supabase.from('packout_bin_weights').select('category,net_weight_kg,seq,bin_type,gross_weight_kg,tare_weight_kg,orchard_id,bin_count').eq('packhouse_id', selectedPackhouse).eq('weigh_date', packDate).order('category').order('seq'),
+      supabase.from('packout_bin_weights').select('id,category,net_weight_kg,seq,bin_type,gross_weight_kg,tare_weight_kg,orchard_id,bin_count').eq('packhouse_id', selectedPackhouse).eq('weigh_date', packDate).order('category').order('seq'),
       supabase.from('packout_daily_sessions').select('id,orchard_id,variety,bins_packed,start_time,end_time,smous_weight_kg').eq('packhouse_id', selectedPackhouse).eq('pack_date', packDate),
     ])
 
@@ -279,6 +285,112 @@ export default function DailyPackoutPage() {
     return m
   }, [palletGrid, floorTodayGrid, floorYestGrid, activeBoxTypes, activeSizes])
 
+  // ── Bin weight editing ───────────────────────────────────────────
+
+  const TARE_PER_BIN: Record<string, number> = { plastic: 38, wood: 65 }
+
+  function startEditWeigh(b: BinWeight) {
+    setEditingWeighId(b.id)
+    setEditGross(String(b.gross_weight_kg))
+    setEditBinCount(b.bin_count || 1)
+    setEditBinType(b.bin_type as 'plastic' | 'wood')
+  }
+
+  async function saveEditWeigh() {
+    if (!editingWeighId) return
+    setSavingWeigh(true)
+    const gross = parseFloat(editGross) || 0
+    const tare = (TARE_PER_BIN[editBinType] || 38) * editBinCount
+    await supabase.from('packout_bin_weights').update({
+      gross_weight_kg: gross,
+      tare_weight_kg: tare,
+      bin_count: editBinCount,
+      bin_type: editBinType,
+    }).eq('id', editingWeighId)
+    setEditingWeighId(null)
+    setSavingWeigh(false)
+    await loadDayData()
+  }
+
+  async function deleteWeigh(id: string) {
+    if (!confirm('Delete this weighing?')) return
+    await supabase.from('packout_bin_weights').delete().eq('id', id)
+    await loadDayData()
+  }
+
+  // ── PDF export ──────────────────────────────────────────────────
+
+  async function handleExportPdf() {
+    const { generatePackoutPdf } = await import('@/lib/packshed-pdf')
+
+    const phName = packhouses.find(p => p.id === selectedPackhouse)?.name || ''
+
+    // Build box type summaries from net packed grid
+    const boxTypeSummaries = activeBoxTypes
+      .map(bt => {
+        let totalCartons = 0
+        for (const sz of activeSizes) {
+          totalCartons += netPackedGrid.get(`${bt.id}_${sz.id}`) || 0
+        }
+        return {
+          code: bt.code,
+          name: bt.name,
+          totalCartons,
+          cartons_per_pallet: bt.cartons_per_pallet,
+          weight_per_carton_kg: bt.weight_per_carton_kg || 0,
+        }
+      })
+      .filter(bt => bt.totalCartons > 0)
+
+    // Size distribution from net packed grid
+    const sizeDistribution = activeSizes
+      .map(sz => {
+        let count = 0
+        for (const bt of activeBoxTypes) {
+          count += netPackedGrid.get(`${bt.id}_${sz.id}`) || 0
+        }
+        return { label: sz.label, count }
+      })
+      .filter(s => s.count > 0)
+    const totalSizeCtns = sizeDistribution.reduce((s, d) => s + d.count, 0)
+    const sizeDistWithPct = sizeDistribution.map(s => ({
+      ...s,
+      pct: totalSizeCtns > 0 ? s.count / totalSizeCtns : 0,
+    }))
+
+    // Juice defects — TODO: fetch from packout_juice_samples for this date
+    // For now, empty
+    const juiceDefects: { name: string; count: number; pct: number }[] = []
+
+    const pdfBytes = await generatePackoutPdf({
+      packDate,
+      packhouseName: phName,
+      sessions: filteredSessions,
+      totalBinsPacked,
+      avgBinWeight,
+      totalKgIn,
+      boxTypeSummaries,
+      smousKg: totalSmousKg,
+      juiceKg,
+      rotKg,
+      totalKgOut,
+      conversionPct,
+      lossPct,
+      sizeDistribution: sizeDistWithPct,
+      juiceDefects,
+    })
+
+    // Download
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const orchName = filteredSessions[0]?.orchard_name || 'packout'
+    a.href = url
+    a.download = `${packDate} ${orchName}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   // ── Bin weight KPIs ───────────────────────────────────────────────
 
   const binsByCategory = useMemo(() => {
@@ -301,11 +413,13 @@ export default function DailyPackoutPage() {
     return (binsByCategory[cat] || []).reduce((s, b) => s + b.net_weight_kg, 0)
   }
 
-  // Mass balance uses bins_packed × avg bin weight for KG In (not weighed bins)
+  // Mass balance: KG In = bins_packed (from session) × avg bin weight (from weighed sample)
+  // Weighed bins are a SAMPLE — not the total bins packed
   const avgBinWeight = catAvg('pack')
+  const binsWeighed = catTotalBins('pack')
   const totalKgIn = totalBinsPacked > 0 && avgBinWeight > 0
     ? totalBinsPacked * avgBinWeight
-    : catTotal('pack')
+    : 0  // Don't guess — require bins_packed from session header
   const juiceKg = catTotal('juice')
   const rotKg = catTotal('rot')
 
@@ -400,6 +514,9 @@ export default function DailyPackoutPage() {
               {packhouses.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
             <input type="date" style={st.select} value={packDate} onChange={e => setPackDate(e.target.value)} />
+            <button style={st.btnPrimary} onClick={handleExportPdf} disabled={activeBoxTypes.length === 0}>
+              Export PDF
+            </button>
           </div>
         </div>
 
@@ -530,8 +647,8 @@ export default function DailyPackoutPage() {
 
             {/* KPI strip */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 28 }}>
-              <KPI label="Bins Packed" value={totalBinsPacked || catTotalBins('pack')} sub={`Avg ${avgBinWeight.toFixed(1)} kg/bin`} />
-              <KPI label="Total KG In" value={Math.round(totalKgIn).toLocaleString()} sub={totalBinsPacked ? `${totalBinsPacked} bins` : `${catTotalBins('pack')} bins weighed`} color="#2176d9" />
+              <KPI label="Bins Packed" value={totalBinsPacked || '-'} sub={`${binsWeighed} weighed, avg ${avgBinWeight.toFixed(1)} kg`} />
+              <KPI label="Total KG In" value={totalKgIn > 0 ? Math.round(totalKgIn).toLocaleString() : '-'} sub={totalBinsPacked ? `${totalBinsPacked} × ${avgBinWeight.toFixed(1)} kg` : 'enter bins packed above'} color="#2176d9" />
               <KPI label="Net Cartons" value={totalCartonsOut.toLocaleString()} sub="packed today" />
               <KPI label="Conversion" value={totalKgIn > 0 ? `${conversionPct.toFixed(1)}%` : '-'} sub="cartons / KG in" color={conversionPct > 80 ? '#4caf72' : conversionPct > 0 ? '#e6a817' : '#8a95a0'} />
               <KPI label="Loss" value={totalKgIn > 0 ? `${lossPct.toFixed(1)}%` : '-'} sub="unaccounted" color={lossPct < 5 && totalKgIn > 0 ? '#4caf72' : totalKgIn > 0 ? '#e85a4a' : '#8a95a0'} />
@@ -543,32 +660,146 @@ export default function DailyPackoutPage() {
             {renderGrid('Opening Stock (Yesterday)', floorYestGrid, '#fafaf5')}
             {renderGrid('Net Packed', netPackedGrid, '#f0f7ff')}
 
-            {/* Bin Weights */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 28 }}>
-              {(['pack', 'juice', 'rot'] as const).map(cat => {
-                const bins = binsByCategory[cat] || []
-                const binCount = catTotalBins(cat)
-                const colors = { pack: '#2176d9', juice: '#e6a817', rot: '#e85a4a' }
-                return (
-                  <div key={cat} style={{ background: '#fff', borderRadius: 10, border: '1px solid #e5e7eb', padding: 16 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', marginBottom: 8 }}>
-                      {cat} Bins ({binCount})
+            {/* Bin Weights — summary cards + detail table */}
+            <div style={{ marginBottom: 28 }}>
+              {/* Summary cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
+                {(['pack', 'juice', 'rot'] as const).map(cat => {
+                  const binCount = catTotalBins(cat)
+                  const weighings = (binsByCategory[cat] || []).length
+                  const colors = { pack: '#2176d9', juice: '#e6a817', rot: '#e85a4a' }
+                  return (
+                    <div key={cat} style={{ background: '#fff', borderRadius: 10, border: '1px solid #e5e7eb', padding: 16 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', marginBottom: 8 }}>
+                        {cat} ({binCount} bins / {weighings} weighings)
+                      </div>
+                      {weighings === 0 ? (
+                        <div style={{ color: '#d4d8de', fontSize: 13 }}>No bins weighed</div>
+                      ) : (
+                        <>
+                          <div style={{ fontSize: 24, fontWeight: 800, color: colors[cat] }}>
+                            {catTotal(cat).toFixed(0)} <span style={{ fontSize: 12, fontWeight: 400, color: '#8a95a0' }}>kg</span>
+                          </div>
+                          <div style={{ fontSize: 12, color: '#8a95a0', marginTop: 4 }}>
+                            Avg: {catAvg(cat).toFixed(1)} kg/bin
+                          </div>
+                        </>
+                      )}
                     </div>
-                    {bins.length === 0 ? (
-                      <div style={{ color: '#d4d8de', fontSize: 13 }}>No bins weighed</div>
-                    ) : (
-                      <>
-                        <div style={{ fontSize: 24, fontWeight: 800, color: colors[cat] }}>
-                          {catTotal(cat).toFixed(0)} <span style={{ fontSize: 12, fontWeight: 400, color: '#8a95a0' }}>kg</span>
-                        </div>
-                        <div style={{ fontSize: 12, color: '#8a95a0', marginTop: 4 }}>
-                          Avg: {catAvg(cat).toFixed(1)} kg/bin
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
+
+              {/* Collapsible detail table */}
+              {filteredBinWeights.length > 0 && (
+                <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+                  <button
+                    onClick={() => setWeighTableOpen(!weighTableOpen)}
+                    style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                  >
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1a2a3a' }}>
+                      Weigh Records ({filteredBinWeights.length} weighings, {filteredBinWeights.reduce((s, b) => s + (b.bin_count || 1), 0)} bins)
+                    </span>
+                    <span style={{ fontSize: 18, color: '#8a95a0' }}>{weighTableOpen ? '\u25B2' : '\u25BC'}</span>
+                  </button>
+                  {weighTableOpen && (
+                    <div style={{ overflow: 'auto' }}>
+                      <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: '#f8f9fb' }}>
+                            <th style={st.th}>#</th>
+                            <th style={st.th}>Cat</th>
+                            <th style={st.th}>Type</th>
+                            <th style={{ ...st.th, textAlign: 'right' }}>Gross</th>
+                            <th style={{ ...st.th, textAlign: 'right' }}>Tare</th>
+                            <th style={{ ...st.th, textAlign: 'right' }}>Net</th>
+                            <th style={{ ...st.th, textAlign: 'center' }}>Bins</th>
+                            <th style={{ ...st.th, textAlign: 'right' }}>Per Bin</th>
+                            <th style={{ ...st.th, textAlign: 'center' }}></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredBinWeights.map(b => {
+                            const bc = b.bin_count || 1
+                            const perBin = b.net_weight_kg / bc
+                            const catColors: Record<string, string> = { pack: '#2176d9', juice: '#e6a817', rot: '#e85a4a' }
+                            const isEditing = editingWeighId === b.id
+
+                            if (isEditing) {
+                              const editTare = (TARE_PER_BIN[editBinType] || 38) * editBinCount
+                              const editNet = (parseFloat(editGross) || 0) - editTare
+                              const editPerBin = editBinCount > 0 ? editNet / editBinCount : 0
+                              return (
+                                <tr key={b.id} style={{ borderBottom: '1px solid #f0f0f0', background: '#fffde7' }}>
+                                  <td style={st.td}>{b.seq}</td>
+                                  <td style={st.td}>
+                                    <span style={{ color: catColors[b.category], fontWeight: 600, textTransform: 'uppercase', fontSize: 11 }}>{b.category}</span>
+                                  </td>
+                                  <td style={st.td}>
+                                    <select value={editBinType} onChange={e => setEditBinType(e.target.value as any)} style={st.editInput}>
+                                      <option value="plastic">plastic</option>
+                                      <option value="wood">wood</option>
+                                    </select>
+                                  </td>
+                                  <td style={{ ...st.td, textAlign: 'right' }}>
+                                    <input type="number" step="0.5" value={editGross} onChange={e => setEditGross(e.target.value)} style={{ ...st.editInput, width: 75, textAlign: 'right' as const }} />
+                                  </td>
+                                  <td style={{ ...st.td, textAlign: 'right', color: '#8a95a0' }}>{editTare}</td>
+                                  <td style={{ ...st.td, textAlign: 'right', fontWeight: 600 }}>{editNet.toFixed(1)}</td>
+                                  <td style={{ ...st.td, textAlign: 'center' }}>
+                                    <select value={editBinCount} onChange={e => setEditBinCount(parseInt(e.target.value))} style={{ ...st.editInput, width: 45 }}>
+                                      <option value={1}>1</option>
+                                      <option value={2}>2</option>
+                                      <option value={3}>3</option>
+                                    </select>
+                                  </td>
+                                  <td style={{ ...st.td, textAlign: 'right', fontWeight: 700 }}>{editPerBin.toFixed(1)}</td>
+                                  <td style={{ ...st.td, textAlign: 'center' }}>
+                                    <button onClick={saveEditWeigh} disabled={savingWeigh} style={{ ...st.tinyBtn, background: '#4caf72', color: '#fff' }}>
+                                      {savingWeigh ? '...' : 'Save'}
+                                    </button>
+                                    <button onClick={() => setEditingWeighId(null)} style={{ ...st.tinyBtn, background: '#e5e7eb', color: '#5a6a70', marginLeft: 4 }}>
+                                      Cancel
+                                    </button>
+                                  </td>
+                                </tr>
+                              )
+                            }
+
+                            return (
+                              <tr key={b.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                                <td style={st.td}>{b.seq}</td>
+                                <td style={st.td}>
+                                  <span style={{ color: catColors[b.category] || '#1a2a3a', fontWeight: 600, textTransform: 'uppercase', fontSize: 11 }}>{b.category}</span>
+                                </td>
+                                <td style={st.td}>{b.bin_type}</td>
+                                <td style={{ ...st.td, textAlign: 'right' }}>{b.gross_weight_kg}</td>
+                                <td style={{ ...st.td, textAlign: 'right' }}>{b.tare_weight_kg}</td>
+                                <td style={{ ...st.td, textAlign: 'right', fontWeight: 600 }}>{b.net_weight_kg.toFixed(1)}</td>
+                                <td style={{ ...st.td, textAlign: 'center' }}>{bc}</td>
+                                <td style={{ ...st.td, textAlign: 'right', fontWeight: 700 }}>{perBin.toFixed(1)}</td>
+                                <td style={{ ...st.td, textAlign: 'center' }}>
+                                  <button onClick={() => startEditWeigh(b)} style={{ ...st.tinyBtn, background: '#eef2f7', color: '#2176d9' }}>Edit</button>
+                                  <button onClick={() => deleteWeigh(b.id)} style={{ ...st.tinyBtn, background: '#fef2f2', color: '#e85a4a', marginLeft: 4 }}>Del</button>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr style={{ background: '#f8f9fb', fontWeight: 700 }}>
+                            <td style={st.td} colSpan={5}>Total</td>
+                            <td style={{ ...st.td, textAlign: 'right' }}>{filteredBinWeights.reduce((s, b) => s + b.net_weight_kg, 0).toFixed(1)}</td>
+                            <td style={{ ...st.td, textAlign: 'center' }}>{filteredBinWeights.reduce((s, b) => s + (b.bin_count || 1), 0)}</td>
+                            <td style={{ ...st.td, textAlign: 'right' }}>{avgBinWeight.toFixed(1)}</td>
+                            <td style={st.td}></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Mass Balance */}
@@ -577,7 +808,7 @@ export default function DailyPackoutPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 600, color: '#8a95a0', textTransform: 'uppercase', marginBottom: 8 }}>KG In</div>
-                  <MBRow label={`${totalBinsPacked || catTotalBins('pack')} bins × ${avgBinWeight.toFixed(1)} kg`} value={totalKgIn} />
+                  <MBRow label={totalBinsPacked ? `${totalBinsPacked} bins × ${avgBinWeight.toFixed(1)} kg` : 'Bins packed not entered'} value={totalKgIn} />
                   <MBRow label="Total KG In" value={totalKgIn} bold />
                 </div>
                 <div>
@@ -633,4 +864,6 @@ const st: Record<string, React.CSSProperties> = {
   sessionTh: { padding: '8px 10px', textAlign: 'left' as const, fontSize: 11, fontWeight: 600, color: '#8a95a0', textTransform: 'uppercase' as const },
   sessionTd: { padding: '6px 10px', fontSize: 13 },
   sessionInput: { width: 80, padding: '5px 6px', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: 13, textAlign: 'center' as const, outline: 'none', background: '#fafbfc' },
+  editInput: { padding: '4px 6px', borderRadius: 5, border: '1px solid #d4d8de', fontSize: 12, background: '#fff', outline: 'none' },
+  tinyBtn: { padding: '3px 8px', borderRadius: 5, border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer' } as React.CSSProperties,
 }
