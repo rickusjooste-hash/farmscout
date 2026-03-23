@@ -312,7 +312,7 @@ export default function QcHome() {
 
   async function connectScale() {
     try {
-      const device = await (navigator as any).bluetooth.requestDevice({ filters: [{ namePrefix: 'Reflex' }], optionalServices: [SCALE_SERVICE] })
+      const device = await (navigator as any).bluetooth.requestDevice({ filters: [{ namePrefix: 'smartchef' }, { namePrefix: 'Chipsea-BLE' }, { namePrefix: 'Reflex' }], optionalServices: [SCALE_SERVICE] })
       const server = await device.gatt!.connect()
       const char = await (await server.getPrimaryService(SCALE_SERVICE)).getCharacteristic(WEIGHT_CHAR)
       await char.startNotifications()
@@ -322,7 +322,29 @@ export default function QcHome() {
   }
 
   function handleWeightNotification(event: Event) {
-    const rawG = ((event.target as any).value as DataView).getUint16(0, true)
+    const dataView = (event.target as any).value as DataView
+    const bytes = new Uint8Array(dataView.buffer)
+
+    let rawG: number
+
+    // SmartChef protocol: magic=0xCA, 7+ bytes, XOR checksum
+    if (bytes.length >= 7 && bytes[0] === 0xCA) {
+      const attributes = bytes[3]
+      const locked = attributes & 0b00000001
+      if (!locked) return  // only use locked (stable) readings
+      const decimalsKey = attributes & 0b00000110
+      const decimals: Record<number, number> = { 0b000: 0, 0b010: 1, 0b100: 2, 0b110: 3 }
+      const dec = decimals[decimalsKey] ?? 1
+      const sign = attributes & 0b10000000 ? -1 : 1
+      const weightRaw = ((bytes[5] << 8) + bytes[6]) * sign
+      rawG = weightRaw / (10 ** dec)
+      // SmartChef reports in grams — convert to integer grams
+      rawG = Math.round(rawG)
+    } else {
+      // Fallback: Reflex-style raw uint16
+      rawG = dataView.getUint16(0, true)
+    }
+
     if (rawG <= 0) return
     if (Date.now() - confirmDismissedAt.current < 1000) return
     weightBuffer.current = [...weightBuffer.current.slice(-4), rawG]
