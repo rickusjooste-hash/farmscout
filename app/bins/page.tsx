@@ -19,9 +19,10 @@ export default function BinsAppPage() {
   const [teams, setTeams] = useState<BinsTeam[]>([])
   const [farms, setFarms] = useState<BinsFarm[]>([])
 
-  // Today's records
-  const [todayBins, setTodayBins] = useState<BinsRecord[]>([])
-  const [todayBruising, setTodayBruising] = useState<BruisingRecord[]>([])
+  // All records + view date
+  const [allBinsRecords, setAllBinsRecords] = useState<BinsRecord[]>([])
+  const [allBruisingRecords, setAllBruisingRecords] = useState<BruisingRecord[]>([])
+  const [viewDate, setViewDate] = useState(() => new Date().toISOString().split('T')[0])
 
   // Active tab on home
   const [activeTab, setActiveTab] = useState<'bins' | 'bruising'>('bins')
@@ -129,24 +130,14 @@ export default function BinsAppPage() {
       setOrchards(allOrchards.sort((a, b) => (a.orchard_nr ?? 999) - (b.orchard_nr ?? 999)))
       setTeams(allTeams)
       setFarms(allFarms)
-
-      const today = new Date().toISOString().split('T')[0]
-      setTodayBins(
-        allBins
-          .filter(r => r.received_date === today)
-          .sort((a, b) => (b.received_time || '').localeCompare(a.received_time || ''))
-      )
-      setTodayBruising(
-        allBruising
-          .filter(r => r.received_date === today)
-          .sort((a, b) => (b.received_time || '').localeCompare(a.received_time || ''))
-      )
+      setAllBinsRecords(allBins)
+      setAllBruisingRecords(allBruising)
     } catch {
       setOrchards([])
       setTeams([])
       setFarms([])
-      setTodayBins([])
-      setTodayBruising([])
+      setAllBinsRecords([])
+      setAllBruisingRecords([])
     }
     await refreshPendingCount()
   }, [])
@@ -364,10 +355,18 @@ export default function BinsAppPage() {
     setBruisingSaving(false)
   }
 
-  // ── Computed ─────────────────────────────────────────────────────────
+  // ── Filtered by viewDate ────────────────────────────────────────────
+  const todayBins = allBinsRecords
+    .filter(r => r.received_date === viewDate)
+    .sort((a, b) => (b.received_time || '').localeCompare(a.received_time || ''))
+  const todayBruising = allBruisingRecords
+    .filter(r => r.received_date === viewDate)
+    .sort((a, b) => (b.received_time || '').localeCompare(a.received_time || ''))
+
   const totalBins = todayBins.reduce((s, r) => s + r.bins, 0)
   const totalJuice = todayBins.reduce((s, r) => s + r.juice, 0)
   const bruisingSamples = todayBruising.length
+  const isToday = viewDate === new Date().toISOString().split('T')[0]
 
   const binsFormTotal = (parseFloat(binsCount) || 0) + (parseFloat(juiceCount) || 0)
   const ss = parseInt(sampleSize) || 0
@@ -758,6 +757,32 @@ export default function BinsAppPage() {
             <div className="text-lg font-bold text-[#1a2a3a] group-hover:text-[#2176d9]">Log Bruising</div>
             <div className="text-sm text-[#8a95a0] mt-1">Record bruising samples</div>
           </button>
+        </div>
+
+        {/* Date nav */}
+        <div className="flex items-center justify-between bg-white rounded-xl border border-[#e8e4dc] shadow-sm px-4 py-3 mb-6">
+          <button
+            onClick={() => { const d = new Date(viewDate); d.setDate(d.getDate() - 1); setViewDate(d.toISOString().split('T')[0]) }}
+            className="px-3 py-1.5 text-lg font-bold text-[#2176d9] hover:bg-[#f5f3ef] rounded-lg transition-colors"
+          >&lsaquo;</button>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={viewDate}
+              onChange={e => setViewDate(e.target.value)}
+              className="text-sm font-semibold text-[#1a2a3a] bg-transparent outline-none text-center"
+            />
+            {!isToday && (
+              <button
+                onClick={() => setViewDate(new Date().toISOString().split('T')[0])}
+                className="text-xs text-[#2176d9] font-semibold hover:underline"
+              >Today</button>
+            )}
+          </div>
+          <button
+            onClick={() => { const d = new Date(viewDate); d.setDate(d.getDate() + 1); setViewDate(d.toISOString().split('T')[0]) }}
+            className="px-3 py-1.5 text-lg font-bold text-[#2176d9] hover:bg-[#f5f3ef] rounded-lg transition-colors"
+          >&rsaquo;</button>
         </div>
 
         {/* KPIs */}
