@@ -386,6 +386,7 @@ export default function DailyPackoutPage() {
         return {
           code: bt.code,
           name: bt.name,
+          grade: bt.grade,
           totalCartons,
           cartons_per_pallet: bt.cartons_per_pallet,
           weight_per_carton_kg: bt.weight_per_carton_kg || 0,
@@ -413,6 +414,7 @@ export default function DailyPackoutPage() {
       packDate,
       packhouseName: phName,
       sessions: filteredSessions,
+      logoUrl: '/hr/mv-logo.png',
       totalBinsPacked,
       avgBinWeight,
       totalKgIn,
