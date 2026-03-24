@@ -162,7 +162,8 @@ export default function QcHome() {
 
           // Enrich with display names from IndexedDB
           const [employees, orchards_] = await Promise.all([qcGetAll('employees'), qcGetAll('orchards')])
-          const empName = employees.find((e: any) => e.id === bag.employee_id)?.full_name || 'Unknown picker'
+          const emp = employees.find((e: any) => e.id === bag.employee_id)
+          const empName = emp ? (emp.team ? `${emp.full_name} (${emp.team})` : emp.full_name) : 'Unknown picker'
           const orchName = orchards_.find((o: any) => o.id === bag.orchard_id)?.name || 'Unknown orchard'
 
           const enrichedBag: QcBagSession = {
@@ -310,6 +311,20 @@ export default function QcHome() {
     setScanning(false)
   }
 
+  const bleScanRef = useRef<any>(null)
+  const bleScanTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  async function startBleScan() {
+    try {
+      bleScanRef.current = await (navigator as any).bluetooth.requestLEScan({
+        filters: [{ namePrefix: 'SC' }],
+      })
+      console.log('[BLE] Scan started')
+    } catch (err: any) {
+      console.warn('[BLE] Scan restart failed:', err.message)
+    }
+  }
+
   async function connectScale() {
     // Use advertisement scanning directly (SmartChef SC02 is broadcast-only)
     try {
@@ -317,46 +332,42 @@ export default function QcHome() {
         alert('BLE scanning not available.\n\nEnable in Chrome:\n1. Go to chrome://flags\n2. Search "Experimental Web Platform features"\n3. Enable it\n4. Relaunch Chrome')
         return
       }
-      const scan = await (navigator as any).bluetooth.requestLEScan({
-        filters: [{ namePrefix: 'SC' }],
-      })
+
+      await startBleScan()
       setBleConnected(true)
 
-      ;(navigator as any).bluetooth.addEventListener('advertisementreceived', (event: any) => {
-        // Debug: log all advertisement data
-        const debugParts: string[] = [`Device: ${event.device?.name || event.device?.id || '?'}`]
-        if (event.manufacturerData) {
-          event.manufacturerData.forEach((dv: DataView, key: number) => {
-            const hex = [...new Uint8Array(dv.buffer)].map(b => b.toString(16).padStart(2, '0')).join(' ')
-            debugParts.push(`MFR[${key.toString(16)}]: ${hex}`)
-          })
-        }
-        if (event.serviceData) {
-          event.serviceData.forEach((dv: DataView, key: string) => {
-            const hex = [...new Uint8Array(dv.buffer)].map(b => b.toString(16).padStart(2, '0')).join(' ')
-            debugParts.push(`SVC[${key}]: ${hex}`)
-          })
-        }
-        console.log('[BLE ADV]', debugParts.join(' | '))
+      // Auto-restart scan every 25s to prevent Chrome's ~30s timeout cutoff
+      bleScanTimerRef.current = setInterval(async () => {
+        try {
+          if (bleScanRef.current) { try { bleScanRef.current.stop() } catch {} }
+          await startBleScan()
+        } catch {}
+      }, 25000)
 
-        // Try manufacturer data
-        // Parse SmartChef SC02 manufacturer data (key 0x10CA)
+      ;(navigator as any).bluetooth.addEventListener('advertisementreceived', (event: any) => {
+        // Parse SmartChef SC02 manufacturer data
         if (event.manufacturerData) {
           event.manufacturerData.forEach((dataView: DataView, key: number) => {
             const bytes = new Uint8Array(dataView.buffer)
             // SC02 format: byte[0]=0x0f, byte[1]=status (03=locked, 02=unstable), bytes[4-5]=weight MSB/LSB
             if (bytes.length >= 6 && bytes[0] === 0x0F) {
               const locked = bytes[1] === 0x03
-              if (!locked) return  // only use stable readings
               const rawWeight = (bytes[4] << 8) + bytes[5]
               const weightG = Math.round(rawWeight / 10)  // convert to grams (divide by 10)
               if (weightG <= 0) return
               if (Date.now() - confirmDismissedAt.current < 1000) return
-              weightBuffer.current = [...weightBuffer.current.slice(-4), weightG]
-              const buf = weightBuffer.current
-              if (buf.length >= 3 && Math.max(...buf) - Math.min(...buf) <= 2) {
-                setConfirmingWeight(weightG); setConfirmingBin(findSizeBin(weightG, sessionBinsRef.current))
-                setShowWeightConfirm(true); weightBuffer.current = []
+
+              if (locked) {
+                // Locked reading = scale says it's stable. Accept immediately with just 1 prior match.
+                weightBuffer.current = [...weightBuffer.current.slice(-2), weightG]
+                const buf = weightBuffer.current
+                if (buf.length >= 2 && Math.max(...buf) - Math.min(...buf) <= 3) {
+                  setConfirmingWeight(weightG); setConfirmingBin(findSizeBin(weightG, sessionBinsRef.current))
+                  setShowWeightConfirm(true); weightBuffer.current = []
+                }
+              } else {
+                // Unstable reading: still buffer it so locked can match faster
+                weightBuffer.current = [...weightBuffer.current.slice(-2), weightG]
               }
             }
           })
@@ -393,9 +404,9 @@ export default function QcHome() {
 
     if (rawG <= 0) return
     if (Date.now() - confirmDismissedAt.current < 1000) return
-    weightBuffer.current = [...weightBuffer.current.slice(-4), rawG]
+    weightBuffer.current = [...weightBuffer.current.slice(-2), rawG]
     const buf = weightBuffer.current
-    if (buf.length >= 3 && Math.max(...buf) - Math.min(...buf) <= 2) {
+    if (buf.length >= 2 && Math.max(...buf) - Math.min(...buf) <= 3) {
       setConfirmingWeight(rawG); setConfirmingBin(findSizeBin(rawG, sessionBinsRef.current))
       setShowWeightConfirm(true); weightBuffer.current = []
     }

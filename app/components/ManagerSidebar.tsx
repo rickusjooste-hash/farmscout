@@ -390,6 +390,9 @@ export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], 
         <>
           <div className="ms-section-label">Irrigation</div>
           <a href="/irrigation" className={cls('/irrigation')}><span className="ms-nav-icon"><DropletIcon /></span> Water Balance</a>
+          <a href="/irrigation/intelligence" className={cls('/irrigation/intelligence')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><IntelligenceIcon /></span> Intelligence</a>
+          <a href="/irrigation/settings" className={cls('/irrigation/settings')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><GearIcon /></span> Settings</a>
+          <a href="/irrigation/phenology" className={cls('/irrigation/phenology')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><LeafIcon /></span> Phenology</a>
         </>
       )}
 

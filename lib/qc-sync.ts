@@ -262,7 +262,7 @@ async function pullTodaySessions(headers: Record<string, string>, farmIds: strin
 
     // Enrich with display names from the reference data we just stored
     const [employees, orchards] = await Promise.all([qcGetAll('employees'), qcGetAll('orchards')])
-    const empMap = Object.fromEntries(employees.map(e => [e.id, e.full_name]))
+    const empMap = Object.fromEntries(employees.map(e => [e.id, e.team ? `${e.full_name} (${e.team})` : e.full_name]))
     const orchMap = Object.fromEntries(orchards.map(o => [o.id, o.name]))
 
     const localBags = await qcGetAll('bag_sessions')
