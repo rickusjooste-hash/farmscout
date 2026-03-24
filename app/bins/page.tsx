@@ -259,7 +259,7 @@ export default function BinsAppPage() {
 
   // ── Save Bins ───────────────────────────────────────────────────────
   async function handleSaveBins() {
-    if (!binsOrchardId || !(parseFloat(binsCount) > 0)) return
+    if (!binsOrchardId || !((parseFloat(binsCount) || 0) + (parseFloat(juiceCount) || 0) > 0)) return
     setBinsSaving(true)
 
     try {
@@ -519,7 +519,7 @@ export default function BinsAppPage() {
             <button
               className="w-full bg-[#2176d9] text-white font-semibold rounded-lg px-6 py-3 disabled:opacity-50 hover:bg-[#1a65c0] transition-colors"
               onClick={handleSaveBins}
-              disabled={binsSaving || !binsOrchardId || !(parseFloat(binsCount) > 0)}
+              disabled={binsSaving || !binsOrchardId || !(binsFormTotal > 0)}
             >
               {binsSaving ? 'Saving...' : editingBinsId ? 'Update' : 'Save'}
             </button>
