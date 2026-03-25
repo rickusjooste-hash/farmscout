@@ -97,6 +97,36 @@ export interface QcBagIssue {
   _photo?: string | null   // base64 data URL for unknown issues — stripped before upload, uploaded to storage separately
 }
 
+export interface QcPickingSession {
+  id: string
+  organisation_id: string
+  farm_id: string
+  orchard_id: string
+  team?: string | null
+  qc_worker_id: string
+  inspected_at: string
+  tree_count: number
+  total_drops: number
+  total_shiners: number
+  gps_lat?: number | null
+  gps_lng?: number | null
+  notes?: string | null
+  created_at?: string
+  _syncStatus?: 'pending' | 'synced'
+  _orchard_name?: string
+}
+
+export interface QcPickingTree {
+  id: string
+  session_id: string
+  organisation_id: string
+  tree_nr: number
+  drops: number
+  shiners: number
+  created_at?: string
+  _syncStatus?: 'pending' | 'synced'
+}
+
 export interface QcMeta {
   key: string
   value: any
@@ -160,6 +190,16 @@ interface QcDB extends DBSchema {
     value: QcBagIssue
     indexes: { 'by_session': string }
   }
+  picking_sessions: {
+    key: string
+    value: QcPickingSession
+    indexes: { 'by_farm': string }
+  }
+  picking_trees: {
+    key: string
+    value: QcPickingTree
+    indexes: { 'by_session': string }
+  }
   sync_queue: {
     key: number
     value: QcSyncQueueItem
@@ -178,7 +218,7 @@ let _db: IDBPDatabase<QcDB> | null = null
 export async function getQcDB(): Promise<IDBPDatabase<QcDB>> {
   if (_db) return _db
 
-  _db = await openDB<QcDB>('farmscout-qc', 2, {
+  _db = await openDB<QcDB>('farmscout-qc', 3, {
     upgrade(db) {
       if (!db.objectStoreNames.contains('employees')) {
         const s = db.createObjectStore('employees', { keyPath: 'id' })
@@ -210,6 +250,14 @@ export async function getQcDB(): Promise<IDBPDatabase<QcDB>> {
       }
       if (!db.objectStoreNames.contains('bag_issues')) {
         const s = db.createObjectStore('bag_issues', { keyPath: 'id' })
+        s.createIndex('by_session', 'session_id')
+      }
+      if (!db.objectStoreNames.contains('picking_sessions')) {
+        const s = db.createObjectStore('picking_sessions', { keyPath: 'id' })
+        s.createIndex('by_farm', 'farm_id')
+      }
+      if (!db.objectStoreNames.contains('picking_trees')) {
+        const s = db.createObjectStore('picking_trees', { keyPath: 'id' })
         s.createIndex('by_session', 'session_id')
       }
       if (!db.objectStoreNames.contains('sync_queue')) {

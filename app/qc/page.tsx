@@ -19,13 +19,15 @@ import {
   qcSaveAndQueue,
   qcPushPendingRecords,
   countTodaySampled,
+  countTodayPickingInspections,
   getPendingBagSessions,
   qcRunFullSync,
   qcClearSyncQueue,
 } from '@/lib/qc-sync'
+import DropShinersView from './DropShinersView'
 import { beep, relTime, findSizeBin, generateUUID } from '@/lib/qc-utils'
 
-type QcView = 'home' | 'queue' | 'commodity_select' | 'weighing' | 'issues'
+type QcView = 'home' | 'queue' | 'commodity_select' | 'weighing' | 'issues' | 'drop_shiners'
 type Lang = 'en' | 'af'
 
 const SCALE_SERVICE = '0000fff0-0000-1000-8000-00805f9b34fb'
@@ -41,6 +43,7 @@ export default function QcHome() {
   const [qcIssues, setQcIssues] = useState<QcIssue[]>([])
 
   const [todaySampled, setTodaySampled] = useState(0)
+  const [todayPickingInspections, setTodayPickingInspections] = useState(0)
   const [pendingSessions, setPendingSessions] = useState<QcBagSession[]>([])
   const [pendingCount, setPendingCount] = useState(0)
   const [syncStatus, setSyncStatus] = useState<string | null>(null)
@@ -228,8 +231,8 @@ export default function QcHome() {
         qcGetAll('orchards'), qcGetAll('size_bins'), qcGetAll('qc_issues'),
       ])
       setOrchards(orchs); setSizeBins(bins); setQcIssues(issues)
-      const [sampled, pending] = await Promise.all([countTodaySampled(), getPendingBagSessions()])
-      setTodaySampled(sampled); setPendingSessions(pending)
+      const [sampled, pending, pickingCount] = await Promise.all([countTodaySampled(), getPendingBagSessions(), countTodayPickingInspections()])
+      setTodaySampled(sampled); setPendingSessions(pending); setTodayPickingInspections(pickingCount)
     } finally { if (showLoading) setLoading(false) }
   }
 
@@ -593,6 +596,15 @@ export default function QcHome() {
                 : todaySampled > 0 ? `${todaySampled} sampled today` : 'No pending bags'}
             </div>
           </button>
+          <button style={{ ...s.homeCard, ...s.homeCardQc }} onClick={() => setView('drop_shiners')}>
+            <div style={s.cardIcon}>🍂</div>
+            <div style={s.cardLabel}>Drop & Shiners</div>
+            <div style={s.cardSub}>
+              {todayPickingInspections > 0
+                ? `${todayPickingInspections} inspection${todayPickingInspections > 1 ? 's' : ''} today`
+                : 'Evaluate picking quality'}
+            </div>
+          </button>
         </div>
         {syncStatus && (
           <div style={{ margin: '0 20px', padding: '10px 14px', background: syncStatus.includes('failed') ? '#3a1a1a' : '#1a2e1a', border: `1px solid ${syncStatus.includes('failed') ? '#e05c4b' : '#2e5a2e'}`, borderRadius: 8, fontSize: 13, color: syncStatus.includes('failed') ? '#e05c4b' : '#7aaa6a', textAlign: 'center' as const }}>
@@ -917,6 +929,11 @@ export default function QcHome() {
       </div>
       </>
     )
+  }
+
+  // DROP & SHINERS
+  if (view === 'drop_shiners') {
+    return <DropShinersView onDone={async () => { setView('home'); await loadData(false) }} />
   }
 
   return null

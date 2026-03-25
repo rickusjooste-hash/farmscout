@@ -11,6 +11,8 @@ import {
   type QcFruit,
   type QcFruitIssue,
   type QcBagIssue,
+  type QcPickingSession,
+  type QcPickingTree,
   type QcSyncQueueItem,
 } from './qc-db'
 
@@ -344,8 +346,8 @@ export async function getNextBagSeq(accessToken?: string): Promise<number> {
 // ── Save a record locally and queue for upload ────────────────────────────
 
 export async function qcSaveAndQueue(
-  tableName: 'bag_sessions' | 'bag_fruit' | 'fruit_issues' | 'bag_issues',
-  record: QcBagSession | QcFruit | QcFruitIssue | QcBagIssue,
+  tableName: 'bag_sessions' | 'bag_fruit' | 'fruit_issues' | 'bag_issues' | 'picking_sessions' | 'picking_trees',
+  record: QcBagSession | QcFruit | QcFruitIssue | QcBagIssue | QcPickingSession | QcPickingTree,
   accessToken?: string
 ): Promise<void> {
   const token = accessToken || getToken()
@@ -353,17 +355,21 @@ export async function qcSaveAndQueue(
 
   // Local store name → Supabase REST table name
   const restTableMap: Record<string, string> = {
-    bag_sessions: 'qc_bag_sessions',
-    bag_fruit:    'qc_fruit',
-    fruit_issues: 'qc_fruit_issues',
-    bag_issues:   'qc_bag_issues',
+    bag_sessions:     'qc_bag_sessions',
+    bag_fruit:        'qc_fruit',
+    fruit_issues:     'qc_fruit_issues',
+    bag_issues:       'qc_bag_issues',
+    picking_sessions: 'picking_quality_sessions',
+    picking_trees:    'picking_quality_trees',
   }
   // Supabase REST table name → local IndexedDB store name
   const dbStoreMap: Record<string, string> = {
-    qc_bag_sessions: 'bag_sessions',
-    qc_fruit:        'bag_fruit',
-    qc_fruit_issues: 'fruit_issues',
-    qc_bag_issues:   'bag_issues',
+    qc_bag_sessions:          'bag_sessions',
+    qc_fruit:                 'bag_fruit',
+    qc_fruit_issues:          'fruit_issues',
+    qc_bag_issues:            'bag_issues',
+    picking_quality_sessions: 'picking_sessions',
+    picking_quality_trees:    'picking_trees',
   }
   const restTable = tableName.startsWith('qc_') ? tableName : (restTableMap[tableName] ?? `qc_${tableName}`)
   const dbStore = dbStoreMap[restTable] ?? tableName
@@ -480,6 +486,8 @@ async function _doPush(): Promise<{ pushed: number; failed: number }> {
     qc_fruit: 'bag_fruit',
     qc_fruit_issues: 'fruit_issues',
     qc_bag_issues: 'bag_issues',
+    picking_quality_sessions: 'picking_sessions',
+    picking_quality_trees: 'picking_trees',
   }
 
   let pushed = 0
@@ -500,7 +508,7 @@ async function _doPush(): Promise<{ pushed: number; failed: number }> {
 
   // ── Batch POST records by table (up to BATCH_SIZE per request) ──────
   // Process in FK dependency order: sessions → fruit → fruit_issues → bag_issues
-  const TABLE_ORDER = ['qc_bag_sessions', 'qc_fruit', 'qc_fruit_issues', 'qc_bag_issues']
+  const TABLE_ORDER = ['qc_bag_sessions', 'qc_fruit', 'qc_fruit_issues', 'qc_bag_issues', 'picking_quality_sessions', 'picking_quality_trees']
   const sortedTables = Object.keys(postByTable).sort((a, b) => {
     const ai = TABLE_ORDER.indexOf(a)
     const bi = TABLE_ORDER.indexOf(b)
@@ -705,6 +713,18 @@ export async function countTodaySampled(): Promise<number> {
     const sessions = await qcGetAll('bag_sessions')
     const today = new Date().toISOString().slice(0, 10)
     return sessions.filter(s => s.status === 'sampled' && s.sampled_at?.startsWith(today)).length
+  } catch {
+    return 0
+  }
+}
+
+// ── Count today's picking quality (drop & shiner) inspections ────────────
+
+export async function countTodayPickingInspections(): Promise<number> {
+  try {
+    const sessions = await qcGetAll('picking_sessions')
+    const today = new Date().toISOString().slice(0, 10)
+    return sessions.filter(s => s.inspected_at?.startsWith(today)).length
   } catch {
     return 0
   }
