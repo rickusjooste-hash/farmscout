@@ -21,6 +21,7 @@ interface Props {
 export default function DropShinersView({ onDone }: Props) {
   const [subView, setSubView] = useState<SubView>('gps_detect')
   const [orchards, setOrchards] = useState<QcOrchard[]>([])
+  const [farmIdSet, setFarmIdSet] = useState<Set<string>>(new Set())
   const [selectedOrchard, setSelectedOrchard] = useState<QcOrchard | null>(null)
   const [gpsStatus, setGpsStatus] = useState<'detecting' | 'found' | 'failed'>('detecting')
   const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null)
@@ -37,6 +38,7 @@ export default function DropShinersView({ onDone }: Props) {
   const [saving, setSaving] = useState(false)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isLongPress = useRef(false)
+  const touchedRef = useRef(false) // prevent mouse events after touch
 
   // ── Load orchards + teams on mount ──────────────────────────────────────
 
@@ -45,9 +47,19 @@ export default function DropShinersView({ onDone }: Props) {
       const orchs = await qcGetAll('orchards')
       setOrchards(orchs)
 
-      const farmId = localStorage.getItem('qcapp_farm_id') || ''
+      let farmIds: string[] = []
+      try {
+        const stored = localStorage.getItem('qcapp_farm_ids')
+        if (stored) farmIds = JSON.parse(stored)
+      } catch {}
+      if (!farmIds.length) {
+        const single = localStorage.getItem('qcapp_farm_id')
+        if (single) farmIds = [single]
+      }
+      const fids = new Set(farmIds)
+      setFarmIdSet(fids)
       const employees: QcEmployee[] = await qcGetAll('employees')
-      const farmEmps = employees.filter(e => e.farm_id === farmId && e.is_active)
+      const farmEmps = employees.filter(e => fids.has(e.farm_id) && e.is_active)
       const uniqueTeams = [...new Set(farmEmps.map(e => e.team).filter(Boolean))] as string[]
       setTeams(uniqueTeams.sort())
     })()
@@ -112,7 +124,10 @@ export default function DropShinersView({ onDone }: Props) {
 
   // ── Touch handlers for counting ─────────────────────────────────────────
 
-  function handleTouchStart(zone: 'shiners' | 'drops') {
+  function handlePointerDown(zone: 'shiners' | 'drops', isTouch: boolean) {
+    if (isTouch) touchedRef.current = true
+    else if (touchedRef.current) return // skip mouse after touch
+
     isLongPress.current = false
     longPressTimer.current = setTimeout(() => {
       isLongPress.current = true
@@ -129,7 +144,9 @@ export default function DropShinersView({ onDone }: Props) {
     }, 500)
   }
 
-  function handleTouchEnd(zone: 'shiners' | 'drops') {
+  function handlePointerUp(zone: 'shiners' | 'drops', isTouch: boolean) {
+    if (!isTouch && touchedRef.current) { touchedRef.current = false; return }
+
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current)
       longPressTimer.current = null
@@ -170,7 +187,7 @@ export default function DropShinersView({ onDone }: Props) {
     setSaving(true)
     try {
       const orgId = localStorage.getItem('qcapp_org_id') || ''
-      const farmId = localStorage.getItem('qcapp_farm_id') || ''
+      const farmId = selectedOrchard!.farm_id
       const workerId = localStorage.getItem('qcapp_worker_id') || localStorage.getItem('qcapp_user_id') || ''
 
       const sessionId = generateUUID()
@@ -269,7 +286,7 @@ export default function DropShinersView({ onDone }: Props) {
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
               {orchards
-                .filter(o => o.farm_id === (localStorage.getItem('qcapp_farm_id') || ''))
+                .filter(o => farmIdSet.has(o.farm_id))
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .map(o => (
                   <button
@@ -353,10 +370,10 @@ export default function DropShinersView({ onDone }: Props) {
         {/* Shiner zone (top half) */}
         <div
           style={s.shinerZone}
-          onTouchStart={() => handleTouchStart('shiners')}
-          onTouchEnd={() => handleTouchEnd('shiners')}
-          onMouseDown={() => handleTouchStart('shiners')}
-          onMouseUp={() => handleTouchEnd('shiners')}
+          onTouchStart={() => handlePointerDown('shiners', true)}
+          onTouchEnd={() => handlePointerUp('shiners', true)}
+          onMouseDown={() => handlePointerDown('shiners', false)}
+          onMouseUp={() => handlePointerUp('shiners', false)}
         >
           <div style={s.zoneLabel}>🍎 Shiners</div>
           <div style={s.zoneCount}>{tree.shiners}</div>
@@ -366,10 +383,10 @@ export default function DropShinersView({ onDone }: Props) {
         {/* Drop zone (bottom half) */}
         <div
           style={s.dropZone}
-          onTouchStart={() => handleTouchStart('drops')}
-          onTouchEnd={() => handleTouchEnd('drops')}
-          onMouseDown={() => handleTouchStart('drops')}
-          onMouseUp={() => handleTouchEnd('drops')}
+          onTouchStart={() => handlePointerDown('drops', true)}
+          onTouchEnd={() => handlePointerUp('drops', true)}
+          onMouseDown={() => handlePointerDown('drops', false)}
+          onMouseUp={() => handlePointerUp('drops', false)}
         >
           <div style={s.zoneLabel}>🍂 Drops</div>
           <div style={s.zoneCount}>{tree.drops}</div>
