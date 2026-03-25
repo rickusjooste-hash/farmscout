@@ -123,6 +123,8 @@ export interface QcPickingTree {
   tree_nr: number
   drops: number
   shiners: number
+  gps_lat?: number | null
+  gps_lng?: number | null
   created_at?: string
   _syncStatus?: 'pending' | 'synced'
 }

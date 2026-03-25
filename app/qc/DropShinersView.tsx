@@ -34,6 +34,9 @@ export default function DropShinersView({ onDone }: Props) {
   const [treeCounts, setTreeCounts] = useState<{ drops: number; shiners: number }[]>(
     () => Array.from({ length: TREE_COUNT }, () => ({ drops: 0, shiners: 0 }))
   )
+  const [treeGps, setTreeGps] = useState<({ lat: number; lng: number } | null)[]>(
+    () => Array.from({ length: TREE_COUNT }, () => null)
+  )
 
   const [saving, setSaving] = useState(false)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -237,6 +240,30 @@ export default function DropShinersView({ onDone }: Props) {
     }
   }
 
+  // ── GPS capture per tree ────────────────────────────────────────────────
+
+  const captureTreeGps = useCallback((treeIdx: number) => {
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setTreeGps(prev => {
+          const updated = [...prev]
+          updated[treeIdx] = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+          return updated
+        })
+      },
+      () => {}, // silently ignore errors — GPS is best-effort per tree
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
+    )
+  }, [])
+
+  // Capture GPS whenever we enter counting or switch trees
+  useEffect(() => {
+    if (subView === 'counting') {
+      captureTreeGps(currentTree)
+    }
+  }, [subView, currentTree, captureTreeGps])
+
   // ── Touch handlers for counting ─────────────────────────────────────────
 
   function handlePointerDown(zone: 'shiners' | 'drops', isTouch: boolean) {
@@ -335,6 +362,8 @@ export default function DropShinersView({ onDone }: Props) {
           tree_nr: i + 1,
           drops: treeCounts[i].drops,
           shiners: treeCounts[i].shiners,
+          gps_lat: treeGps[i]?.lat ?? null,
+          gps_lng: treeGps[i]?.lng ?? null,
           created_at: now,
           _syncStatus: 'pending',
         })
