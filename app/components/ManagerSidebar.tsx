@@ -359,6 +359,8 @@ export default function ManagerSidebar({ isSuperAdmin, modules = ['farmscout'], 
       {show('/orchards/fertilizer') && <a href="/orchards/fertilizer" className={cls('/orchards/fertilizer')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><FertilizerIcon /></span> Fertilizer</a>}
       {show('/orchards/intelligence') && <a href="/orchards/intelligence" className={cls('/orchards/intelligence')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><IntelligenceIcon /></span> Intelligence</a>}
       {show('/pests') && <a href="/pests" className={cls('/pests')}><span className="ms-nav-icon"><BugIcon /></span> Pests</a>}
+      {show('/traps') && <a href="/traps" className={cls('/traps')}><span className="ms-nav-icon"><MapPinIcon /></span> Traps</a>}
+      {show('/traps') && <a href="/traps/settings" className={cls('/traps/settings')} style={{ paddingLeft: 28, fontSize: 13 }}><span className="ms-nav-icon"><GearIcon /></span> Trap Setup</a>}
       {show('/trap-inspections') && <a href="/trap-inspections" className={cls('/trap-inspections')}><span className="ms-nav-icon"><CrosshairIcon /></span> Trap Inspections</a>}
       {show('/inspections') && <a href="/inspections" className={cls('/inspections')}><span className="ms-nav-icon"><SearchIcon /></span> Inspections</a>}
       {show('/heatmap') && <a href="/heatmap" className={cls('/heatmap')}><span className="ms-nav-icon"><LayersIcon /></span> Heat Map</a>}

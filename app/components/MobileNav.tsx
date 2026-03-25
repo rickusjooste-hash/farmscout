@@ -79,6 +79,13 @@ export default function MobileNav(_props: MobileNavProps) {
           <HomeIcon active={isActive('/')} />
           <span>Home</span>
         </Link>
+        <Link href="/traps" className={`mnav-tab${isActive('/traps') ? ' active' : ''}`}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={isActive('/traps') ? '#000' : '#888'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+            <circle cx="12" cy="9" r="2.5"/>
+          </svg>
+          <span>Traps</span>
+        </Link>
         <Link href="/production" className={`mnav-tab${isActive('/production') ? ' active' : ''}`}>
           <ProductionIcon active={isActive('/production')} />
           <span>Production</span>

@@ -19,7 +19,7 @@ export interface PageSection {
 export const PAGE_SECTIONS: PageSection[] = [
   { key: 'dashboard',   label: 'Dashboard',            routes: ['/'] },
   { key: 'orchards',    label: 'Orchards & Analysis',   routes: ['/orchards', '/applicators'] },
-  { key: 'pests',       label: 'Pests & Traps',        routes: ['/pests', '/trap-inspections', '/heatmap'] },
+  { key: 'pests',       label: 'Pests & Traps',        routes: ['/pests', '/traps', '/trap-inspections', '/heatmap'] },
   { key: 'inspections', label: 'Tree Inspections',      routes: ['/inspections'] },
   { key: 'scouts',      label: 'Scout Management',      routes: ['/scouts'] },
   { key: 'settings',    label: 'Settings',              routes: ['/settings'] },

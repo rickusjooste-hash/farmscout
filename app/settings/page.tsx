@@ -251,6 +251,7 @@ export default function SettingsPage() {
           <a href="/" className="nav-item"><span>📊</span> Dashboard</a>
           <a href="/orchards" className="nav-item"><span>🏡</span> Orchards</a>
           <a href="/pests" className="nav-item"><span>🐛</span> Pests</a>
+          <a href="/traps" className="nav-item"><span>📍</span> Traps</a>
           <a href="/trap-inspections" className="nav-item"><span>🪤</span> Trap Inspections</a>
           <a href="/inspections" className="nav-item"><span>🔍</span> Inspections</a>
           <a href="/heatmap" className="nav-item"><span>🌡️</span> Heat Map</a>
