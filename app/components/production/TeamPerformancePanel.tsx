@@ -81,8 +81,8 @@ export default function TeamPerformancePanel({ teamBins, teamPicking }: Props) {
               <th style={{ ...s.th, textAlign: 'right' }}>Bins/Person</th>
               {hasPicking && <>
                 <th style={{ ...s.th, textAlign: 'right' }}>Inspections</th>
-                <th style={{ ...s.th, textAlign: 'right' }}>Avg Drops</th>
-                <th style={{ ...s.th, textAlign: 'right' }}>Avg Shiners</th>
+                <th style={{ ...s.th, textAlign: 'right' }}>Drops/Tree</th>
+                <th style={{ ...s.th, textAlign: 'right' }}>Shiners/Tree</th>
               </>}
             </tr>
           </thead>

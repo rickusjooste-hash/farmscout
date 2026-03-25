@@ -17,7 +17,7 @@ import TeamPerformancePanel from '@/app/components/production/TeamPerformancePan
 
 interface Farm { id: string; code: string; name: string }
 interface Commodity { id: string; name: string; code: string }
-interface OrchardRef { id: string; name: string; variety: string | null; variety_group: string | null; ha: number | null; commodity_id: string; farm_id: string }
+interface OrchardRef { id: string; name: string; variety: string | null; variety_group: string | null; ha: number | null; commodity_id: string; farm_id: string; trees_per_ha: number | null }
 
 interface BinRow {
   orchard_id: string | null
@@ -34,8 +34,9 @@ interface BinRow {
 }
 
 interface TeamBinAgg { team: string; teamName: string; bins: number; headcount: number; binsPerPerson: number | null }
-interface PickingQualityRow { team: string | null; total_drops: number; total_shiners: number; tree_count: number; inspected_at: string; farm_id: string }
+interface PickingQualityRow { team: string | null; orchard_id: string | null; total_drops: number; total_shiners: number; tree_count: number; inspected_at: string; farm_id: string }
 interface TeamPickingAgg { team: string; inspections: number; avgDrops: number; avgShiners: number }
+interface OrchardLossRow { orchard_id: string; name: string; dropsPerTree: number; shinersPerTree: number; treesPerHa: number | null; avgFruitWeightG: number | null; tonHaLost: number | null; inspections: number; totalTrees: number }
 
 interface BruisingRow {
   orchard_id: string | null
@@ -288,6 +289,7 @@ export default function ProductionPage() {
   const [binWeights, setBinWeights] = useState<BinWeight[]>([])
   const [teamEmployees, setTeamEmployees] = useState<{ team: string; farm_id: string }[]>([])
   const [pickingSessions, setPickingSessions] = useState<PickingQualityRow[]>([])
+  const [avgFruitWeights, setAvgFruitWeights] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
 
   const [sortKey, setSortKey] = useState<SortKey>('total')
@@ -358,7 +360,7 @@ export default function ProductionPage() {
 
         let pickingQ = supabase
           .from('picking_quality_sessions')
-          .select('team, total_drops, total_shiners, tree_count, inspected_at, farm_id')
+          .select('team, orchard_id, total_drops, total_shiners, tree_count, inspected_at, farm_id')
           .in('farm_id', effectiveFarmIds)
         if (filterDate) {
           pickingQ = pickingQ.gte('inspected_at', `${filterDate}T00:00:00Z`).lte('inspected_at', `${filterDate}T23:59:59Z`)
@@ -367,12 +369,15 @@ export default function ProductionPage() {
           pickingQ = pickingQ.gte('inspected_at', from).lte('inspected_at', to)
         }
 
-        const [binsData, bruisingData, orchardsRes, weightsRes, employeesRes, pickingData] = await Promise.all([
+        const pickingFrom = filterDate ? `${filterDate}T00:00:00Z` : seasonDateRange(season).from
+        const pickingTo = filterDate ? `${filterDate}T23:59:59Z` : seasonDateRange(season).to
+
+        const [binsData, bruisingData, orchardsRes, weightsRes, employeesRes, pickingData, fruitWeightRes] = await Promise.all([
           fetchAllRows(binsQ),
           fetchAllRows(bruisingQ),
           supabase
             .from('orchards')
-            .select('id, name, variety, variety_group, ha, commodity_id, farm_id')
+            .select('id, name, variety, variety_group, ha, commodity_id, farm_id, trees_per_ha')
             .in('farm_id', effectiveFarmIds)
             .eq('is_active', true)
             .eq('status', 'active'),
@@ -385,6 +390,11 @@ export default function ProductionPage() {
             .in('farm_id', effectiveFarmIds)
             .eq('is_active', true),
           fetchAllRows(pickingQ),
+          supabase.rpc('get_avg_fruit_weight_by_orchard', {
+            p_farm_ids: effectiveFarmIds,
+            p_from: pickingFrom,
+            p_to: pickingTo,
+          }),
         ])
 
         setBinRows(binsData as BinRow[])
@@ -393,6 +403,12 @@ export default function ProductionPage() {
         setBinWeights((weightsRes.data || []) as BinWeight[])
         setTeamEmployees((employeesRes.data || []).filter((e: any) => e.team) as { team: string; farm_id: string }[])
         setPickingSessions(pickingData as PickingQualityRow[])
+        // Build orchard_id → avg_weight_g lookup
+        const fwMap: Record<string, number> = {}
+        for (const row of (fruitWeightRes.data || []) as { orchard_id: string; avg_weight_g: number }[]) {
+          fwMap[row.orchard_id] = row.avg_weight_g
+        }
+        setAvgFruitWeights(fwMap)
       } finally {
         setLoading(false)
       }
@@ -633,21 +649,22 @@ export default function ProductionPage() {
     })
   }, [filteredBins, teamEmployees])
 
-  // Picking quality aggregation — group by team
+  // Picking quality aggregation — group by team (per-tree averages)
   const teamPickingAgg = useMemo((): TeamPickingAgg[] => {
-    const map: Record<string, { drops: number; shiners: number; count: number }> = {}
+    const map: Record<string, { drops: number; shiners: number; trees: number; count: number }> = {}
     pickingSessions.forEach(row => {
       if (!row.team) return
-      if (!map[row.team]) map[row.team] = { drops: 0, shiners: 0, count: 0 }
+      if (!map[row.team]) map[row.team] = { drops: 0, shiners: 0, trees: 0, count: 0 }
       map[row.team].drops += row.total_drops
       map[row.team].shiners += row.total_shiners
+      map[row.team].trees += row.tree_count || 10
       map[row.team].count++
     })
     return Object.entries(map).map(([team, val]) => ({
       team,
       inspections: val.count,
-      avgDrops: val.count > 0 ? val.drops / val.count : 0,
-      avgShiners: val.count > 0 ? val.shiners / val.count : 0,
+      avgDrops: val.trees > 0 ? val.drops / val.trees : 0,
+      avgShiners: val.trees > 0 ? val.shiners / val.trees : 0,
     }))
   }, [pickingSessions])
 
@@ -657,14 +674,58 @@ export default function ProductionPage() {
     const totalHc = teamBinAgg.reduce((s, t) => s + t.headcount, 0)
     const avgBinsPerPerson = totalHc > 0 ? totalBins / totalHc : null
 
-    const totalDrops = teamPickingAgg.reduce((s, t) => s + t.avgDrops * t.inspections, 0)
-    const totalShiners = teamPickingAgg.reduce((s, t) => s + t.avgShiners * t.inspections, 0)
+    const totalDrops = pickingSessions.reduce((s, r) => s + r.total_drops, 0)
+    const totalShiners = pickingSessions.reduce((s, r) => s + r.total_shiners, 0)
+    const totalTrees = pickingSessions.reduce((s, r) => s + (r.tree_count || 10), 0)
     const totalInspections = teamPickingAgg.reduce((s, t) => s + t.inspections, 0)
-    const avgDrops = totalInspections > 0 ? totalDrops / totalInspections : null
-    const avgShiners = totalInspections > 0 ? totalShiners / totalInspections : null
+    const avgDrops = totalTrees > 0 ? totalDrops / totalTrees : null
+    const avgShiners = totalTrees > 0 ? totalShiners / totalTrees : null
 
     return { avgBinsPerPerson, avgDrops, avgShiners, totalInspections }
   }, [teamBinAgg, teamPickingAgg])
+
+  // Orchard-level harvest loss estimate (drops + shiners → ton/ha)
+  const orchardLoss = useMemo((): OrchardLossRow[] => {
+    const orchardMap = Object.fromEntries(allOrchards.map(o => [o.id, o]))
+    const map: Record<string, { drops: number; shiners: number; trees: number; count: number }> = {}
+    pickingSessions.forEach(row => {
+      if (!row.orchard_id) return
+      if (!map[row.orchard_id]) map[row.orchard_id] = { drops: 0, shiners: 0, trees: 0, count: 0 }
+      map[row.orchard_id].drops += row.total_drops
+      map[row.orchard_id].shiners += row.total_shiners
+      map[row.orchard_id].trees += row.tree_count || 10
+      map[row.orchard_id].count++
+    })
+    return Object.entries(map).map(([oid, val]) => {
+      const o = orchardMap[oid]
+      const dropsPerTree = val.trees > 0 ? val.drops / val.trees : 0
+      const shinersPerTree = val.trees > 0 ? val.shiners / val.trees : 0
+      const treesPerHa = o?.trees_per_ha ?? null
+      const avgFruitWeightG = avgFruitWeights[oid] ?? null
+      const lossPerTree = dropsPerTree + shinersPerTree
+      const tonHaLost = treesPerHa && avgFruitWeightG
+        ? lossPerTree * treesPerHa * avgFruitWeightG / 1_000_000
+        : null
+      return {
+        orchard_id: oid,
+        name: o?.name || oid,
+        dropsPerTree,
+        shinersPerTree,
+        treesPerHa,
+        avgFruitWeightG,
+        tonHaLost,
+        inspections: val.count,
+        totalTrees: val.trees,
+      }
+    }).sort((a, b) => (b.tonHaLost ?? 0) - (a.tonHaLost ?? 0))
+  }, [pickingSessions, allOrchards, avgFruitWeights])
+
+  // Farm-wide average ton/ha lost
+  const avgTonHaLost = useMemo(() => {
+    const valid = orchardLoss.filter(o => o.tonHaLost != null)
+    if (valid.length === 0) return null
+    return valid.reduce((s, o) => s + o.tonHaLost!, 0) / valid.length
+  }, [orchardLoss])
 
   // Total fruit sampled — shared between mobile + desktop panels
   const totalFruitSampled = useMemo(() => sizeBins.reduce((sum, b) => sum + b.fruit_count, 0), [sizeBins])
@@ -1008,7 +1069,17 @@ export default function ProductionPage() {
               </div>
               <div style={{ height: 2, background: '#eef2fa', margin: '8px 0' }} />
               <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a9a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Drops / Shiners
+                Drops / Shiners per tree
+              </div>
+            </div>
+            {/* Estimated Harvest Loss */}
+            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '18px 16px', borderLeft: `4px solid ${avgTonHaLost != null && avgTonHaLost > 1 ? '#e85a4a' : avgTonHaLost != null ? '#f5c842' : '#e8e4dc'}` }}>
+              <div style={{ fontSize: 36, fontWeight: 700, color: avgTonHaLost != null && avgTonHaLost > 1 ? '#e85a4a' : '#1a2a3a', lineHeight: 1 }}>
+                {avgTonHaLost != null ? `${avgTonHaLost.toFixed(2)}` : '–'}
+              </div>
+              <div style={{ height: 2, background: '#eef2fa', margin: '8px 0' }} />
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a9a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Est. Ton/Ha Lost (drops + shiners)
               </div>
             </div>
           </div>
@@ -1099,7 +1170,8 @@ export default function ProductionPage() {
                 { label: 'Orchards', value: String(kpis.orchards), sub: 'harvested' },
                 { label: 'Class 1 %', value: class1Data.class1 != null ? `${class1Data.class1}%` : '–', sub: class1Data.packable > 0 ? `${class1Data.packable.toLocaleString('en-ZA')} packable` : null },
                 { label: 'Bins/Person', value: teamKpis.avgBinsPerPerson != null ? teamKpis.avgBinsPerPerson.toFixed(1) : '–', sub: teamBinAgg.length > 0 ? `${teamBinAgg.length} teams` : null },
-                { label: 'Avg Drops & Shiners', value: teamKpis.avgDrops != null ? `${teamKpis.avgDrops.toFixed(1)} / ${teamKpis.avgShiners!.toFixed(1)}` : '–', sub: teamKpis.totalInspections > 0 ? `${teamKpis.totalInspections} inspections` : null },
+                { label: 'Drops / Shiners per tree', value: teamKpis.avgDrops != null ? `${teamKpis.avgDrops.toFixed(1)} / ${teamKpis.avgShiners!.toFixed(1)}` : '–', sub: teamKpis.totalInspections > 0 ? `${teamKpis.totalInspections} inspections` : null },
+                { label: 'Est. Ton/Ha Lost', value: avgTonHaLost != null ? avgTonHaLost.toFixed(2) : '–', sub: orchardLoss.length > 0 ? `${orchardLoss.length} orchards` : null, color: avgTonHaLost != null && avgTonHaLost > 1 ? '#e85a4a' : undefined },
               ].map((kpi: any, i: number) => (
                 <div key={i} style={s.kpiCard}>
                   <div style={s.kpiAccent as any} />
@@ -1444,6 +1516,48 @@ export default function ProductionPage() {
             <div className="prod-desktop-only">
               <TeamPerformancePanel teamBins={teamBinAgg} teamPicking={teamPickingAgg} />
             </div>
+
+            {/* Harvest Loss by Orchard — desktop */}
+            {orchardLoss.length > 0 && (
+            <div className="prod-desktop-only" style={{ marginBottom: 24 }}>
+              <div style={{ ...s.card, overflow: 'hidden' }}>
+                <div style={s.cardHeader}>
+                  <span style={s.cardTitle}>Estimated Harvest Loss by Orchard</span>
+                  <span style={{ fontSize: 11, color: '#8a95a0' }}>(drops + shiners) × trees/ha × avg fruit weight</span>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: '#f7f5f0', borderBottom: '1px solid #e8e4dc' }}>
+                        <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Orchard</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Inspections</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Drops/Tree</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Shiners/Tree</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Trees/Ha</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Avg Fruit (g)</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: '#8a95a0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Est. Ton/Ha Lost</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orchardLoss.map(o => (
+                        <tr key={o.orchard_id} style={{ borderBottom: '1px solid #eef2fa' }}>
+                          <td style={{ padding: '8px 12px', fontWeight: 500 }}>{o.name}</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', color: '#6a7a70' }}>{o.inspections}</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600 }}>{o.dropsPerTree.toFixed(2)}</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600 }}>{o.shinersPerTree.toFixed(2)}</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', color: '#6a7a70' }}>{o.treesPerHa ?? '–'}</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', color: '#6a7a70' }}>{o.avgFruitWeightG != null ? `${o.avgFruitWeightG}` : '–'}</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: o.tonHaLost != null && o.tonHaLost > 1 ? '#e85a4a' : o.tonHaLost != null ? '#f5c842' : '#aaa' }}>
+                            {o.tonHaLost != null ? o.tonHaLost.toFixed(2) : '–'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            )}
 
             {/* ── Mobile collapsible panels ───────────────────────── */}
 
