@@ -94,8 +94,20 @@ export default function SizeBinsPage() {
   // When type changes, adjust min/max and default label
   function handleTypeChange(t: BinType) {
     setNewType(t)
-    if (t === 'oversize')  { setNewMax('9999'); if (!newLabel || newLabel === 'Undersize') setNewLabel('Oversize') }
-    if (t === 'undersize') { setNewMin('0');    if (!newLabel || newLabel === 'Oversize')  setNewLabel('Undersize') }
+    if (t === 'oversize')  {
+      setNewMax('9999')
+      if (!newLabel || newLabel === 'Undersize') setNewLabel('Oversize')
+      // Auto-compute min from highest existing bin's max + 1
+      const maxExisting = rows.filter(r => r.weight_max_g < 9999).reduce((m, r) => Math.max(m, r.weight_max_g), 0)
+      if (maxExisting > 0) setNewMin(String(maxExisting + 1))
+    }
+    if (t === 'undersize') {
+      setNewMin('0')
+      if (!newLabel || newLabel === 'Oversize') setNewLabel('Undersize')
+      // Auto-compute max from lowest existing bin's min - 1
+      const minExisting = rows.filter(r => r.weight_min_g > 0).reduce((m, r) => Math.min(m, r.weight_min_g), Infinity)
+      if (minExisting < Infinity) setNewMax(String(minExisting - 1))
+    }
     if (t === 'standard')  {
       if (newLabel === 'Oversize' || newLabel === 'Undersize') setNewLabel('')
       setNewMin(''); setNewMax('')
