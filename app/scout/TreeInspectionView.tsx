@@ -7,7 +7,7 @@ import booleanPointInPolygon from '@turf/boolean-point-in-polygon'
 import { point as turfPoint } from '@turf/helpers'
 
 type SubView = 'zone_list' | 'tree_list' | 'inspecting'
-type ObservationMethod = 'present_absent' | 'count' | 'leaf_inspection'
+type ObservationMethod = 'present_absent' | 'count' | 'leaf_inspection' | 'severity_scale'
 
 interface ZoneWithProgress {
   zone_id: string
@@ -617,6 +617,35 @@ export default function TreeInspectionView({
     )
   }
 
+  function renderSeverityScale(pestId: string, val: number) {
+    return (
+      <div style={styles.paRow}>
+        {[0, 1, 2, 3, 4].map(level => {
+          const active = val === level && observations.has(pestId)
+          return (
+            <button
+              key={level}
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 8,
+                fontSize: 18,
+                fontWeight: 700,
+                cursor: 'pointer',
+                background: active ? '#1a5a2a' : '#2a3020',
+                border: `1px solid ${active ? '#6abf4b' : '#3a4228'}`,
+                color: active ? '#6abf4b' : '#7a8a5a',
+              }}
+              onClick={() => setObs(pestId, active ? 0 : level)}
+            >
+              {level}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
   // ── Commodity title ────────────────────────────────────────────────────────
 
   const commodityLabel = commodityCode === 'POME' ? 'Pomefruit'
@@ -749,6 +778,7 @@ export default function TreeInspectionView({
                   {pest.observation_method === 'present_absent' && renderPresentAbsent(pest.id, val)}
                   {pest.observation_method === 'count' && renderCount(pest.id, val)}
                   {pest.observation_method === 'leaf_inspection' && renderLeafInspection(pest.id, val)}
+                  {pest.observation_method === 'severity_scale' && renderSeverityScale(pest.id, val)}
                 </div>
               )
             })

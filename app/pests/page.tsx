@@ -37,12 +37,14 @@ const METHOD_COLORS: Record<string, { bg: string; color: string; label: string }
   present_absent:  { bg: '#e3f2fd', color: '#1565c0', label: 'Presence' },
   count:           { bg: '#fff8e1', color: '#f57f17', label: 'Count' },
   leaf_inspection: { bg: '#ede7f6', color: '#4527a0', label: 'Leaf Inspection' },
+  severity_scale:  { bg: '#e8f5e9', color: '#2e7d32', label: 'Severity 0–4' },
 }
 
 const OBSERVATION_METHODS = [
   { value: 'present_absent',  label: 'present_absent — YES / NO' },
   { value: 'count',           label: 'count — +/− counter' },
   { value: 'leaf_inspection', label: 'leaf_inspection — 5-point scale' },
+  { value: 'severity_scale',  label: 'severity_scale — 0–4 rating' },
 ]
 
 const CATEGORIES = ['pest', 'mite', 'disease', 'beneficial']
@@ -204,7 +206,7 @@ export default function PestsPage() {
   const { farmIds, isSuperAdmin, contextLoaded, allowed } = usePageGuard()
 
   const [commodities, setCommodities] = useState<Commodity[]>([])
-  const [activeCommodity, setActiveCommodity] = useState('POME')
+  const [activeCommodity, setActiveCommodity] = useState<string | null>(null)
   const [pestRows, setPestRows] = useState<PestRow[]>([])
   const [farmConfigs, setFarmConfigs] = useState<FarmConfig[]>([])
   const [farms, setFarms] = useState<Farm[]>([])
@@ -258,9 +260,10 @@ export default function PestsPage() {
       const farmList = farmData || []
       setFarms(farmList)
 
-      // Set initial commodityId for add form
+      // Set initial active commodity and add form commodity
       if (comms && comms.length > 0) {
         const pome = comms.find(c => c.code === 'POME') || comms[0]
+        setActiveCommodity(prev => prev || pome.code)
         setAddForm(f => ({ ...f, commodityId: pome.id }))
       }
 
@@ -671,13 +674,13 @@ export default function PestsPage() {
 
           {/* Commodity tabs */}
           <div className="tabs" style={{ marginBottom: 20 }}>
-            {['POME', 'STONE', 'CITRUS'].map(code => (
+            {commodities.map(c => (
               <button
-                key={code}
-                className={`tab${activeCommodity === code ? ' active' : ''}`}
-                onClick={() => { setActiveCommodity(code); setEditingRowId(null); setLinkedPest(null); setPestSuggestions([]) }}
+                key={c.code}
+                className={`tab${activeCommodity === c.code ? ' active' : ''}`}
+                onClick={() => { setActiveCommodity(c.code); setEditingRowId(null); setLinkedPest(null); setPestSuggestions([]) }}
               >
-                {code}
+                {c.code}
               </button>
             ))}
           </div>
@@ -738,7 +741,7 @@ export default function PestsPage() {
                             editSubmitting={editSubmitting}
                             editError={editError}
                             farmActive={isFarmActive(row.id)}
-                            commodityCode={activeCommodity}
+                            commodityCode={activeCommodity || ''}
                             onStartEdit={() => startEdit(row)}
                             onSaveEdit={() => handleSaveEdit(row)}
                             onCancelEdit={() => setEditingRowId(null)}
