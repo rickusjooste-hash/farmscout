@@ -11,6 +11,7 @@ import {
 import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
 import MobileNav from '@/app/components/MobileNav'
 import BruisingQualityPanel from '@/app/components/production/BruisingQualityPanel'
+import TeamPerformancePanel from '@/app/components/production/TeamPerformancePanel'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -28,7 +29,13 @@ interface BinRow {
   total: number
   week_num: number | null
   received_date: string
+  team: string | null
+  team_name: string | null
 }
+
+interface TeamBinAgg { team: string; teamName: string; bins: number; headcount: number; binsPerPerson: number | null }
+interface PickingQualityRow { team: string | null; total_drops: number; total_shiners: number; tree_count: number; inspected_at: string; farm_id: string }
+interface TeamPickingAgg { team: string; inspections: number; avgDrops: number; avgShiners: number }
 
 interface BruisingRow {
   orchard_id: string | null
@@ -279,6 +286,8 @@ export default function ProductionPage() {
   const [binRows, setBinRows] = useState<BinRow[]>([])
   const [bruisingRows, setBruisingRows] = useState<BruisingRow[]>([])
   const [binWeights, setBinWeights] = useState<BinWeight[]>([])
+  const [teamEmployees, setTeamEmployees] = useState<{ team: string; farm_id: string }[]>([])
+  const [pickingSessions, setPickingSessions] = useState<PickingQualityRow[]>([])
   const [loading, setLoading] = useState(true)
 
   const [sortKey, setSortKey] = useState<SortKey>('total')
@@ -334,7 +343,7 @@ export default function ProductionPage() {
       try {
         let binsQ = supabase
           .from('production_bins')
-          .select('orchard_id, orchard_name, variety, farm_id, bins, juice, total, week_num, received_date')
+          .select('orchard_id, orchard_name, variety, farm_id, bins, juice, total, week_num, received_date, team, team_name')
           .eq('season', season)
           .in('farm_id', effectiveFarmIds)
           .order('received_date', { ascending: false })
@@ -347,7 +356,18 @@ export default function ProductionPage() {
           .in('farm_id', effectiveFarmIds)
         if (filterDate) bruisingQ = bruisingQ.eq('received_date', filterDate)
 
-        const [binsData, bruisingData, orchardsRes, weightsRes] = await Promise.all([
+        let pickingQ = supabase
+          .from('picking_quality_sessions')
+          .select('team, total_drops, total_shiners, tree_count, inspected_at, farm_id')
+          .in('farm_id', effectiveFarmIds)
+        if (filterDate) {
+          pickingQ = pickingQ.gte('inspected_at', `${filterDate}T00:00:00Z`).lte('inspected_at', `${filterDate}T23:59:59Z`)
+        } else {
+          const { from, to } = seasonDateRange(season)
+          pickingQ = pickingQ.gte('inspected_at', from).lte('inspected_at', to)
+        }
+
+        const [binsData, bruisingData, orchardsRes, weightsRes, employeesRes, pickingData] = await Promise.all([
           fetchAllRows(binsQ),
           fetchAllRows(bruisingQ),
           supabase
@@ -359,12 +379,20 @@ export default function ProductionPage() {
           orgId
             ? supabase.from('production_bin_weights').select('commodity_id, variety, default_weight_kg').eq('organisation_id', orgId)
             : Promise.resolve({ data: [] }),
+          supabase
+            .from('qc_employees')
+            .select('team, farm_id')
+            .in('farm_id', effectiveFarmIds)
+            .eq('is_active', true),
+          fetchAllRows(pickingQ),
         ])
 
         setBinRows(binsData as BinRow[])
         setBruisingRows(bruisingData as BruisingRow[])
         setAllOrchards((orchardsRes.data || []) as OrchardRef[])
         setBinWeights((weightsRes.data || []) as BinWeight[])
+        setTeamEmployees((employeesRes.data || []).filter((e: any) => e.team) as { team: string; farm_id: string }[])
+        setPickingSessions(pickingData as PickingQualityRow[])
       } finally {
         setLoading(false)
       }
@@ -580,6 +608,64 @@ export default function ProductionPage() {
     return [...orchardAgg].sort((a, b) => b.total - a.total).slice(0, 5)
   }, [orchardAgg])
 
+  // Team bin aggregation — group filtered bins by team, join headcount
+  const teamBinAgg = useMemo((): TeamBinAgg[] => {
+    const binMap: Record<string, { bins: number; teamName: string }> = {}
+    filteredBins.forEach(row => {
+      if (!row.team) return
+      if (!binMap[row.team]) binMap[row.team] = { bins: 0, teamName: row.team_name || row.team }
+      binMap[row.team].bins += row.total
+    })
+    // Headcount per team from qc_employees (filtered to effective farm IDs already)
+    const headcountMap: Record<string, number> = {}
+    teamEmployees.forEach(e => {
+      headcountMap[e.team] = (headcountMap[e.team] || 0) + 1
+    })
+    return Object.entries(binMap).map(([team, val]) => {
+      const hc = headcountMap[team] || 0
+      return {
+        team,
+        teamName: val.teamName,
+        bins: val.bins,
+        headcount: hc,
+        binsPerPerson: hc > 0 ? val.bins / hc : null,
+      }
+    })
+  }, [filteredBins, teamEmployees])
+
+  // Picking quality aggregation — group by team
+  const teamPickingAgg = useMemo((): TeamPickingAgg[] => {
+    const map: Record<string, { drops: number; shiners: number; count: number }> = {}
+    pickingSessions.forEach(row => {
+      if (!row.team) return
+      if (!map[row.team]) map[row.team] = { drops: 0, shiners: 0, count: 0 }
+      map[row.team].drops += row.total_drops
+      map[row.team].shiners += row.total_shiners
+      map[row.team].count++
+    })
+    return Object.entries(map).map(([team, val]) => ({
+      team,
+      inspections: val.count,
+      avgDrops: val.count > 0 ? val.drops / val.count : 0,
+      avgShiners: val.count > 0 ? val.shiners / val.count : 0,
+    }))
+  }, [pickingSessions])
+
+  // Summary KPIs for bins/person and drops/shiners
+  const teamKpis = useMemo(() => {
+    const totalBins = teamBinAgg.reduce((s, t) => s + t.bins, 0)
+    const totalHc = teamBinAgg.reduce((s, t) => s + t.headcount, 0)
+    const avgBinsPerPerson = totalHc > 0 ? totalBins / totalHc : null
+
+    const totalDrops = teamPickingAgg.reduce((s, t) => s + t.avgDrops * t.inspections, 0)
+    const totalShiners = teamPickingAgg.reduce((s, t) => s + t.avgShiners * t.inspections, 0)
+    const totalInspections = teamPickingAgg.reduce((s, t) => s + t.inspections, 0)
+    const avgDrops = totalInspections > 0 ? totalDrops / totalInspections : null
+    const avgShiners = totalInspections > 0 ? totalShiners / totalInspections : null
+
+    return { avgBinsPerPerson, avgDrops, avgShiners, totalInspections }
+  }, [teamBinAgg, teamPickingAgg])
+
   // Total fruit sampled — shared between mobile + desktop panels
   const totalFruitSampled = useMemo(() => sizeBins.reduce((sum, b) => sum + b.fruit_count, 0), [sizeBins])
 
@@ -606,6 +692,7 @@ export default function ProductionPage() {
 
   // Mobile collapse states
   const [qualityOpen, setQualityOpen] = useState(false)
+  const [teamPerfOpen, setTeamPerfOpen] = useState(false)
   const [sizeOpen, setSizeOpen] = useState(false)
   const [issuesOpen, setIssuesOpen] = useState(false)
 
@@ -904,6 +991,26 @@ export default function ProductionPage() {
                 Class 1 %
               </div>
             </div>
+            {/* Bins/Person */}
+            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '18px 16px' }}>
+              <div style={{ fontSize: 36, fontWeight: 700, color: '#1a2a3a', lineHeight: 1 }}>
+                {teamKpis.avgBinsPerPerson != null ? teamKpis.avgBinsPerPerson.toFixed(1) : '–'}
+              </div>
+              <div style={{ height: 2, background: '#eef2fa', margin: '8px 0' }} />
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a9a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Bins/Person
+              </div>
+            </div>
+            {/* Avg Drops & Shiners */}
+            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', padding: '18px 16px' }}>
+              <div style={{ fontSize: 36, fontWeight: 700, color: '#1a2a3a', lineHeight: 1 }}>
+                {teamKpis.avgDrops != null ? `${teamKpis.avgDrops.toFixed(1)} / ${teamKpis.avgShiners!.toFixed(1)}` : '–'}
+              </div>
+              <div style={{ height: 2, background: '#eef2fa', margin: '8px 0' }} />
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#7a8a9a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Drops / Shiners
+              </div>
+            </div>
           </div>
         </div>
 
@@ -991,6 +1098,8 @@ export default function ProductionPage() {
                 { label: 'Avg Bruising', value: avgBruisingData.avg != null ? `${avgBruisingData.avg.toFixed(1)}%` : '–', sub: avgBruisingData.samples > 0 ? `${avgBruisingData.samples} samples` : null, color: avgBruisingData.avg != null ? qualityColor(avgBruisingData.avg) : undefined },
                 { label: 'Orchards', value: String(kpis.orchards), sub: 'harvested' },
                 { label: 'Class 1 %', value: class1Data.class1 != null ? `${class1Data.class1}%` : '–', sub: class1Data.packable > 0 ? `${class1Data.packable.toLocaleString('en-ZA')} packable` : null },
+                { label: 'Bins/Person', value: teamKpis.avgBinsPerPerson != null ? teamKpis.avgBinsPerPerson.toFixed(1) : '–', sub: teamBinAgg.length > 0 ? `${teamBinAgg.length} teams` : null },
+                { label: 'Avg Drops & Shiners', value: teamKpis.avgDrops != null ? `${teamKpis.avgDrops.toFixed(1)} / ${teamKpis.avgShiners!.toFixed(1)}` : '–', sub: teamKpis.totalInspections > 0 ? `${teamKpis.totalInspections} inspections` : null },
               ].map((kpi: any, i: number) => (
                 <div key={i} style={s.kpiCard}>
                   <div style={s.kpiAccent as any} />
@@ -1331,6 +1440,11 @@ export default function ProductionPage() {
               <BruisingQualityPanel bruisingData={filteredBruising} bruisingSummary={bruisingSummary} />
             </div>
 
+            {/* Team Performance — desktop: always visible */}
+            <div className="prod-desktop-only">
+              <TeamPerformancePanel teamBins={teamBinAgg} teamPicking={teamPickingAgg} />
+            </div>
+
             {/* ── Mobile collapsible panels ───────────────────────── */}
 
             {/* Mobile: Quality Summary (collapsible) */}
@@ -1352,6 +1466,31 @@ export default function ProductionPage() {
                 </div>
               )}
             </div>
+
+            {/* Mobile: Team Performance (collapsible) */}
+            {(teamBinAgg.length > 0 || teamPickingAgg.length > 0) && (
+            <div className="prod-mobile-only" style={{ marginBottom: 16 }}>
+              <button
+                onClick={() => setTeamPerfOpen(v => !v)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '14px 16px', background: '#fff', borderRadius: 14,
+                  border: '1px solid #e8e4dc', cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: '#1a2a3a' }}>Team Performance</span>
+                  <span style={{ fontSize: 10, background: '#2176d9', color: 'white', padding: '2px 8px', borderRadius: 20, fontFamily: 'monospace', fontWeight: 700 }}>TEAMS</span>
+                </div>
+                <span style={{ fontSize: 18, color: '#8a95a0', transform: teamPerfOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>&#9662;</span>
+              </button>
+              {teamPerfOpen && (
+                <div style={{ marginTop: 8 }}>
+                  <TeamPerformancePanel teamBins={teamBinAgg} teamPicking={teamPickingAgg} />
+                </div>
+              )}
+            </div>
+            )}
 
             {/* Mobile: Size Distribution (collapsible) */}
             <div className="prod-mobile-only" style={{ marginBottom: 16 }}>
