@@ -22,6 +22,7 @@ export interface QcSizeBin {
   weight_max_g: number
   display_order: number
   is_active: boolean
+  variety_group?: string | null
 }
 
 export interface QcIssue {
@@ -38,6 +39,7 @@ export interface QcOrchard {
   id: string
   name: string
   variety?: string | null
+  variety_group?: string | null
   farm_id: string
   commodity_id: string
   commodity_name?: string | null

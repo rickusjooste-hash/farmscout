@@ -13,6 +13,7 @@ interface SizeBin {
   weight_max_g: number
   display_order: number
   is_active: boolean
+  variety_group?: string | null
 }
 
 interface EditRow extends SizeBin {
@@ -70,6 +71,8 @@ export default function SizeBinsPage() {
 
   const [commodities, setCommodities] = useState<Commodity[]>([])
   const [selectedCommodityId, setSelectedCommodityId] = useState<string>('')
+  const [varietyGroups, setVarietyGroups] = useState<string[]>([])
+  const [selectedVarietyGroup, setSelectedVarietyGroup] = useState<string>('__all__')
   const [rows, setRows] = useState<EditRow[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -84,7 +87,9 @@ export default function SizeBinsPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   useEffect(() => { if (contextLoaded) loadCommodities() }, [contextLoaded])
-  useEffect(() => { if (selectedCommodityId) loadBins() }, [selectedCommodityId])
+  useEffect(() => { if (selectedCommodityId) loadVarietyGroups() }, [selectedCommodityId])
+  // loadBins triggers on selectedVarietyGroup change (which is reset by loadVarietyGroups when commodity changes)
+  useEffect(() => { if (selectedCommodityId) loadBins() }, [selectedCommodityId, selectedVarietyGroup])
 
   // When type changes, adjust min/max and default label
   function handleTypeChange(t: BinType) {
@@ -118,11 +123,27 @@ export default function SizeBinsPage() {
     if (list.length > 0) setSelectedCommodityId(list[0].id)
   }
 
+  async function loadVarietyGroups() {
+    const { data } = await supabase
+      .from('orchards')
+      .select('variety_group')
+      .eq('commodity_id', selectedCommodityId)
+      .eq('is_active', true)
+      .not('variety_group', 'is', null)
+    const groups = [...new Set((data || []).map((d: any) => d.variety_group as string))].sort()
+    setVarietyGroups(groups)
+    setSelectedVarietyGroup('__all__')
+  }
+
   async function loadBins() {
     setLoading(true)
     const res = await fetch(`/api/qc/settings/size-bins?commodity_id=${selectedCommodityId}`)
-    const data = await res.json()
-    setRows((data || []) as EditRow[])
+    const data = (await res.json() || []) as EditRow[]
+    // Client-side filter: show matching variety_group + shared (NULL) bins
+    const filtered = selectedVarietyGroup === '__all__'
+      ? data
+      : data.filter(r => !r.variety_group || r.variety_group === selectedVarietyGroup)
+    setRows(filtered.sort((a, b) => a.display_order - b.display_order))
     setLoading(false)
   }
 
@@ -139,19 +160,26 @@ export default function SizeBinsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         id,
-        label:         row.label,
-        weight_min_g:  Number(row.weight_min_g),
-        weight_max_g:  Number(row.weight_max_g),
-        display_order: Number(row.display_order),
-        is_active:     row.is_active,
+        label:          row.label,
+        weight_min_g:   Number(row.weight_min_g),
+        weight_max_g:   Number(row.weight_max_g),
+        display_order:  Number(row.display_order),
+        is_active:      row.is_active,
+        variety_group:  row.variety_group || null,
       }),
     })
     setRows(prev => prev.map(r => r.id === id ? { ...r, _dirty: false, _saving: false } : r))
   }
 
   async function deleteRow(id: string) {
-    await fetch(`/api/qc/settings/size-bins?id=${id}`, { method: 'DELETE' })
-    setRows(prev => prev.filter(r => r.id !== id))
+    const res = await fetch(`/api/qc/settings/size-bins?id=${id}`, { method: 'DELETE' })
+    const data = await res.json()
+    if (data.soft_deleted) {
+      // FK constraint prevented hard delete — bin was deactivated instead
+      setRows(prev => prev.map(r => r.id === id ? { ...r, is_active: false, _dirty: false } : r))
+    } else {
+      setRows(prev => prev.filter(r => r.id !== id))
+    }
     setConfirmDeleteId(null)
   }
 
@@ -164,16 +192,18 @@ export default function SizeBinsPage() {
     if (newType === 'undersize' && !newMax) return
 
     setAdding(true)
+    const vg = selectedVarietyGroup !== '__all__' ? selectedVarietyGroup : null
     const res = await fetch('/api/qc/settings/size-bins', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        commodity_id:  selectedCommodityId,
-        label:         newLabel,
-        weight_min_g:  minVal,
-        weight_max_g:  maxVal,
-        display_order: newOrder ? Number(newOrder) : rows.length,
-        is_active:     true,
+        commodity_id:   selectedCommodityId,
+        label:          newLabel,
+        weight_min_g:   minVal,
+        weight_max_g:   maxVal,
+        display_order:  newOrder ? Number(newOrder) : rows.length,
+        is_active:      true,
+        variety_group:  vg,
       }),
     })
     const data = await res.json()
@@ -228,7 +258,7 @@ export default function SizeBinsPage() {
         </div>
 
         {/* Commodity pills */}
-        <div style={{ ...s.pills, marginBottom: 24 }}>
+        <div style={{ ...s.pills, marginBottom: varietyGroups.length > 1 ? 10 : 24 }}>
           {commodities.map(c => (
             <button
               key={c.id}
@@ -239,6 +269,27 @@ export default function SizeBinsPage() {
             </button>
           ))}
         </div>
+
+        {/* Variety group pills (only when commodity has multiple groups, e.g. citrus) */}
+        {varietyGroups.length > 1 && (
+          <div style={{ ...s.pills, marginBottom: 24 }}>
+            <button
+              style={selectedVarietyGroup === '__all__' ? s.pillActive : s.pill}
+              onClick={() => setSelectedVarietyGroup('__all__')}
+            >
+              All
+            </button>
+            {varietyGroups.map(vg => (
+              <button
+                key={vg}
+                style={selectedVarietyGroup === vg ? s.pillActive : s.pill}
+                onClick={() => setSelectedVarietyGroup(vg)}
+              >
+                {vg}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Table */}
         <div style={s.card}>
@@ -264,7 +315,7 @@ export default function SizeBinsPage() {
               const isUnder = binType === 'undersize'
               return (
                 <div key={row.id} style={{ ...s.tableRow, gridTemplateColumns: COLS }}>
-                  {/* Label + type badge */}
+                  {/* Label + type badge + variety group badge */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <input
                       style={{ ...s.input, flex: 1 }}
@@ -274,6 +325,11 @@ export default function SizeBinsPage() {
                     {badge.label && (
                       <span style={{ ...s.badge, background: badge.bg, color: badge.color }}>
                         {badge.label}
+                      </span>
+                    )}
+                    {row.variety_group && (
+                      <span style={{ ...s.badge, background: '#e8f5e9', color: '#2e7d32' }}>
+                        {row.variety_group}
                       </span>
                     )}
                   </div>

@@ -542,7 +542,10 @@ export default function QcHome() {
     if (!activeSession) return []
     const orchard = orchards.find(o => o.id === activeSession.orchard_id)
     if (!orchard) return []
-    return sizeBins.filter(b => b.commodity_id === orchard.commodity_id).sort((a, b) => a.display_order - b.display_order)
+    return sizeBins
+      .filter(b => b.commodity_id === orchard.commodity_id &&
+                   (!b.variety_group || b.variety_group === orchard.variety_group))
+      .sort((a, b) => a.display_order - b.display_order)
   }, [activeSession, orchards, sizeBins])
 
   // Keep ref in sync so the BLE handler (stale closure) always uses commodity-filtered bins

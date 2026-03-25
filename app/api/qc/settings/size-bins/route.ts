@@ -12,11 +12,13 @@ function serviceHeaders(prefer = 'return=representation') {
   }
 }
 
-// GET /api/qc/settings/size-bins?commodity_id=<uuid>
+// GET /api/qc/settings/size-bins?commodity_id=<uuid>&variety_group=<text>
 export async function GET(req: NextRequest) {
   const commodityId = req.nextUrl.searchParams.get('commodity_id')
+  const varietyGroup = req.nextUrl.searchParams.get('variety_group')
   let url = `${SUPABASE_URL}/rest/v1/size_bins?order=display_order.asc`
   if (commodityId) url += `&commodity_id=eq.${commodityId}`
+  if (varietyGroup) url += `&variety_group=eq.${varietyGroup}`
 
   const res = await fetch(url, {
     headers: {
@@ -66,13 +68,29 @@ export async function PATCH(req: NextRequest) {
 }
 
 // DELETE /api/qc/settings/size-bins?id=<uuid>
+// If FK constraint blocks hard delete (qc_fruit references this bin), soft-delete instead.
 export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
-  await fetch(`${SUPABASE_URL}/rest/v1/size_bins?id=eq.${id}`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/size_bins?id=eq.${id}`, {
     method:  'DELETE',
     headers: serviceHeaders('return=minimal'),
   })
+
+  if (!res.ok) {
+    // FK violation (409) or other error — fall back to soft-delete
+    const fallback = await fetch(`${SUPABASE_URL}/rest/v1/size_bins?id=eq.${id}`, {
+      method:  'PATCH',
+      headers: serviceHeaders('return=minimal'),
+      body:    JSON.stringify({ is_active: false }),
+    })
+    if (!fallback.ok) {
+      const err = await fallback.text()
+      return NextResponse.json({ error: `Delete failed: ${err}` }, { status: 400 })
+    }
+    return NextResponse.json({ ok: true, soft_deleted: true })
+  }
+
   return NextResponse.json({ ok: true })
 }
