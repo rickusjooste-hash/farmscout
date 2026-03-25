@@ -65,40 +65,155 @@ export default function DropShinersView({ onDone }: Props) {
     })()
   }, [])
 
-  // ── GPS detect ─────────────────────────────────────────────────────────
+  // ── GPS detect (mirrors runner approach) ─────────────────────────────────
+
+  const gpsWatchRef = useRef<number | null>(null)
+  const gpsSettled = useRef(false)
+
+  function stopGpsWatch() {
+    if (gpsWatchRef.current !== null) {
+      navigator.geolocation.clearWatch(gpsWatchRef.current)
+      gpsWatchRef.current = null
+    }
+  }
+
+  async function matchOrchardByGps(lat: number, lng: number) {
+    const token = localStorage.getItem('qcapp_access_token') || ''
+    let farmIds: string[] = []
+    try { farmIds = JSON.parse(localStorage.getItem('qcapp_farm_ids') || '[]') } catch {}
+    if (!farmIds.length) {
+      const single = localStorage.getItem('qcapp_farm_id') || ''
+      if (single) farmIds = [single]
+    }
+    if (!farmIds.length) return
+
+    const apiHeaders = {
+      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    }
+    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+
+    try {
+      // 1. Exact polygon match via RPC
+      for (const farmId of farmIds) {
+        const res = await fetch(`${baseUrl}/rest/v1/rpc/match_orchard_from_gps`, {
+          method: 'POST',
+          headers: apiHeaders,
+          body: JSON.stringify({ p_lat: lat, p_lng: lng, p_farm_id: farmId }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data?.id) {
+            const local = orchards.find(o => o.id === data.id)
+            setSelectedOrchard(local || { id: data.id, name: data.name, farm_id: farmId, commodity_id: '' } as any)
+            setGpsStatus('found')
+            return
+          }
+        }
+      }
+
+      // 2. Nearby orchards within 100m
+      for (const farmId of farmIds) {
+        const res = await fetch(`${baseUrl}/rest/v1/rpc/nearby_orchards_from_gps`, {
+          method: 'POST',
+          headers: apiHeaders,
+          body: JSON.stringify({ p_lat: lat, p_lng: lng, p_farm_id: farmId, p_radius: 100 }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data) && data.length > 0) {
+            data.sort((a: any, b: any) => a.distance_m - b.distance_m)
+            const local = orchards.find(o => o.id === data[0].id)
+            if (local) { setSelectedOrchard(local); setGpsStatus('found'); return }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[DropShiners] RPC GPS match failed:', err)
+    }
+
+    // 3. Offline fallback — point-in-polygon from IndexedDB
+    try {
+      const match = await matchOrchardFromGPS(lat, lng)
+      if (match) { setSelectedOrchard(match); setGpsStatus('found'); return }
+    } catch {}
+
+    // 4. Offline fallback — nearest by centroid distance
+    if (orchards.length > 0) {
+      const withDist = orchards
+        .filter(o => o.boundary?.coordinates)
+        .map(o => {
+          const ring = o.boundary.type === 'MultiPolygon'
+            ? o.boundary.coordinates[0][0]
+            : o.boundary.coordinates[0]
+          if (!ring?.length) return null
+          const oLng = ring.reduce((s: number, c: number[]) => s + c[0], 0) / ring.length
+          const oLat = ring.reduce((s: number, c: number[]) => s + c[1], 0) / ring.length
+          const R = 6371000
+          const dLat = (oLat - lat) * Math.PI / 180
+          const dLon = (oLng - lng) * Math.PI / 180
+          const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat * Math.PI / 180) * Math.cos(oLat * Math.PI / 180) * Math.sin(dLon / 2) ** 2
+          const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+          return { id: o.id, distance_m: Math.round(dist) }
+        })
+        .filter((x): x is { id: string; distance_m: number } => x !== null && x.distance_m <= 200)
+        .sort((a, b) => a.distance_m - b.distance_m)
+
+      if (withDist.length >= 1) {
+        const match = orchards.find(o => o.id === withDist[0].id)
+        if (match) { setSelectedOrchard(match); setGpsStatus('found'); return }
+      }
+    }
+
+    setGpsStatus('failed')
+  }
 
   useEffect(() => {
     if (subView !== 'gps_detect') return
+    if (selectedOrchard && gpsStatus === 'found') return // already matched
     setGpsStatus('detecting')
+    gpsSettled.current = false
 
-    if (!navigator.geolocation) {
-      setGpsStatus('failed')
-      return
-    }
+    if (!navigator.geolocation) { setGpsStatus('failed'); return }
+
+    const GOOD_ACCURACY = 30
+    const MAX_WAIT = 15000
+    let bestAccuracy = Infinity
+
+    const timeoutId = setTimeout(() => {
+      if (gpsSettled.current) return
+      gpsSettled.current = true
+      stopGpsWatch()
+    }, MAX_WAIT)
 
     const watchId = navigator.geolocation.watchPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords
-        setGpsCoords({ lat: latitude, lng: longitude })
-        // Try offline point-in-polygon first
-        const match = await matchOrchardFromGPS(latitude, longitude)
-        if (match) {
-          setSelectedOrchard(match)
-          setGpsStatus('found')
-          navigator.geolocation.clearWatch(watchId)
-        } else {
-          setGpsStatus('failed')
-          navigator.geolocation.clearWatch(watchId)
+      (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords
+        if (accuracy < bestAccuracy) {
+          bestAccuracy = accuracy
+          setGpsCoords({ lat: latitude, lng: longitude })
+          matchOrchardByGps(latitude, longitude)
+        }
+        if (accuracy <= GOOD_ACCURACY && !gpsSettled.current) {
+          gpsSettled.current = true
+          clearTimeout(timeoutId)
+          stopGpsWatch()
         }
       },
-      () => {
+      (err) => {
+        if (gpsSettled.current) return
+        gpsSettled.current = true
+        clearTimeout(timeoutId)
+        stopGpsWatch()
         setGpsStatus('failed')
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: MAX_WAIT, maximumAge: 0 }
     )
+    gpsWatchRef.current = watchId
 
-    return () => navigator.geolocation.clearWatch(watchId)
-  }, [subView])
+    return () => { clearTimeout(timeoutId); stopGpsWatch() }
+  }, [subView, orchards])
 
   // ── Navigation helpers ─────────────────────────────────────────────────
 
