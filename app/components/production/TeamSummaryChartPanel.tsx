@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell, LabelList, Legend,
+  ResponsiveContainer, Cell, LabelList, Legend, ReferenceLine,
 } from 'recharts'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -53,6 +53,12 @@ export default function TeamSummaryChartPanel({ teams }: Props) {
       .sort((a, b) => b.bins - a.bins)
   }, [teams])
 
+  const avgBins = useMemo(() => {
+    const valid = chartData.filter(d => d.bins > 0)
+    if (valid.length === 0) return 0
+    return Math.round(valid.reduce((s, d) => s + d.bins, 0) / valid.length * 10) / 10
+  }, [chartData])
+
   if (teams.length === 0 || chartData.length === 0) return null
 
   return (
@@ -92,6 +98,9 @@ export default function TeamSummaryChartPanel({ teams }: Props) {
                 return [v, 'Drops+Shiners/Tree']
               }}
             />
+            {avgBins > 0 && (
+              <ReferenceLine yAxisId="left" y={avgBins} stroke="#2176d9" strokeDasharray="6 4" strokeWidth={1.5} label={{ value: `Avg ${avgBins}`, position: 'right', fontSize: 10, fill: '#2176d9', fontWeight: 600 }} />
+            )}
             <Bar yAxisId="left" dataKey="bins" fill={SERIES_COLORS.bins} radius={[4, 4, 0, 0]} barSize={20} name="bins">
               <LabelList dataKey="bins" position="top" fontSize={9} formatter={(v: any) => Number(v).toFixed(1)} />
             </Bar>
