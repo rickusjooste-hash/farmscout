@@ -921,7 +921,8 @@ export default function ProductionPage() {
       const avgBruising = teamBruising.length > 0 ? teamBruising.reduce((s: number, b: any) => s + b.bruising, 0) / teamBruising.length : null
       const teamWorkers = workerData.filter(w => w.supervisor?.toUpperCase() === t.team?.toUpperCase() && w.corrected_bins != null)
       const totalCorrBins = teamWorkers.reduce((s, w) => s + (w.corrected_bins || 0), 0)
-      const corrBinsPerPerson = t.headcount > 0 ? totalCorrBins / t.headcount : null
+      const actualPickers = teamWorkers.length
+      const corrBinsPerPerson = actualPickers > 0 ? totalCorrBins / actualPickers : null
       return {
         team: t.teamName || t.team,
         correctedBinsPerPerson: corrBinsPerPerson,
