@@ -80,7 +80,7 @@ export default function TeamSummaryChartPanel({ teams }: Props) {
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={chartData} margin={{ left: 0, right: 10, top: 10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="team" fontSize={11} tick={{ fill: '#1a2a3a' }} interval={0} />
+            <XAxis dataKey="team" fontSize={13} tick={{ fill: '#1a2a3a', fontWeight: 600 }} interval={0} />
             <YAxis yAxisId="left" fontSize={10} tick={{ fill: '#8a95a0' }} />
             <YAxis yAxisId="right" orientation="right" fontSize={10} tick={{ fill: '#8a95a0' }} />
             <Tooltip
