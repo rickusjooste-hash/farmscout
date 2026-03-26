@@ -346,23 +346,33 @@ def _apply_correction(date_str, orchard_bpb):
             'correction_factor': round(factor, 4),
             'corrected_bags': corrected_bags,
             'corrected_bins': corrected_bins,
+            '_bags_per_bin': bags_per_bin,
         })
 
-    # Patch in batches
-    patched = 0
+    # Apply corrections via single RPC call instead of individual PATCHes
+    # Build a JSON payload: [{id, factor, bags_per_bin}, ...]
+    corrections = []
     for p in patches:
-        row_id = p.pop('id')
+        corrections.append({
+            'row_id': p['id'],
+            'factor': p['correction_factor'],
+            'bpb': p.get('_bags_per_bin', 53),
+        })
+
+    if corrections:
         try:
-            resp = requests.patch(
-                f'{SUPABASE_URL}/rest/v1/worker_daily_productivity?id=eq.{row_id}',
-                headers={**HEADERS, 'Prefer': 'return=minimal'},
-                json=p,
-                timeout=15,
+            resp = requests.post(
+                f'{SUPABASE_URL}/rest/v1/rpc/apply_productivity_corrections',
+                headers={**HEADERS, 'Prefer': ''},
+                json={'p_corrections': json.dumps(corrections)},
+                timeout=60,
             )
             if resp.status_code < 400:
-                patched += 1
-        except requests.RequestException:
-            pass
+                patched = len(corrections)
+            else:
+                log.warning("RPC correction failed: %d %s", resp.status_code, resp.text[:300])
+        except requests.RequestException as exc:
+            log.warning("RPC correction request failed: %s", exc)
 
     log.info("Applied correction factor to %d / %d picking rows (teams with bins: %s)",
              patched, len(picking_rows), list(team_bins.keys()))

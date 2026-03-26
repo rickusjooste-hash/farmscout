@@ -30,7 +30,7 @@ interface ProductivityRow {
   employee: { full_name: string; employee_nr: string } | null
 }
 
-interface Orchard { id: string; name: string; farm_id: string }
+interface Orchard { id: string; name: string; orchard_nr: number | null; variety: string | null; farm_id: string }
 interface UnmappedOrchard { fcs_orchard_nr: number; fcs_orchard_name: string | null; count: number }
 
 const s: Record<string, React.CSSProperties> = {
@@ -101,10 +101,10 @@ export default function ProductivityReviewPage() {
         .order('units', { ascending: false }),
       supabase
         .from('orchards')
-        .select('id, name, farm_id')
+        .select('id, name, orchard_nr, variety, farm_id')
         .in('farm_id', effectiveFarmIds)
         .eq('is_active', true)
-        .order('name'),
+        .order('orchard_nr'),
     ])
 
     setRows((prodData || []) as ProductivityRow[])
@@ -135,6 +135,72 @@ export default function ProductivityReviewPage() {
     return Object.entries(map).map(([nr, v]) => ({ fcs_orchard_nr: Number(nr), fcs_orchard_name: v.name, count: v.count }))
   }, [rows])
 
+  // Anomaly detection — flag suspicious rows
+  const rowFlags = useMemo((): Record<string, string[]> => {
+    const flags: Record<string, string[]> = {}
+    // Group by (supervisor, activity) to compute team averages
+    const groups: Record<string, { units: number[]; hours: number[]; uph: number[] }> = {}
+    const active = rows.filter(r => r.status !== 'excluded')
+    active.forEach(r => {
+      const key = `${r.supervisor || '?'}|${r.activity_name}`
+      if (!groups[key]) groups[key] = { units: [], hours: [], uph: [] }
+      groups[key].units.push(r.units)
+      if (r.hours && r.hours > 0) groups[key].hours.push(r.hours)
+      if (r.units_per_hour && r.units_per_hour > 0) groups[key].uph.push(r.units_per_hour)
+    })
+    // Compute medians and thresholds per group
+    const median = (arr: number[]) => {
+      if (arr.length === 0) return 0
+      const sorted = [...arr].sort((a, b) => a - b)
+      const mid = Math.floor(sorted.length / 2)
+      return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+    }
+
+    active.forEach(r => {
+      const f: string[] = []
+      const key = `${r.supervisor || '?'}|${r.activity_name}`
+      const g = groups[key]
+
+      // Missing hours
+      if (!r.hours || r.hours === 0) {
+        f.push('No hours logged')
+      }
+
+      // Very low hours (< 1h but has units)
+      if (r.hours && r.hours > 0 && r.hours < 1 && r.units > 5) {
+        f.push(`Only ${r.hours.toFixed(1)}h worked`)
+      }
+
+      // Low units vs team (< 40% of team median, need at least 3 in group)
+      if (g.units.length >= 3) {
+        const med = median(g.units)
+        if (med > 0 && r.units < med * 0.4) {
+          f.push(`Low units (${r.units} vs team median ${med.toFixed(0)})`)
+        }
+        // Suspiciously high (> 200% of median)
+        if (med > 0 && r.units > med * 2) {
+          f.push(`High units (${r.units} vs team median ${med.toFixed(0)})`)
+        }
+      }
+
+      // Low productivity rate vs team
+      if (r.units_per_hour && g.uph.length >= 3) {
+        const med = median(g.uph)
+        if (med > 0 && r.units_per_hour < med * 0.4) {
+          f.push(`Low rate (${r.units_per_hour.toFixed(1)}/hr vs ${med.toFixed(1)}/hr)`)
+        }
+      }
+
+      // Very low units (likely non-picker tap)
+      if (r.activity_name === 'Harvest/Pick/Sort/uitry' && r.units <= 5) {
+        f.push(`Only ${r.units} bags — accidental tap?`)
+      }
+
+      if (f.length > 0) flags[r.id] = f
+    })
+    return flags
+  }, [rows])
+
   const kpis = useMemo(() => {
     const pending = rows.filter(r => r.status === 'pending')
     const excluded = rows.filter(r => r.status === 'excluded')
@@ -156,6 +222,22 @@ export default function ProductivityReviewPage() {
     setRows(prev => prev.map(r => r.id === id ? { ...r, status: 'pending', exclude_reason: null } : r))
   }
 
+  async function excludeFiltered() {
+    const pendingIds = filteredRows.filter(r => r.status === 'pending').map(r => r.id)
+    if (pendingIds.length === 0) return
+    setSaving(true)
+    const reason = activityFilter !== '__all__' ? `bulk: ${activityFilter}` : 'bulk: all'
+    // Batch update in chunks of 100 (Supabase URL length limit)
+    for (let i = 0; i < pendingIds.length; i += 100) {
+      const batch = pendingIds.slice(i, i + 100)
+      await supabase.from('worker_daily_productivity')
+        .update({ status: 'excluded', exclude_reason: reason })
+        .in('id', batch)
+    }
+    setRows(prev => prev.map(r => pendingIds.includes(r.id) ? { ...r, status: 'excluded', exclude_reason: reason } : r))
+    setSaving(false)
+  }
+
   async function approveAll() {
     setSaving(true)
     await supabase.from('worker_daily_productivity')
@@ -172,11 +254,15 @@ export default function ProductivityReviewPage() {
     await supabase.from('worker_daily_productivity')
       .update({ status: 'pending', exclude_reason: null })
       .eq('work_date', selectedDate)
-    // Trigger sync via API or direct — for now just reload after a delay
+    // Re-pull from FCS via Python sync script
     try {
-      await fetch(`/api/productivity/resync?date=${selectedDate}`, { method: 'POST' })
-    } catch {
-      // If API not yet built, just reload
+      const res = await fetch(`/api/productivity/resync?date=${selectedDate}`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        alert(`Resync failed: ${data.error}\n${data.output || ''}`)
+      }
+    } catch (err) {
+      alert(`Resync error: ${err}`)
     }
     await loadData()
     setResyncing(false)
@@ -270,7 +356,7 @@ export default function ProductivityReviewPage() {
                     <>
                       <select style={s.select} value={mappingOrchardId} onChange={e => setMappingOrchardId(e.target.value)}>
                         <option value="">Select orchard...</option>
-                        {orchards.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                        {orchards.map(o => <option key={o.id} value={o.id}>{o.orchard_nr ? `${o.orchard_nr} ` : ''}{o.name}{o.variety ? ` (${o.variety})` : ''}</option>)}
                       </select>
                       <button style={{ ...s.btn, padding: '4px 10px', fontSize: 12 }} onClick={() => saveMapping(uo.fcs_orchard_nr, mappingOrchardId)} disabled={!mappingOrchardId}>Save</button>
                       <button style={{ ...s.btnOutline, padding: '4px 10px', fontSize: 12 }} onClick={() => setMappingOrchardNr(null)}>Cancel</button>
@@ -297,6 +383,11 @@ export default function ProductivityReviewPage() {
             <input type="checkbox" checked={showExcluded} onChange={e => setShowExcluded(e.target.checked)} />
             Show excluded
           </label>
+          {filteredRows.some(r => r.status === 'pending') && (
+            <button style={s.btnDanger} onClick={excludeFiltered} disabled={saving}>
+              {saving ? 'Excluding...' : `Exclude All${activityFilter !== '__all__' ? ` (${activityFilter})` : ''}`}
+            </button>
+          )}
           {kpis.pending > 0 && (
             <button style={s.btnSuccess} onClick={approveAll} disabled={saving}>
               {saving ? 'Approving...' : `Approve All (${kpis.pending})`}
@@ -318,15 +409,16 @@ export default function ProductivityReviewPage() {
                   <th style={{ ...s.th, textAlign: 'right' }}>Hours</th>
                   <th style={{ ...s.th, textAlign: 'right' }}>Units/Day</th>
                   <th style={{ ...s.th, textAlign: 'right' }}>Corr. Bins</th>
+                  <th style={s.th}>Flags</th>
                   <th style={{ ...s.th, textAlign: 'center' }}>Status</th>
                   <th style={{ ...s.th, textAlign: 'center' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={10} style={{ ...s.td, textAlign: 'center', color: '#8a95a0', padding: 40 }}>Loading...</td></tr>
+                  <tr><td colSpan={11} style={{ ...s.td, textAlign: 'center', color: '#8a95a0', padding: 40 }}>Loading...</td></tr>
                 ) : filteredRows.length === 0 ? (
-                  <tr><td colSpan={10} style={{ ...s.td, textAlign: 'center', color: '#8a95a0', padding: 40 }}>No data for {selectedDate}</td></tr>
+                  <tr><td colSpan={11} style={{ ...s.td, textAlign: 'center', color: '#8a95a0', padding: 40 }}>No data for {selectedDate}</td></tr>
                 ) : (
                   filteredRows.map(r => {
                     const isExcluded = r.status === 'excluded'
@@ -344,6 +436,13 @@ export default function ProductivityReviewPage() {
                         <td style={{ ...s.td, textAlign: 'right', fontWeight: 600 }}>{r.units_per_man_day?.toFixed(1) || '—'}</td>
                         <td style={{ ...s.td, textAlign: 'right', fontWeight: 600, color: '#2176d9' }}>
                           {r.corrected_bins != null ? r.corrected_bins.toFixed(2) : '—'}
+                        </td>
+                        <td style={s.td}>
+                          {(rowFlags[r.id] || []).map((flag, i) => (
+                            <div key={i} style={{ fontSize: 10, color: '#e65100', background: '#fff3e0', padding: '1px 6px', borderRadius: 8, marginBottom: 2, whiteSpace: 'nowrap' }}>
+                              {flag}
+                            </div>
+                          ))}
                         </td>
                         <td style={{ ...s.td, textAlign: 'center' }}>
                           <span style={{
