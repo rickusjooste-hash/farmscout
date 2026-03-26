@@ -401,8 +401,8 @@ if __name__ == '__main__':
         sync(yesterday)
 
         # Then schedule daily at 07:00
-        schedule.every().day.at('07:00').do(lambda: sync(date.today() - timedelta(days=1)))
-        log.info("Scheduler running — next sync at 07:00 daily. Ctrl+C to stop.")
+        schedule.every().day.at('04:00').do(lambda: sync(date.today() - timedelta(days=1)))
+        log.info("Scheduler running — next sync at 04:00 daily. Ctrl+C to stop.")
 
         while True:
             schedule.run_pending()
