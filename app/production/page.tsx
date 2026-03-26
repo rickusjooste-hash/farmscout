@@ -12,6 +12,7 @@ import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSi
 import MobileNav from '@/app/components/MobileNav'
 import BruisingQualityPanel from '@/app/components/production/BruisingQualityPanel'
 import TeamPerformancePanel from '@/app/components/production/TeamPerformancePanel'
+import WorkerPerformancePanel from '@/app/components/production/WorkerPerformancePanel'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,8 @@ interface TeamBinAgg { team: string; teamName: string; bins: number; headcount: 
 interface PickingQualityRow { team: string | null; orchard_id: string | null; total_drops: number; total_shiners: number; tree_count: number; inspected_at: string; farm_id: string }
 interface TeamPickingAgg { team: string; inspections: number; avgDrops: number; avgShiners: number }
 interface OrchardLossRow { orchard_id: string; name: string; dropsPerTree: number; shinersPerTree: number; treesPerHa: number | null; avgFruitWeightG: number | null; tonHaLost: number | null; inspections: number; totalTrees: number }
+
+interface WorkerRow { employee_id: string; employee_name: string; employee_nr: string; supervisor: string; activity_name: string; raw_bags: number; corrected_bags: number | null; corrected_bins: number | null; units_per_man_day: number | null; hours: number | null; orchard_count: number }
 
 interface BruisingRow {
   orchard_id: string | null
@@ -290,6 +293,8 @@ export default function ProductionPage() {
   const [teamEmployees, setTeamEmployees] = useState<{ team: string; farm_id: string }[]>([])
   const [pickingSessions, setPickingSessions] = useState<PickingQualityRow[]>([])
   const [avgFruitWeights, setAvgFruitWeights] = useState<Record<string, number>>({})
+  const [workerData, setWorkerData] = useState<WorkerRow[]>([])
+  const [workerLoading, setWorkerLoading] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const [sortKey, setSortKey] = useState<SortKey>('total')
@@ -415,6 +420,62 @@ export default function ProductionPage() {
     }
     fetchData()
   }, [contextLoaded, effectiveFarmIds, season, orgId, filterDate])
+
+  // Load worker productivity data (approved only)
+  useEffect(() => {
+    if (!contextLoaded || effectiveFarmIds.length === 0) return
+    async function fetchWorkers() {
+      setWorkerLoading(true)
+      try {
+        // Fetch approved rows, aggregate by employee + activity
+        const dateFrom = filterDate ? `${filterDate}T00:00:00Z` : seasonDateRange(season).from
+        const dateTo = filterDate ? `${filterDate}T23:59:59Z` : seasonDateRange(season).to
+        let q = supabase
+          .from('worker_daily_productivity')
+          .select('employee_id, activity_name, supervisor, units, hours, units_per_man_day, corrected_bags, corrected_bins, orchard_id, employee:qc_employees(full_name, employee_nr)')
+          .in('farm_id', effectiveFarmIds)
+          .eq('status', 'approved')
+        if (filterDate) {
+          q = q.eq('work_date', filterDate)
+        } else {
+          q = q.gte('work_date', seasonDateRange(season).from.slice(0, 10))
+            .lte('work_date', seasonDateRange(season).to.slice(0, 10))
+        }
+        const { data } = await q
+        // Aggregate by (employee_id, activity_name)
+        const map: Record<string, { emp: any; supervisor: string; activity: string; units: number; hours: number; umd: number[]; cb: number; cbins: number; orchards: Set<string> }> = {}
+        for (const r of (data || []) as any[]) {
+          const key = `${r.employee_id}|${r.activity_name}`
+          if (!map[key]) {
+            map[key] = { emp: r.employee, supervisor: r.supervisor || '', activity: r.activity_name, units: 0, hours: 0, umd: [], cb: 0, cbins: 0, orchards: new Set() }
+          }
+          map[key].units += r.units || 0
+          map[key].hours += r.hours || 0
+          if (r.units_per_man_day) map[key].umd.push(r.units_per_man_day)
+          map[key].cb += r.corrected_bags || 0
+          map[key].cbins += r.corrected_bins || 0
+          if (r.orchard_id) map[key].orchards.add(r.orchard_id)
+        }
+        const rows: WorkerRow[] = Object.entries(map).map(([key, v]) => ({
+          employee_id: key.split('|')[0],
+          employee_name: v.emp?.full_name || '?',
+          employee_nr: v.emp?.employee_nr || '',
+          supervisor: v.supervisor,
+          activity_name: v.activity,
+          raw_bags: v.units,
+          corrected_bags: v.cb || null,
+          corrected_bins: v.cbins || null,
+          units_per_man_day: v.umd.length > 0 ? v.umd.reduce((a, b) => a + b, 0) / v.umd.length : null,
+          hours: v.hours || null,
+          orchard_count: v.orchards.size,
+        }))
+        setWorkerData(rows)
+      } finally {
+        setWorkerLoading(false)
+      }
+    }
+    fetchWorkers()
+  }, [contextLoaded, effectiveFarmIds, season, filterDate])
 
   // Load QC data (size distribution + issues) when filters change
   useEffect(() => {
@@ -1517,6 +1578,11 @@ export default function ProductionPage() {
               <TeamPerformancePanel teamBins={teamBinAgg} teamPicking={teamPickingAgg} />
             </div>
 
+            {/* Worker Performance — desktop: always visible */}
+            <div className="prod-desktop-only">
+              <WorkerPerformancePanel workers={workerData} loading={workerLoading} />
+            </div>
+
             {/* Harvest Loss by Orchard — desktop */}
             {orchardLoss.length > 0 && (
             <div className="prod-desktop-only" style={{ marginBottom: 24 }}>
@@ -1601,6 +1667,7 @@ export default function ProductionPage() {
               {teamPerfOpen && (
                 <div style={{ marginTop: 8 }}>
                   <TeamPerformancePanel teamBins={teamBinAgg} teamPicking={teamPickingAgg} />
+                  <WorkerPerformancePanel workers={workerData} loading={workerLoading} />
                 </div>
               )}
             </div>
