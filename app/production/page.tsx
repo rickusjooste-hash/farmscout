@@ -296,6 +296,7 @@ export default function ProductionPage() {
   const [pickingSessions, setPickingSessions] = useState<PickingQualityRow[]>([])
   const [avgFruitWeights, setAvgFruitWeights] = useState<Record<string, number>>({})
   const [workerData, setWorkerData] = useState<WorkerRow[]>([])
+  const [drilldownTeam, setDrilldownTeam] = useState<string>('')
   const [workerQuality, setWorkerQuality] = useState<{ employee_id: string; bags_sampled: number; fruit_sampled: number; fruit_with_issues: number; issue_pct: number; avg_fruit_weight_g: number | null }[]>([])
   const [workerLoading, setWorkerLoading] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -1618,7 +1619,7 @@ export default function ProductionPage() {
 
             {/* Team Comparison Chart — desktop */}
             <div className="prod-desktop-only">
-              <TeamSummaryChartPanel teams={teamSummaryData} />
+              <TeamSummaryChartPanel teams={teamSummaryData} onTeamClick={setDrilldownTeam} />
             </div>
 
             {/* Team Drilldown — desktop */}
@@ -1627,6 +1628,8 @@ export default function ProductionPage() {
                 workers={workerData.filter(w => w.corrected_bins != null)}
                 quality={workerQuality}
                 loading={workerLoading}
+                selectedTeam={drilldownTeam}
+                onTeamChange={setDrilldownTeam}
               />
             </div>
 

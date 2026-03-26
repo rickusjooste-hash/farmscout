@@ -19,6 +19,7 @@ interface TeamData {
 
 interface Props {
   teams: TeamData[]
+  onTeamClick?: (team: string) => void
 }
 
 // ── Colors ───────────────────────────────────────────────────────────────────
@@ -40,7 +41,7 @@ const s: Record<string, React.CSSProperties> = {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export default function TeamSummaryChartPanel({ teams }: Props) {
+export default function TeamSummaryChartPanel({ teams, onTeamClick }: Props) {
   const chartData = useMemo(() => {
     return teams
       .filter(t => (t.correctedBinsPerPerson || 0) > 0 || (t.bruisingPct || 0) > 0 || (t.dropsPerTree || 0) > 0)
@@ -84,7 +85,7 @@ export default function TeamSummaryChartPanel({ teams }: Props) {
       </div>
       <div style={{ padding: '16px 24px 20px' }}>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData} margin={{ left: 0, right: 10, top: 10, bottom: 5 }}>
+          <BarChart data={chartData} margin={{ left: 0, right: 10, top: 10, bottom: 5 }} onClick={(e: any) => { if (e?.activeLabel && onTeamClick) onTeamClick(e.activeLabel) }} style={{ cursor: onTeamClick ? 'pointer' : undefined }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="team" fontSize={13} tick={{ fill: '#1a2a3a', fontWeight: 600 }} interval={0} />
             <YAxis yAxisId="left" fontSize={10} tick={{ fill: '#8a95a0' }} />

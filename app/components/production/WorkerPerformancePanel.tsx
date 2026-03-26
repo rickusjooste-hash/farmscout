@@ -47,6 +47,7 @@ const s: Record<string, React.CSSProperties> = {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function WorkerPerformancePanel({ workers, loading }: Props) {
+  const [expanded, setExpanded] = useState(false)
   const [activityFilter, setActivityFilter] = useState('Harvest/Pick/Sort/uitry')
   const [supervisorFilter, setSupervisorFilter] = useState('__all__')
 
@@ -85,12 +86,16 @@ export default function WorkerPerformancePanel({ workers, loading }: Props) {
 
   return (
     <div style={s.card}>
-      <div style={s.cardHeader}>
+      <div style={{ ...s.cardHeader, cursor: 'pointer' }} onClick={() => setExpanded(v => !v)}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={s.cardTitle}>Worker Performance</span>
           <span style={{ fontSize: 10, background: '#e65100', color: 'white', padding: '2px 8px', borderRadius: 20, fontFamily: 'monospace', fontWeight: 700, letterSpacing: 0.5 }}>FCS</span>
+          <span style={{ fontSize: 12, color: '#8a95a0' }}>{workers.length} workers</span>
         </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 18, color: '#8a95a0', transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>&#9662;</span>
+      </div>
+      {expanded && <>
+        <div style={{ padding: '8px 24px 0', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {/* Activity pills */}
           <button style={activityFilter === '__all__' ? s.pillActive : s.pill} onClick={() => setActivityFilter('__all__')}>All</button>
           {activities.map(a => (
@@ -110,7 +115,6 @@ export default function WorkerPerformancePanel({ workers, loading }: Props) {
             </select>
           )}
         </div>
-      </div>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
@@ -159,6 +163,7 @@ export default function WorkerPerformancePanel({ workers, loading }: Props) {
           </tbody>
         </table>
       </div>
+      </>}
     </div>
   )
 }

@@ -31,6 +31,8 @@ interface Props {
   workers: WorkerRow[]
   quality: QualityRow[]
   loading: boolean
+  selectedTeam?: string
+  onTeamChange?: (team: string) => void
 }
 
 // ── Colors ───────────────────────────────────────────────────────────────────
@@ -64,9 +66,15 @@ const s: Record<string, React.CSSProperties> = {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export default function TeamDrilldownPanel({ workers, quality, loading }: Props) {
+export default function TeamDrilldownPanel({ workers, quality, loading, selectedTeam: externalTeam, onTeamChange }: Props) {
   const supervisors = useMemo(() => [...new Set(workers.filter(w => w.supervisor).map(w => w.supervisor))].sort(), [workers])
-  const [selectedTeam, setSelectedTeam] = useState<string>('')
+  const [internalTeam, setInternalTeam] = useState<string>('')
+
+  const selectedTeam = externalTeam || internalTeam
+  const setSelectedTeam = (team: string) => {
+    setInternalTeam(team)
+    onTeamChange?.(team)
+  }
 
   // Auto-select first team
   useMemo(() => {
