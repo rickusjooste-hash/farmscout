@@ -13,6 +13,8 @@ import MobileNav from '@/app/components/MobileNav'
 import BruisingQualityPanel from '@/app/components/production/BruisingQualityPanel'
 import TeamPerformancePanel from '@/app/components/production/TeamPerformancePanel'
 import WorkerPerformancePanel from '@/app/components/production/WorkerPerformancePanel'
+import TeamSummaryChartPanel from '@/app/components/production/TeamSummaryChartPanel'
+import TeamDrilldownPanel from '@/app/components/production/TeamDrilldownPanel'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -294,6 +296,7 @@ export default function ProductionPage() {
   const [pickingSessions, setPickingSessions] = useState<PickingQualityRow[]>([])
   const [avgFruitWeights, setAvgFruitWeights] = useState<Record<string, number>>({})
   const [workerData, setWorkerData] = useState<WorkerRow[]>([])
+  const [workerQuality, setWorkerQuality] = useState<{ employee_id: string; bags_sampled: number; fruit_sampled: number; fruit_with_issues: number; issue_pct: number; avg_fruit_weight_g: number | null }[]>([])
   const [workerLoading, setWorkerLoading] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -470,6 +473,15 @@ export default function ProductionPage() {
           orchard_count: v.orchards.size,
         }))
         setWorkerData(rows)
+        // Fetch QC quality per employee
+        const qcFrom = filterDate ? `${filterDate}T00:00:00Z` : seasonDateRange(season).from
+        const qcTo = filterDate ? `${filterDate}T23:59:59Z` : seasonDateRange(season).to
+        const { data: qualityData } = await supabase.rpc('get_worker_quality_summary', {
+          p_farm_ids: effectiveFarmIds,
+          p_from: qcFrom,
+          p_to: qcTo,
+        })
+        setWorkerQuality((qualityData || []) as typeof workerQuality)
       } finally {
         setWorkerLoading(false)
       }
@@ -900,6 +912,26 @@ export default function ProductionPage() {
       })
       .sort((a, b) => b.bruising - a.bruising)
   }, [filteredBruising, orchardLookup])
+
+  // Team summary data for chart panel
+  const teamSummaryData = useMemo(() => {
+    return teamBinAgg.map(t => {
+      const picking = teamPickingAgg.find(p => p.team === t.team)
+      const teamBruising = bruisingSummary.filter((b: any) => b.team === t.team || b.teamName === t.teamName)
+      const avgBruising = teamBruising.length > 0 ? teamBruising.reduce((s: number, b: any) => s + b.bruising, 0) / teamBruising.length : null
+      const teamWorkers = workerData.filter(w => w.supervisor?.toUpperCase() === t.team?.toUpperCase() && w.corrected_bins != null)
+      const totalCorrBins = teamWorkers.reduce((s, w) => s + (w.corrected_bins || 0), 0)
+      const corrBinsPerPerson = t.headcount > 0 ? totalCorrBins / t.headcount : null
+      return {
+        team: t.teamName || t.team,
+        correctedBinsPerPerson: corrBinsPerPerson,
+        dropsPerTree: picking?.avgDrops || null,
+        shinersPerTree: picking?.avgShiners || null,
+        bruisingPct: avgBruising,
+        headcount: t.headcount,
+      }
+    })
+  }, [teamBinAgg, teamPickingAgg, bruisingSummary, workerData])
 
   // ── Init Leaflet map (container is always in DOM, init once) ────────────
   useEffect(() => {
@@ -1581,6 +1613,20 @@ export default function ProductionPage() {
             {/* Worker Performance — desktop: always visible */}
             <div className="prod-desktop-only">
               <WorkerPerformancePanel workers={workerData} loading={workerLoading} />
+            </div>
+
+            {/* Team Comparison Chart — desktop */}
+            <div className="prod-desktop-only">
+              <TeamSummaryChartPanel teams={teamSummaryData} />
+            </div>
+
+            {/* Team Drilldown — desktop */}
+            <div className="prod-desktop-only">
+              <TeamDrilldownPanel
+                workers={workerData.filter(w => w.corrected_bins != null)}
+                quality={workerQuality}
+                loading={workerLoading}
+              />
             </div>
 
             {/* Harvest Loss by Orchard — desktop */}
