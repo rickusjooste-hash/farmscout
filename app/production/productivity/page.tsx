@@ -196,6 +196,14 @@ export default function ProductivityReviewPage() {
         f.push(`Only ${r.units} bags — accidental tap?`)
       }
 
+      // Unusual correction factor
+      if (r.correction_factor != null && r.correction_factor < 0.7) {
+        f.push(`Low factor ${r.correction_factor.toFixed(2)} — bins < bags?`)
+      }
+      if (r.correction_factor != null && r.correction_factor > 1.3) {
+        f.push(`High factor ${r.correction_factor.toFixed(2)} — bags < bins?`)
+      }
+
       if (f.length > 0) flags[r.id] = f
     })
     return flags
@@ -220,6 +228,18 @@ export default function ProductivityReviewPage() {
   async function restoreRow(id: string) {
     await supabase.from('worker_daily_productivity').update({ status: 'pending', exclude_reason: null }).eq('id', id)
     setRows(prev => prev.map(r => r.id === id ? { ...r, status: 'pending', exclude_reason: null } : r))
+  }
+
+  async function excludeTeam(supervisor: string) {
+    const teamIds = filteredRows.filter(r => r.supervisor === supervisor && r.status === 'pending').map(r => r.id)
+    if (teamIds.length === 0) return
+    const reason = `bulk: team ${supervisor}`
+    for (let i = 0; i < teamIds.length; i += 100) {
+      await supabase.from('worker_daily_productivity')
+        .update({ status: 'excluded', exclude_reason: reason })
+        .in('id', teamIds.slice(i, i + 100))
+    }
+    setRows(prev => prev.map(r => teamIds.includes(r.id) ? { ...r, status: 'excluded', exclude_reason: reason } : r))
   }
 
   async function excludeFiltered() {
@@ -409,6 +429,7 @@ export default function ProductivityReviewPage() {
                   <th style={{ ...s.th, textAlign: 'right' }}>Hours</th>
                   <th style={{ ...s.th, textAlign: 'right' }}>Units/Day</th>
                   <th style={{ ...s.th, textAlign: 'right' }}>Corr. Bins</th>
+                  <th style={{ ...s.th, textAlign: 'right' }}>Factor</th>
                   <th style={s.th}>Flags</th>
                   <th style={{ ...s.th, textAlign: 'center' }}>Status</th>
                   <th style={{ ...s.th, textAlign: 'center' }}>Action</th>
@@ -416,18 +437,48 @@ export default function ProductivityReviewPage() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={11} style={{ ...s.td, textAlign: 'center', color: '#8a95a0', padding: 40 }}>Loading...</td></tr>
+                  <tr><td colSpan={12} style={{ ...s.td, textAlign: 'center', color: '#8a95a0', padding: 40 }}>Loading...</td></tr>
                 ) : filteredRows.length === 0 ? (
-                  <tr><td colSpan={11} style={{ ...s.td, textAlign: 'center', color: '#8a95a0', padding: 40 }}>No data for {selectedDate}</td></tr>
+                  <tr><td colSpan={12} style={{ ...s.td, textAlign: 'center', color: '#8a95a0', padding: 40 }}>No data for {selectedDate}</td></tr>
                 ) : (
-                  filteredRows.map(r => {
+                  (() => {
+                    // Group by supervisor for team headers
+                    const groups: Record<string, ProductivityRow[]> = {}
+                    const order: string[] = []
+                    filteredRows.forEach(r => {
+                      const sup = r.supervisor || '—'
+                      if (!groups[sup]) { groups[sup] = []; order.push(sup) }
+                      groups[sup].push(r)
+                    })
+                    return order.flatMap(sup => {
+                      const teamRows = groups[sup]
+                      const pendingCount = teamRows.filter(r => r.status === 'pending').length
+                      const teamUnits = teamRows.filter(r => r.status !== 'excluded').reduce((s, r) => s + r.units, 0)
+                      const elements: React.ReactNode[] = []
+                      // Team header row
+                      elements.push(
+                        <tr key={`team-${sup}`} style={{ background: '#f0f4fa' }}>
+                          <td colSpan={7} style={{ padding: '8px 12px', fontWeight: 700, fontSize: 13, color: '#1a2a3a' }}>
+                            {sup} <span style={{ fontWeight: 400, fontSize: 11, color: '#8a95a0' }}>({teamRows.length} workers, {teamUnits.toLocaleString()} units)</span>
+                          </td>
+                          <td colSpan={5} style={{ padding: '8px 12px', textAlign: 'right' }}>
+                            {pendingCount > 0 && (
+                              <button style={{ ...s.btnDanger, fontSize: 11 }} onClick={() => excludeTeam(sup)}>
+                                Exclude Team ({pendingCount})
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                      // Data rows
+                      teamRows.forEach(r => {
                     const isExcluded = r.status === 'excluded'
                     const orchardName = r.orchard_id
                       ? orchards.find(o => o.id === r.orchard_id)?.name || '?'
                       : r.fcs_orchard_name || `#${r.fcs_orchard_nr}`
-                    return (
+                    elements.push(
                       <tr key={r.id} style={isExcluded ? s.excluded : undefined}>
-                        <td style={{ ...s.td, fontWeight: 500 }}>{r.employee?.full_name || '?'}</td>
+                        <td style={{ ...s.td, fontWeight: 500, paddingLeft: 24 }}>{r.employee?.full_name || '?'}</td>
                         <td style={{ ...s.td, color: '#6a7a70' }}>{r.supervisor || '—'}</td>
                         <td style={{ ...s.td, fontSize: 12 }}>{r.activity_name}</td>
                         <td style={{ ...s.td, color: r.orchard_id ? '#1a2a3a' : '#e85a4a' }}>{orchardName}</td>
@@ -436,6 +487,9 @@ export default function ProductivityReviewPage() {
                         <td style={{ ...s.td, textAlign: 'right', fontWeight: 600 }}>{r.units_per_man_day?.toFixed(1) || '—'}</td>
                         <td style={{ ...s.td, textAlign: 'right', fontWeight: 600, color: '#2176d9' }}>
                           {r.corrected_bins != null ? r.corrected_bins.toFixed(2) : '—'}
+                        </td>
+                        <td style={{ ...s.td, textAlign: 'right', fontSize: 12, color: r.correction_factor != null && (r.correction_factor < 0.7 || r.correction_factor > 1.3) ? '#e85a4a' : '#6a7a70' }}>
+                          {r.correction_factor != null ? r.correction_factor.toFixed(3) : '—'}
                         </td>
                         <td style={s.td}>
                           {(rowFlags[r.id] || []).map((flag, i) => (
@@ -463,7 +517,10 @@ export default function ProductivityReviewPage() {
                         </td>
                       </tr>
                     )
-                  })
+                      })
+                      return elements
+                    })
+                  })()
                 )}
               </tbody>
             </table>
