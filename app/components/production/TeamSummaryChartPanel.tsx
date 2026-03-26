@@ -23,13 +23,10 @@ interface Props {
 
 // ── Colors ───────────────────────────────────────────────────────────────────
 
-const COLORS = ['#2176d9', '#4caf72', '#f5c842', '#e85a4a', '#9c27b0', '#00bcd4', '#ff9800', '#607d8b', '#8bc34a', '#e91e63']
-
-function metricColor(metric: 'bins' | 'bruising' | 'drops', val: number): string {
-  if (metric === 'bins') return val >= 5 ? '#4caf72' : val >= 3 ? '#f5c842' : '#e85a4a'
-  if (metric === 'bruising') return val <= 5 ? '#4caf72' : val <= 15 ? '#f5c842' : '#e85a4a'
-  // drops/shiners — lower is better
-  return val < 2 ? '#4caf72' : val <= 5 ? '#f5c842' : '#e85a4a'
+const SERIES_COLORS = {
+  bins: '#2176d9',
+  bruising: '#e85a4a',
+  drops: '#f5c842',
 }
 
 // ── Styles ───────────────────────────────────────────────────────────────────
@@ -38,41 +35,25 @@ const s: Record<string, React.CSSProperties> = {
   card:       { background: '#fff', borderRadius: 14, border: '1px solid #e8e4dc', overflow: 'hidden', marginBottom: 24 },
   cardHeader: { padding: '20px 24px 16px', borderBottom: '1px solid #eef2fa', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 8 },
   cardTitle:  { fontSize: 17, fontWeight: 600, color: '#1a2a3a' },
-  pill:       { padding: '4px 10px', borderRadius: 20, border: '1px solid #d4cfca', background: '#fff', color: '#5a6a60', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' },
-  pillActive: { padding: '4px 10px', borderRadius: 20, border: '1px solid #2176d9', background: '#2176d9', color: '#fff', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' },
   empty:      { padding: 40, textAlign: 'center' as const, color: '#8a95a0', fontSize: 13 },
-}
-
-type Metric = 'bins' | 'bruising' | 'drops'
-
-const METRIC_CONFIG: Record<Metric, { label: string; key: keyof TeamData; unit: string; lowerBetter: boolean }> = {
-  bins:     { label: 'Corr. Bins/Person', key: 'correctedBinsPerPerson', unit: ' bins', lowerBetter: false },
-  bruising: { label: 'Avg Bruising %',    key: 'bruisingPct',           unit: '%',     lowerBetter: true },
-  drops:    { label: 'Drops + Shiners/Tree', key: 'dropsPerTree',       unit: '',      lowerBetter: true },
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function TeamSummaryChartPanel({ teams }: Props) {
-  const [metric, setMetric] = useState<Metric>('bins')
-
   const chartData = useMemo(() => {
-    const cfg = METRIC_CONFIG[metric]
     return teams
-      .map(t => {
-        let val: number
-        if (metric === 'drops') {
-          val = (t.dropsPerTree || 0) + (t.shinersPerTree || 0)
-        } else {
-          val = (t[cfg.key] as number) || 0
-        }
-        return { team: t.team, value: val, headcount: t.headcount }
-      })
-      .filter(d => d.value > 0)
-      .sort((a, b) => cfg.lowerBetter ? a.value - b.value : b.value - a.value)
-  }, [teams, metric])
+      .filter(t => (t.correctedBinsPerPerson || 0) > 0 || (t.bruisingPct || 0) > 0 || (t.dropsPerTree || 0) > 0)
+      .map(t => ({
+        team: t.team,
+        bins: t.correctedBinsPerPerson != null ? Math.round(t.correctedBinsPerPerson * 10) / 10 : 0,
+        bruising: t.bruisingPct != null ? Math.round(t.bruisingPct * 10) / 10 : 0,
+        drops: Math.round(((t.dropsPerTree || 0) + (t.shinersPerTree || 0)) * 10) / 10,
+      }))
+      .sort((a, b) => b.bins - a.bins)
+  }, [teams])
 
-  if (teams.length === 0) return null
+  if (teams.length === 0 || chartData.length === 0) return null
 
   return (
     <div style={s.card}>
@@ -80,36 +61,48 @@ export default function TeamSummaryChartPanel({ teams }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={s.cardTitle}>Team Comparison</span>
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {(['bins', 'bruising', 'drops'] as Metric[]).map(m => (
-            <button key={m} style={metric === m ? s.pillActive : s.pill} onClick={() => setMetric(m)}>
-              {METRIC_CONFIG[m].label}
-            </button>
-          ))}
+        <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#8a95a0' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 2, background: SERIES_COLORS.bins, display: 'inline-block' }} />
+            Corr. Bins/Person
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 2, background: SERIES_COLORS.bruising, display: 'inline-block' }} />
+            Bruising %
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 2, background: SERIES_COLORS.drops, display: 'inline-block' }} />
+            Drops+Shiners/Tree
+          </span>
         </div>
       </div>
       <div style={{ padding: '16px 24px 20px' }}>
-        {chartData.length === 0 ? (
-          <div style={s.empty}>No data</div>
-        ) : (
-          <ResponsiveContainer width="100%" height={Math.max(200, chartData.length * 40 + 40)}>
-            <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 40, top: 5, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" fontSize={11} tick={{ fill: '#8a95a0' }} />
-              <YAxis type="category" dataKey="team" width={90} fontSize={12} tick={{ fill: '#1a2a3a' }} />
-              <Tooltip
-                formatter={(val: any) => [`${Number(val).toFixed(1)}${METRIC_CONFIG[metric].unit}`, METRIC_CONFIG[metric].label]}
-                contentStyle={{ borderRadius: 8, fontSize: 12 }}
-              />
-              <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={24}>
-                {chartData.map((d, i) => (
-                  <Cell key={d.team} fill={metricColor(metric, d.value)} />
-                ))}
-                <LabelList dataKey="value" position="right" fontSize={11} formatter={(v: any) => Number(v).toFixed(1)} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        )}
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={chartData} margin={{ left: 0, right: 10, top: 10, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="team" fontSize={11} tick={{ fill: '#1a2a3a' }} interval={0} angle={-30} textAnchor="end" height={50} />
+            <YAxis yAxisId="left" fontSize={10} tick={{ fill: '#8a95a0' }} />
+            <YAxis yAxisId="right" orientation="right" fontSize={10} tick={{ fill: '#8a95a0' }} />
+            <Tooltip
+              contentStyle={{ borderRadius: 8, fontSize: 12 }}
+              formatter={(val: any, name: any) => {
+                const v = Number(val).toFixed(1)
+                if (name === 'bins') return [v, 'Corr. Bins/Person']
+                if (name === 'bruising') return [`${v}%`, 'Bruising']
+                return [v, 'Drops+Shiners/Tree']
+              }}
+            />
+            <Bar yAxisId="left" dataKey="bins" fill={SERIES_COLORS.bins} radius={[4, 4, 0, 0]} barSize={20} name="bins">
+              <LabelList dataKey="bins" position="top" fontSize={9} formatter={(v: any) => Number(v).toFixed(1)} />
+            </Bar>
+            <Bar yAxisId="right" dataKey="bruising" fill={SERIES_COLORS.bruising} radius={[4, 4, 0, 0]} barSize={20} name="bruising">
+              <LabelList dataKey="bruising" position="top" fontSize={9} formatter={(v: any) => `${Number(v).toFixed(1)}%`} />
+            </Bar>
+            <Bar yAxisId="right" dataKey="drops" fill={SERIES_COLORS.drops} radius={[4, 4, 0, 0]} barSize={20} name="drops">
+              <LabelList dataKey="drops" position="top" fontSize={9} formatter={(v: any) => Number(v).toFixed(1)} />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   )
