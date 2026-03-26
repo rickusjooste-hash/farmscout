@@ -1630,6 +1630,10 @@ export default function ProductionPage() {
                 loading={workerLoading}
                 selectedTeam={drilldownTeam}
                 onTeamChange={setDrilldownTeam}
+                farmAvgBins={(() => {
+                  const valid = workerData.filter(w => w.corrected_bins != null && w.corrected_bins > 0)
+                  return valid.length > 0 ? valid.reduce((s, w) => s + w.corrected_bins!, 0) / valid.length : 0
+                })()}
               />
             </div>
 

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell, LabelList,
+  ResponsiveContainer, Cell, LabelList, ReferenceLine,
 } from 'recharts'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -33,16 +33,15 @@ interface Props {
   loading: boolean
   selectedTeam?: string
   onTeamChange?: (team: string) => void
+  farmAvgBins?: number
 }
 
 // ── Colors ───────────────────────────────────────────────────────────────────
 
-function binsColor(val: number, avg: number): string {
-  if (avg === 0) return '#2176d9'
-  const pct = (val / avg) * 100
-  if (pct >= 120) return '#4caf72'
-  if (pct >= 80) return '#2176d9'
-  return '#e85a4a'
+function binsColor(val: number, farmAvg: number): string {
+  if (farmAvg <= 0) return '#2176d9'
+  if (val < farmAvg) return '#e85a4a'
+  return '#4caf72'
 }
 
 function issueColor(pct: number): string {
@@ -66,7 +65,7 @@ const s: Record<string, React.CSSProperties> = {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export default function TeamDrilldownPanel({ workers, quality, loading, selectedTeam: externalTeam, onTeamChange }: Props) {
+export default function TeamDrilldownPanel({ workers, quality, loading, selectedTeam: externalTeam, onTeamChange, farmAvgBins = 0 }: Props) {
   const supervisors = useMemo(() => [...new Set(workers.filter(w => w.supervisor).map(w => w.supervisor))].sort(), [workers])
   const [internalTeam, setInternalTeam] = useState<string>('')
 
@@ -151,9 +150,12 @@ export default function TeamDrilldownPanel({ workers, quality, loading, selected
                   }}
                   contentStyle={{ borderRadius: 8, fontSize: 12 }}
                 />
+                {farmAvgBins > 0 && (
+                  <ReferenceLine x={undefined} y={farmAvgBins} stroke="#e85a4a" strokeDasharray="6 4" strokeWidth={1.5} label={{ value: `Farm Avg ${farmAvgBins.toFixed(1)}`, position: 'right', fontSize: 9, fill: '#e85a4a', fontWeight: 600 }} />
+                )}
                 <Bar dataKey="bins" radius={[0, 4, 4, 0]} barSize={22}>
                   {chartData.map(d => (
-                    <Cell key={d.employeeId} fill={binsColor(d.bins, teamAvgBins)} />
+                    <Cell key={d.employeeId} fill={binsColor(d.bins, farmAvgBins)} />
                   ))}
                   <LabelList dataKey="bins" position="right" fontSize={10} formatter={(v: any) => Number(v).toFixed(2)} />
                 </Bar>
@@ -181,7 +183,7 @@ export default function TeamDrilldownPanel({ workers, quality, loading, selected
               <tbody>
                 {teamWorkers.map(w => {
                   const q = qualityMap[w.employee_id]
-                  const pct = teamAvgBins > 0 && w.corrected_bins ? (w.corrected_bins / teamAvgBins) * 100 : 0
+                  const pct = farmAvgBins > 0 && w.corrected_bins ? (w.corrected_bins / farmAvgBins) * 100 : 0
                   return (
                     <tr key={w.employee_id}>
                       <td style={{ ...s.td, fontWeight: 500 }}>{w.employee_name}</td>
