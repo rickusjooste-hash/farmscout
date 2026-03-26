@@ -88,10 +88,11 @@ export default function TeamDrilldownPanel({ workers, quality, loading, selected
     return map
   }, [quality])
 
-  // Filter to picking workers for selected team
+  // Filter to picking workers for selected team (case-insensitive)
   const teamWorkers = useMemo(() => {
+    const sel = selectedTeam?.toUpperCase()
     return workers
-      .filter(w => w.supervisor === selectedTeam)
+      .filter(w => w.supervisor?.toUpperCase() === sel)
       .sort((a, b) => (b.corrected_bins || 0) - (a.corrected_bins || 0))
   }, [workers, selectedTeam])
 
