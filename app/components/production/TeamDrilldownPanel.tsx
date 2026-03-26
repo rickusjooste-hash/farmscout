@@ -77,9 +77,9 @@ export default function TeamDrilldownPanel({ workers, quality, loading, selected
   }
 
   // Auto-select first team
-  useMemo(() => {
-    if (supervisors.length > 0 && !selectedTeam) setSelectedTeam(supervisors[0])
-  }, [supervisors])
+  if (supervisors.length > 0 && !selectedTeam) {
+    setInternalTeam(supervisors[0])
+  }
 
   // Build quality lookup
   const qualityMap = useMemo(() => {
