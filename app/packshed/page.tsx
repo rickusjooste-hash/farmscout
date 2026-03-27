@@ -19,6 +19,7 @@ interface OrchardRef { id: string; name: string; orchard_nr: number | null }
 
 interface SessionRow {
   id?: string
+  seq: number
   orchard_id: string | null
   orchard_code: string | null
   variety: string | null
@@ -27,6 +28,8 @@ interface SessionRow {
   start_time: string
   end_time: string
   smous_weight_kg: number | null
+  openingStock: StockCell[]
+  closingStock: StockCell[]
   _dirty?: boolean
 }
 
@@ -91,24 +94,35 @@ export default function DailyPackoutPage() {
 
   async function loadDayData() {
     setLoading(true)
-    // Find the most recent floor stock date before the selected date (handles weekends/holidays)
+
+    const [palRes, bwRes, sessRes] = await Promise.all([
+      supabase.from('packout_pallets').select('box_type_id,size_id,carton_count,orchard_id,orchard_code,variety').eq('packhouse_id', selectedPackhouse).eq('pack_date', packDate),
+      supabase.from('packout_bin_weights').select('id,category,net_weight_kg,seq,bin_type,gross_weight_kg,tare_weight_kg,orchard_id,bin_count').eq('packhouse_id', selectedPackhouse).eq('weigh_date', packDate).order('category').order('seq'),
+      supabase.from('packout_daily_sessions').select('id,seq,orchard_id,variety,bins_packed,start_time,end_time,smous_weight_kg').eq('packhouse_id', selectedPackhouse).eq('pack_date', packDate).order('seq'),
+    ])
+
+    // Fetch floor stock for all sessions (opening + closing)
+    const sessionIds = (sessRes.data || []).filter((s: any) => s.id).map((s: any) => s.id)
+    const { data: sessionFloorStock } = sessionIds.length > 0
+      ? await supabase.from('packout_floor_stock').select('session_id,stock_type,box_type_id,size_id,carton_count').in('session_id', sessionIds)
+      : { data: [] }
+
+    // Also load legacy date-based floor stock as fallback (for days before session migration)
     const { data: prevDateRow } = await supabase
       .from('packout_floor_stock')
       .select('stock_date')
       .eq('packhouse_id', selectedPackhouse)
       .lt('stock_date', packDate)
+      .is('session_id', null)
       .order('stock_date', { ascending: false })
       .limit(1)
     const prevStockDate = prevDateRow?.[0]?.stock_date || null
 
-    const [palRes, fsToday, fsYest, bwRes, sessRes] = await Promise.all([
-      supabase.from('packout_pallets').select('box_type_id,size_id,carton_count,orchard_id,orchard_code,variety').eq('packhouse_id', selectedPackhouse).eq('pack_date', packDate),
-      supabase.from('packout_floor_stock').select('box_type_id,size_id,carton_count').eq('packhouse_id', selectedPackhouse).eq('stock_date', packDate),
+    const [fsToday, fsYest] = await Promise.all([
+      supabase.from('packout_floor_stock').select('box_type_id,size_id,carton_count').eq('packhouse_id', selectedPackhouse).eq('stock_date', packDate).is('session_id', null),
       prevStockDate
-        ? supabase.from('packout_floor_stock').select('box_type_id,size_id,carton_count').eq('packhouse_id', selectedPackhouse).eq('stock_date', prevStockDate)
+        ? supabase.from('packout_floor_stock').select('box_type_id,size_id,carton_count').eq('packhouse_id', selectedPackhouse).eq('stock_date', prevStockDate).is('session_id', null)
         : Promise.resolve({ data: [] }),
-      supabase.from('packout_bin_weights').select('id,category,net_weight_kg,seq,bin_type,gross_weight_kg,tare_weight_kg,orchard_id,bin_count').eq('packhouse_id', selectedPackhouse).eq('weigh_date', packDate).order('category').order('seq'),
-      supabase.from('packout_daily_sessions').select('id,orchard_id,variety,bins_packed,start_time,end_time,smous_weight_kg').eq('packhouse_id', selectedPackhouse).eq('pack_date', packDate),
     ])
 
     const palletData = palRes.data || []
@@ -166,8 +180,20 @@ export default function DailyPackoutPage() {
       setJuiceDefects([])
     }
 
+    // Group session floor stock by (session_id, stock_type)
+    const sfsBySession = new Map<string, { opening: StockCell[]; closing: StockCell[] }>()
+    for (const fs of (sessionFloorStock || [])) {
+      const sid = fs.session_id
+      if (!sid) continue
+      if (!sfsBySession.has(sid)) sfsBySession.set(sid, { opening: [], closing: [] })
+      const entry = sfsBySession.get(sid)!
+      const cell: StockCell = { box_type_id: fs.box_type_id, size_id: fs.size_id, carton_count: fs.carton_count }
+      if (fs.stock_type === 'opening') entry.opening.push(cell)
+      else entry.closing.push(cell)
+    }
+
     // Build session rows: merge saved sessions with orchards from pallets
-    const savedSessions = sessRes.data || []
+    const savedSessions = (sessRes.data || []) as any[]
     const savedByOrchard = new Map<string, any>()
     for (const s of savedSessions) {
       if (s.orchard_id) savedByOrchard.set(s.orchard_id, s)
@@ -183,15 +209,44 @@ export default function DailyPackoutPage() {
       orchardSet.get(key)!.pallets++
     }
 
+    // Helper: find most recent closing stock for a variety (for auto-populating opening)
+    async function findPrevClosing(variety: string): Promise<StockCell[]> {
+      // Look for the most recent session with closing stock for this variety
+      const { data: prevSess } = await supabase
+        .from('packout_daily_sessions')
+        .select('id')
+        .eq('packhouse_id', selectedPackhouse)
+        .eq('variety', variety)
+        .lt('pack_date', packDate + 'T99')  // before or on this date
+        .order('pack_date', { ascending: false })
+        .order('seq', { ascending: false })
+        .limit(1)
+      if (!prevSess?.length) return []
+      const prevId = prevSess[0].id
+      const { data: prevFs } = await supabase
+        .from('packout_floor_stock')
+        .select('box_type_id,size_id,carton_count')
+        .eq('session_id', prevId)
+        .eq('stock_type', 'closing')
+      return (prevFs || []) as StockCell[]
+    }
+
     const sessionRows: SessionRow[] = []
+    let maxSeq = 0
+    for (const s of savedSessions) {
+      if (s.seq > maxSeq) maxSeq = s.seq
+    }
+
     for (const [, orch] of orchardSet) {
       const saved = orch.orchard_id ? savedByOrchard.get(orch.orchard_id) : null
       const orchardName = orch.orchard_id
         ? (orchards.find(o => o.id === orch.orchard_id)?.name || `Orch ${orch.orchard_code}`)
         : `Orch ${orch.orchard_code}`
 
+      const fs = saved?.id ? sfsBySession.get(saved.id) : undefined
       sessionRows.push({
         id: saved?.id,
+        seq: saved?.seq || ++maxSeq,
         orchard_id: orch.orchard_id,
         orchard_code: orch.orchard_code,
         variety: saved?.variety || orch.variety,
@@ -200,6 +255,8 @@ export default function DailyPackoutPage() {
         start_time: saved?.start_time || '',
         end_time: saved?.end_time || '',
         smous_weight_kg: saved?.smous_weight_kg ?? null,
+        openingStock: fs?.opening || [],
+        closingStock: fs?.closing || [],
       })
     }
 
@@ -207,8 +264,10 @@ export default function DailyPackoutPage() {
     for (const s of savedSessions) {
       if (s.orchard_id && !orchardSet.has(s.orchard_id)) {
         const orchardName = orchards.find(o => o.id === s.orchard_id)?.name || 'Unknown'
+        const fs = s.id ? sfsBySession.get(s.id) : undefined
         sessionRows.push({
           id: s.id,
+          seq: s.seq || ++maxSeq,
           orchard_id: s.orchard_id,
           orchard_code: null,
           variety: s.variety,
@@ -217,10 +276,14 @@ export default function DailyPackoutPage() {
           start_time: s.start_time || '',
           end_time: s.end_time || '',
           smous_weight_kg: s.smous_weight_kg,
+          openingStock: fs?.opening || [],
+          closingStock: fs?.closing || [],
         })
       }
     }
 
+    // Sort sessions by seq
+    sessionRows.sort((a, b) => a.seq - b.seq)
     setSessions(sessionRows)
     setLoading(false)
   }
@@ -241,6 +304,7 @@ export default function DailyPackoutPage() {
         pack_date: packDate,
         orchard_id: row.orchard_id,
         variety: row.variety,
+        seq: row.seq,
         bins_packed: row.bins_packed,
         start_time: row.start_time || null,
         end_time: row.end_time || null,
@@ -297,9 +361,25 @@ export default function DailyPackoutPage() {
     return pallets.filter(p => p.orchard_id === selectedOrchard)
   }, [pallets, selectedOrchard])
 
-  // Floor stock is per-packhouse (shared pool, not per-orchard)
-  const filteredFloorToday = floorStockToday
-  const filteredFloorYest = floorStockYesterday
+  // Session-based floor stock: aggregate opening + closing across filtered sessions
+  // Falls back to legacy date-based floor stock if no session data
+  const hasSessionFloorStock = sessions.some(s => s.openingStock.length > 0 || s.closingStock.length > 0)
+
+  const filteredFloorToday = useMemo(() => {
+    if (!hasSessionFloorStock) return floorStockToday
+    // Aggregate closing stock across filtered sessions
+    const cells: StockCell[] = []
+    for (const s of filteredSessions) cells.push(...s.closingStock)
+    return cells
+  }, [filteredSessions, hasSessionFloorStock, floorStockToday])
+
+  const filteredFloorYest = useMemo(() => {
+    if (!hasSessionFloorStock) return floorStockYesterday
+    // Aggregate opening stock across filtered sessions
+    const cells: StockCell[] = []
+    for (const s of filteredSessions) cells.push(...s.openingStock)
+    return cells
+  }, [filteredSessions, hasSessionFloorStock, floorStockYesterday])
 
   const filteredBinWeights = useMemo(() => {
     if (selectedOrchard === 'all') return binWeights
