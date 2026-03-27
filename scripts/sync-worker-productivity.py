@@ -109,19 +109,21 @@ def _fetch_orchard_map():
 
 
 def _fetch_production_bins(work_date_str):
-    """Fetch production_bins for a given date → {supervisor: total_bins}."""
+    """Fetch production_bins for a given date → {(team_upper, orchard_id): total_bins}."""
     resp = requests.get(
-        f'{SUPABASE_URL}/rest/v1/production_bins?received_date=eq.{work_date_str}&select=team,total',
+        f'{SUPABASE_URL}/rest/v1/production_bins?received_date=eq.{work_date_str}&select=team,orchard_id,total',
         headers={'apikey': SERVICE_KEY, 'Authorization': f'Bearer {SERVICE_KEY}'},
         timeout=30,
     )
     resp.raise_for_status()
-    team_bins = {}
+    bins = {}
     for row in resp.json():
-        team = (row.get('team') or '').strip()
-        if team:
-            team_bins[team] = team_bins.get(team, 0) + (row.get('total') or 0)
-    return team_bins
+        team = (row.get('team') or '').strip().upper()
+        oid = row.get('orchard_id')
+        if team and oid:
+            key = (team, oid)
+            bins[key] = bins.get(key, 0) + (row.get('total') or 0)
+    return bins
 
 
 def _fetch_orchard_commodities():
@@ -304,10 +306,10 @@ def sync(target_date: date):
 
 
 def _apply_correction(date_str, orchard_bpb):
-    """Compute and apply correction factor for picking rows."""
-    # Fetch team bins for this date
-    team_bins = _fetch_production_bins(date_str)
-    if not team_bins:
+    """Compute and apply correction factor per orchard+team for picking rows."""
+    # Fetch bins received per (team, orchard) for this date
+    orchard_team_bins = _fetch_production_bins(date_str)
+    if not orchard_team_bins:
         log.info("No production_bins data for %s — correction factor not applied", date_str)
         return
 
@@ -326,29 +328,31 @@ def _apply_correction(date_str, orchard_bpb):
     if not picking_rows:
         return
 
-    # Normalize team_bins keys to uppercase for case-insensitive matching
-    team_bins_upper = {k.upper(): v for k, v in team_bins.items()}
-
-    # Aggregate total bags per supervisor (team)
-    team_total_bags = {}
+    # Aggregate total bags per (team, orchard)
+    orchard_team_bags = {}
     for r in picking_rows:
         sup = (r.get('supervisor') or '').strip().upper()
-        if sup:
-            team_total_bags[sup] = team_total_bags.get(sup, 0) + float(r.get('units') or 0)
+        oid = r.get('orchard_id')
+        if sup and oid:
+            key = (sup, oid)
+            orchard_team_bags[key] = orchard_team_bags.get(key, 0) + float(r.get('units') or 0)
 
     # Compute correction per row
     patches = []
     for r in picking_rows:
         sup = (r.get('supervisor') or '').strip().upper()
-        actual_bins = team_bins_upper.get(sup)
-        total_bags = team_total_bags.get(sup)
-        orchard_id = r.get('orchard_id')
+        oid = r.get('orchard_id')
+        if not sup or not oid:
+            continue
+
+        key = (sup, oid)
+        actual_bins = orchard_team_bins.get(key)
+        total_bags = orchard_team_bags.get(key)
 
         if not actual_bins or not total_bags or total_bags == 0:
             continue
 
-        # Look up bags_per_bin from orchard's commodity
-        bags_per_bin = orchard_bpb.get(orchard_id) or 53
+        bags_per_bin = orchard_bpb.get(oid) or 53
 
         factor = (actual_bins * bags_per_bin) / total_bags
         units = float(r.get('units') or 0)
@@ -389,7 +393,7 @@ def _apply_correction(date_str, orchard_bpb):
             log.warning("RPC correction request failed: %s", exc)
 
     log.info("Applied correction factor to %d / %d picking rows (teams with bins: %s)",
-             patched, len(picking_rows), list(team_bins.keys()))
+             patched, len(picking_rows), len(orchard_team_bins))
 
 
 # ── Schedule ─────────────────────────────────────────────────────────────────
