@@ -266,7 +266,21 @@ def sync(target_date: date):
     if unmapped_orchards:
         log.warning("Unmapped FCS orchards: %s", [(nr, name) for nr, name in unmapped_orchards])
 
-    # 4. Upsert to Supabase (batches of 500)
+    # 4. Delete existing rows for this date, then insert fresh
+    #    (handles orchard corrections in FCS — old orchard row gets removed)
+    try:
+        del_resp = requests.delete(
+            f'{SUPABASE_URL}/rest/v1/worker_daily_productivity?work_date=eq.{date_str}',
+            headers={**HEADERS, 'Prefer': 'return=minimal'},
+            timeout=30,
+        )
+        if del_resp.status_code < 400:
+            log.info("Cleared existing rows for %s", date_str)
+        else:
+            log.warning("Failed to clear rows for %s: %d", date_str, del_resp.status_code)
+    except requests.RequestException as exc:
+        log.warning("Clear request failed: %s", exc)
+
     total_upserted = 0
     batch_size = 500
     for i in range(0, len(payload), batch_size):
