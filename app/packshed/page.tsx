@@ -110,28 +110,35 @@ export default function DailyPackoutPage() {
       ? await supabase.from('packout_floor_stock').select('session_id,stock_type,box_type_id,size_id,carton_count').in('session_id', sessionIds)
       : { data: [] }
 
-    // Legacy date-based floor stock fallback (for days before session migration)
-    const { data: prevDateRow } = await supabase
-      .from('packout_floor_stock')
-      .select('stock_date')
-      .eq('packhouse_id', selectedPackhouse)
-      .lt('stock_date', packDate)
-      .is('session_id', null)
-      .order('stock_date', { ascending: false })
-      .limit(1)
-    const prevStockDate = prevDateRow?.[0]?.stock_date || null
+    // Legacy date-based floor stock fallback (only for dates before session migration on 2026-03-24)
+    let legacyToday: StockCell[] = []
+    let legacyYest: StockCell[] = []
 
-    const [fsToday, fsYest] = await Promise.all([
-      supabase.from('packout_floor_stock').select('box_type_id,size_id,carton_count').eq('packhouse_id', selectedPackhouse).eq('stock_date', packDate).is('session_id', null),
-      prevStockDate
-        ? supabase.from('packout_floor_stock').select('box_type_id,size_id,carton_count').eq('packhouse_id', selectedPackhouse).eq('stock_date', prevStockDate).is('session_id', null)
-        : Promise.resolve({ data: [] }),
-    ])
+    if (packDate < '2026-03-24') {
+      const { data: prevDateRow } = await supabase
+        .from('packout_floor_stock')
+        .select('stock_date')
+        .eq('packhouse_id', selectedPackhouse)
+        .lt('stock_date', packDate)
+        .is('session_id', null)
+        .order('stock_date', { ascending: false })
+        .limit(1)
+      const prevStockDate = prevDateRow?.[0]?.stock_date || null
+
+      const [fsTodayRes, fsYestRes] = await Promise.all([
+        supabase.from('packout_floor_stock').select('box_type_id,size_id,carton_count').eq('packhouse_id', selectedPackhouse).eq('stock_date', packDate).is('session_id', null),
+        prevStockDate
+          ? supabase.from('packout_floor_stock').select('box_type_id,size_id,carton_count').eq('packhouse_id', selectedPackhouse).eq('stock_date', prevStockDate).is('session_id', null)
+          : Promise.resolve({ data: [] as any[] }),
+      ])
+      legacyToday = (fsTodayRes.data || []) as StockCell[]
+      legacyYest = (fsYestRes.data || []) as StockCell[]
+    }
 
     const palletData = palRes.data || []
     setPallets(palletData)
-    setFloorStockToday(fsToday.data || [])
-    setFloorStockYesterday(fsYest.data || [])
+    setFloorStockToday(legacyToday)
+    setFloorStockYesterday(legacyYest)
     setBinWeights(bwRes.data || [])
 
     // Fetch juice samples + defects for this date and packhouse
