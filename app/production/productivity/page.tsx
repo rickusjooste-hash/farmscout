@@ -81,6 +81,13 @@ export default function ProductivityReviewPage() {
   const [mappingOrchardNr, setMappingOrchardNr] = useState<number | null>(null)
   const [mappingOrchardId, setMappingOrchardId] = useState('')
 
+  // Inline edit state
+  const [editingHoursId, setEditingHoursId] = useState<string | null>(null)
+  const [editHoursValue, setEditHoursValue] = useState('')
+  const [editingTeamOrchard, setEditingTeamOrchard] = useState<string | null>(null)
+  const [editFromOrchardId, setEditFromOrchardId] = useState('')
+  const [editToOrchardId, setEditToOrchardId] = useState('')
+
   useEffect(() => {
     if (contextLoaded) loadData()
   }, [contextLoaded, selectedDate])
@@ -314,6 +321,39 @@ export default function ProductivityReviewPage() {
     await loadData()
   }
 
+  // Inline edit: hours for a single row
+  async function saveHoursEdit(row: ProductivityRow) {
+    const newHours = parseFloat(editHoursValue)
+    if (isNaN(newHours) || newHours < 0) { setEditingHoursId(null); return }
+    const uph = newHours > 0 ? row.units / newHours : null
+    const upd = uph ? uph * 9 : null
+    await supabase.from('worker_daily_productivity').update({
+      hours: newHours,
+      units_per_hour: uph,
+      units_per_man_day: upd,
+    }).eq('id', row.id)
+    setRows(prev => prev.map(r => r.id === row.id ? { ...r, hours: newHours, units_per_hour: uph, units_per_man_day: upd } : r))
+    setEditingHoursId(null)
+  }
+
+  // Change orchard for a team: all pending rows matching a specific FROM orchard → TO orchard
+  async function saveTeamOrchard(supervisor: string) {
+    if (!editFromOrchardId || !editToOrchardId) { setEditingTeamOrchard(null); return }
+    const matchingIds = rows
+      .filter(r => r.supervisor === supervisor && r.status === 'pending' && r.orchard_id === editFromOrchardId)
+      .map(r => r.id)
+    if (matchingIds.length === 0) { setEditingTeamOrchard(null); return }
+    for (let i = 0; i < matchingIds.length; i += 100) {
+      await supabase.from('worker_daily_productivity')
+        .update({ orchard_id: editToOrchardId })
+        .in('id', matchingIds.slice(i, i + 100))
+    }
+    setRows(prev => prev.map(r => matchingIds.includes(r.id) ? { ...r, orchard_id: editToOrchardId } : r))
+    setEditingTeamOrchard(null)
+    setEditFromOrchardId('')
+    setEditToOrchardId('')
+  }
+
   if (!allowed) return null
 
   return (
@@ -452,7 +492,11 @@ export default function ProductivityReviewPage() {
                       groups[sup].push(r)
                     })
                     return order.flatMap(sup => {
-                      const teamRows = groups[sup]
+                      const teamRows = groups[sup].sort((a, b) => {
+                        const oa = a.orchard_id ? (orchards.find(o => o.id === a.orchard_id)?.name || '') : (a.fcs_orchard_name || '')
+                        const ob = b.orchard_id ? (orchards.find(o => o.id === b.orchard_id)?.name || '') : (b.fcs_orchard_name || '')
+                        return oa.localeCompare(ob) || b.units - a.units
+                      })
                       const pendingCount = teamRows.filter(r => r.status === 'pending').length
                       const teamUnits = teamRows.filter(r => r.status !== 'excluded').reduce((s, r) => s + r.units, 0)
                       const elements: React.ReactNode[] = []
@@ -463,11 +507,40 @@ export default function ProductivityReviewPage() {
                             {sup} <span style={{ fontWeight: 400, fontSize: 11, color: '#8a95a0' }}>({teamRows.length} workers, {teamUnits.toLocaleString()} units)</span>
                           </td>
                           <td colSpan={5} style={{ padding: '8px 12px', textAlign: 'right' }}>
+                            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
+                            {editingTeamOrchard === sup ? (() => {
+                              // Get distinct orchards this team currently has
+                              const teamOrchardIds = [...new Set(teamRows.filter(r => r.orchard_id && r.status === 'pending').map(r => r.orchard_id!))]
+                              const fromCount = editFromOrchardId ? teamRows.filter(r => r.orchard_id === editFromOrchardId && r.status === 'pending').length : 0
+                              return <>
+                                <span style={{ fontSize: 11, color: '#8a95a0' }}>from</span>
+                                <select style={{ ...s.select, fontSize: 11 }} value={editFromOrchardId} onChange={e => setEditFromOrchardId(e.target.value)}>
+                                  <option value="">Select...</option>
+                                  {teamOrchardIds.map(oid => {
+                                    const o = orchards.find(x => x.id === oid)
+                                    return <option key={oid} value={oid}>{o ? `${o.orchard_nr ? o.orchard_nr + ' ' : ''}${o.name}` : oid}</option>
+                                  })}
+                                </select>
+                                <span style={{ fontSize: 11, color: '#8a95a0' }}>to</span>
+                                <select style={{ ...s.select, fontSize: 11 }} value={editToOrchardId} onChange={e => setEditToOrchardId(e.target.value)}>
+                                  <option value="">Select...</option>
+                                  {orchards.map(o => <option key={o.id} value={o.id}>{o.orchard_nr ? `${o.orchard_nr} ` : ''}{o.name}{o.variety ? ` (${o.variety})` : ''}</option>)}
+                                </select>
+                                {editFromOrchardId && <span style={{ fontSize: 10, color: '#8a95a0' }}>({fromCount} rows)</span>}
+                                <button style={{ ...s.btn, padding: '4px 10px', fontSize: 11 }} onClick={() => saveTeamOrchard(sup)} disabled={!editFromOrchardId || !editToOrchardId}>Save</button>
+                                <button style={{ ...s.btnOutline, padding: '4px 10px', fontSize: 11 }} onClick={() => setEditingTeamOrchard(null)}>Cancel</button>
+                              </>
+                            })() : (
+                              <button style={{ ...s.btnOutline, padding: '4px 10px', fontSize: 11 }} onClick={() => { setEditingTeamOrchard(sup); setEditFromOrchardId(''); setEditToOrchardId('') }}>
+                                Change Orchard
+                              </button>
+                            )}
                             {pendingCount > 0 && (
                               <button style={{ ...s.btnDanger, fontSize: 11 }} onClick={() => excludeTeam(sup)}>
                                 Exclude Team ({pendingCount})
                               </button>
                             )}
+                            </div>
                           </td>
                         </tr>
                       )
@@ -484,7 +557,27 @@ export default function ProductivityReviewPage() {
                         <td style={{ ...s.td, fontSize: 12 }}>{r.activity_name}</td>
                         <td style={{ ...s.td, color: r.orchard_id ? '#1a2a3a' : '#e85a4a' }}>{orchardName}</td>
                         <td style={{ ...s.td, textAlign: 'right', fontWeight: 600 }}>{r.units}</td>
-                        <td style={{ ...s.td, textAlign: 'right', color: '#6a7a70' }}>{r.hours?.toFixed(1) || '—'}</td>
+                        <td style={{ ...s.td, textAlign: 'right', color: '#6a7a70' }}>
+                          {editingHoursId === r.id ? (
+                            <input
+                              type="number" step="0.1" min="0"
+                              autoFocus
+                              value={editHoursValue}
+                              onChange={e => setEditHoursValue(e.target.value)}
+                              onBlur={() => saveHoursEdit(r)}
+                              onKeyDown={e => { if (e.key === 'Enter') saveHoursEdit(r); if (e.key === 'Escape') setEditingHoursId(null) }}
+                              style={{ width: 55, padding: '2px 4px', borderRadius: 4, border: '1px solid #2176d9', fontSize: 13, textAlign: 'right' as const, outline: 'none' }}
+                            />
+                          ) : (
+                            <span
+                              onClick={() => { if (r.status === 'pending') { setEditingHoursId(r.id); setEditHoursValue(r.hours?.toFixed(1) || '') } }}
+                              style={{ cursor: r.status === 'pending' ? 'pointer' : 'default', borderBottom: r.status === 'pending' ? '1px dashed #ccc' : 'none' }}
+                              title={r.status === 'pending' ? 'Click to edit' : undefined}
+                            >
+                              {r.hours?.toFixed(1) || '—'}
+                            </span>
+                          )}
+                        </td>
                         <td style={{ ...s.td, textAlign: 'right', fontWeight: 600 }}>{r.units_per_man_day?.toFixed(1) || '—'}</td>
                         <td style={{ ...s.td, textAlign: 'right', fontWeight: 600, color: '#2176d9' }}>
                           {r.corrected_bins != null ? r.corrected_bins.toFixed(2) : '—'}
