@@ -334,7 +334,7 @@ def _apply_correction(date_str, orchard_bpb):
             continue
 
         # Look up bags_per_bin from orchard's commodity
-        bags_per_bin = orchard_bpb.get(orchard_id, 53) if orchard_id else 53
+        bags_per_bin = orchard_bpb.get(orchard_id) or 53
 
         factor = (actual_bins * bags_per_bin) / total_bags
         units = float(r.get('units') or 0)
