@@ -349,12 +349,16 @@ def _apply_correction(date_str, orchard_bpb):
         actual_bins = orchard_team_bins.get(key)
         total_bags = orchard_team_bags.get(key)
 
-        if not actual_bins or not total_bags or total_bags == 0:
+        if not total_bags or total_bags == 0:
             continue
 
         bags_per_bin = orchard_bpb.get(oid) or 53
 
-        factor = (actual_bins * bags_per_bin) / total_bags
+        if actual_bins:
+            factor = (actual_bins * bags_per_bin) / total_bags
+        else:
+            # No bins received — default factor 1.0 (raw bags / bags_per_bin)
+            factor = 1.0
         units = float(r.get('units') or 0)
         corrected_bags = round(units * factor, 2)
         corrected_bins = round(corrected_bags / bags_per_bin, 4)

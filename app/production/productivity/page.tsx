@@ -197,10 +197,11 @@ export default function ProductivityReviewPage() {
       }
 
       // Unusual correction factor
-      if (r.correction_factor != null && r.correction_factor < 0.7) {
+      if (r.correction_factor != null && r.correction_factor === 1 && r.activity_name === 'Harvest/Pick/Sort/uitry') {
+        f.push('No bins received — using raw bags')
+      } else if (r.correction_factor != null && r.correction_factor < 0.7) {
         f.push(`Low factor ${r.correction_factor.toFixed(2)} — bins < bags?`)
-      }
-      if (r.correction_factor != null && r.correction_factor > 1.3) {
+      } else if (r.correction_factor != null && r.correction_factor > 1.3) {
         f.push(`High factor ${r.correction_factor.toFixed(2)} — bags < bins?`)
       }
 
