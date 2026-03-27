@@ -15,13 +15,12 @@ interface ValidCombo { box_type_id: string; size_id: string }
 interface PalletRow { box_type_id: string | null; size_id: string | null; carton_count: number; orchard_id: string | null; orchard_code: string | null; variety: string | null }
 interface StockCell { box_type_id: string; size_id: string; carton_count: number }
 interface BinWeight { id: string; category: string; net_weight_kg: number; seq: number; bin_type: string; gross_weight_kg: number; tare_weight_kg: number; orchard_id: string | null; bin_count: number }
-interface OrchardRef { id: string; name: string; orchard_nr: number | null }
+interface OrchardRef { id: string; name: string; orchard_nr: number | null; variety: string | null }
 
 interface SessionRow {
-  id?: string
+  id: string
   seq: number
   orchard_id: string | null
-  orchard_code: string | null
   variety: string | null
   orchard_name: string
   bins_packed: number | null
@@ -64,6 +63,10 @@ export default function DailyPackoutPage() {
   const [packDate, setPackDate] = useState(new Date().toISOString().split('T')[0])
   const [loading, setLoading] = useState(true)
 
+  // Session CRUD state
+  const [addingSession, setAddingSession] = useState(false)
+  const [showAddRow, setShowAddRow] = useState(false)
+
   // ── Load reference data ──────────────────────────────────────────────
 
   useEffect(() => {
@@ -81,7 +84,7 @@ export default function DailyPackoutPage() {
       supabase.from('packout_box_types').select('id,code,name,pack_code,grade,cartons_per_pallet,weight_per_carton_kg').eq('is_active', true).order('code'),
       supabase.from('packout_sizes').select('id,label,sort_order').eq('is_active', true).order('sort_order'),
       supabase.from('packout_box_type_sizes').select('box_type_id,size_id').eq('is_active', true),
-      supabase.from('orchards').select('id,name,orchard_nr').eq('is_active', true).order('orchard_nr'),
+      supabase.from('orchards').select('id,name,orchard_nr,variety').eq('is_active', true).order('orchard_nr'),
     ])
     setPackhouses(phRes.data || [])
     setBoxTypes(btRes.data || [])
@@ -98,7 +101,7 @@ export default function DailyPackoutPage() {
     const [palRes, bwRes, sessRes] = await Promise.all([
       supabase.from('packout_pallets').select('box_type_id,size_id,carton_count,orchard_id,orchard_code,variety').eq('packhouse_id', selectedPackhouse).eq('pack_date', packDate),
       supabase.from('packout_bin_weights').select('id,category,net_weight_kg,seq,bin_type,gross_weight_kg,tare_weight_kg,orchard_id,bin_count').eq('packhouse_id', selectedPackhouse).eq('weigh_date', packDate).order('category').order('seq'),
-      supabase.from('packout_daily_sessions').select('id,seq,orchard_id,variety,bins_packed,start_time,end_time,smous_weight_kg').eq('packhouse_id', selectedPackhouse).eq('pack_date', packDate).order('seq'),
+      supabase.from('packout_daily_sessions').select('id,seq,orchard_id,variety,bins_packed,start_time,end_time,smous_weight_kg,orchards(name,variety)').eq('packhouse_id', selectedPackhouse).eq('pack_date', packDate).order('seq'),
     ])
 
     // Fetch floor stock for all sessions (opening + closing)
@@ -107,7 +110,7 @@ export default function DailyPackoutPage() {
       ? await supabase.from('packout_floor_stock').select('session_id,stock_type,box_type_id,size_id,carton_count').in('session_id', sessionIds)
       : { data: [] }
 
-    // Also load legacy date-based floor stock as fallback (for days before session migration)
+    // Legacy date-based floor stock fallback (for days before session migration)
     const { data: prevDateRow } = await supabase
       .from('packout_floor_stock')
       .select('stock_date')
@@ -146,7 +149,6 @@ export default function DailyPackoutPage() {
         .in('sample_id', sampleIds)
 
       if (defects && defects.length > 0) {
-        // Aggregate by pest_id, lookup names
         const byPest = new Map<string, number>()
         for (const d of defects) {
           byPest.set(d.pest_id, (byPest.get(d.pest_id) || 0) + d.count)
@@ -155,7 +157,6 @@ export default function DailyPackoutPage() {
         const { data: pests } = await supabase.from('pests').select('id,name').in('id', pestIds)
         const pestNames = new Map((pests || []).map(p => [p.id, p.name]))
 
-        // Also try commodity_pests for Afrikaans names
         const { data: cpests } = await supabase
           .from('commodity_pests')
           .select('pest_id,display_name_af')
@@ -192,103 +193,119 @@ export default function DailyPackoutPage() {
       else entry.closing.push(cell)
     }
 
-    // Build session rows: merge saved sessions with orchards from pallets
-    const savedSessions = (sessRes.data || []) as any[]
-    const savedByOrchard = new Map<string, any>()
-    for (const s of savedSessions) {
-      if (s.orchard_id) savedByOrchard.set(s.orchard_id, s)
-    }
-
-    // Get distinct orchards from pallets
-    const orchardSet = new Map<string, { orchard_id: string | null; orchard_code: string; variety: string | null; pallets: number }>()
-    for (const p of palletData) {
-      const key = p.orchard_id || p.orchard_code || 'unknown'
-      if (!orchardSet.has(key)) {
-        orchardSet.set(key, { orchard_id: p.orchard_id, orchard_code: p.orchard_code || '', variety: p.variety, pallets: 0 })
+    // Build session rows from DB only — no pallet merging
+    const sessionRows: SessionRow[] = (sessRes.data || []).map((s: any) => {
+      const fs = s.id ? sfsBySession.get(s.id) : undefined
+      const orchData = s.orchards as { name: string; variety: string | null } | null
+      return {
+        id: s.id,
+        seq: s.seq,
+        orchard_id: s.orchard_id,
+        variety: s.variety || orchData?.variety || null,
+        orchard_name: orchData?.name || orchards.find(o => o.id === s.orchard_id)?.name || 'Unknown',
+        bins_packed: s.bins_packed ?? null,
+        start_time: s.start_time || '',
+        end_time: s.end_time || '',
+        smous_weight_kg: s.smous_weight_kg ?? null,
+        openingStock: fs?.opening || [],
+        closingStock: fs?.closing || [],
       }
-      orchardSet.get(key)!.pallets++
-    }
+    })
 
-    // Helper: find most recent closing stock for a variety (for auto-populating opening)
-    async function findPrevClosing(variety: string): Promise<StockCell[]> {
-      // Look for the most recent session with closing stock for this variety
+    setSessions(sessionRows)
+    setLoading(false)
+  }
+
+  // ── Session CRUD ──────────────────────────────────────────────────
+
+  async function addSession(orchardId: string) {
+    setAddingSession(true)
+    const orch = orchards.find(o => o.id === orchardId)
+    if (!orch) { setAddingSession(false); return }
+
+    const { data: phData } = await supabase
+      .from('packhouses').select('organisation_id').eq('id', selectedPackhouse).single()
+    if (!phData) { setAddingSession(false); return }
+
+    const nextSeq = sessions.length > 0
+      ? Math.max(...sessions.map(s => s.seq)) + 1
+      : 1
+
+    const variety = orch.variety || null
+
+    const { data: newSess } = await supabase.from('packout_daily_sessions').insert({
+      organisation_id: phData.organisation_id,
+      packhouse_id: selectedPackhouse,
+      pack_date: packDate,
+      orchard_id: orchardId,
+      variety,
+      seq: nextSeq,
+    }).select('id').single()
+
+    // Auto-copy opening stock from most recent closing for same variety
+    if (newSess?.id && variety) {
       const { data: prevSess } = await supabase
         .from('packout_daily_sessions')
         .select('id')
         .eq('packhouse_id', selectedPackhouse)
         .eq('variety', variety)
-        .lt('pack_date', packDate + 'T99')  // before or on this date
+        .neq('id', newSess.id)
         .order('pack_date', { ascending: false })
         .order('seq', { ascending: false })
         .limit(1)
-      if (!prevSess?.length) return []
-      const prevId = prevSess[0].id
-      const { data: prevFs } = await supabase
-        .from('packout_floor_stock')
-        .select('box_type_id,size_id,carton_count')
-        .eq('session_id', prevId)
-        .eq('stock_type', 'closing')
-      return (prevFs || []) as StockCell[]
-    }
 
-    const sessionRows: SessionRow[] = []
-    let maxSeq = 0
-    for (const s of savedSessions) {
-      if (s.seq > maxSeq) maxSeq = s.seq
-    }
+      if (prevSess?.length) {
+        const { data: prevClosing } = await supabase
+          .from('packout_floor_stock')
+          .select('box_type_id,size_id,carton_count')
+          .eq('session_id', prevSess[0].id)
+          .eq('stock_type', 'closing')
 
-    for (const [, orch] of orchardSet) {
-      const saved = orch.orchard_id ? savedByOrchard.get(orch.orchard_id) : null
-      const orchardName = orch.orchard_id
-        ? (orchards.find(o => o.id === orch.orchard_id)?.name || `Orch ${orch.orchard_code}`)
-        : `Orch ${orch.orchard_code}`
-
-      const fs = saved?.id ? sfsBySession.get(saved.id) : undefined
-      sessionRows.push({
-        id: saved?.id,
-        seq: saved?.seq || ++maxSeq,
-        orchard_id: orch.orchard_id,
-        orchard_code: orch.orchard_code,
-        variety: saved?.variety || orch.variety,
-        orchard_name: orchardName,
-        bins_packed: saved?.bins_packed ?? null,
-        start_time: saved?.start_time || '',
-        end_time: saved?.end_time || '',
-        smous_weight_kg: saved?.smous_weight_kg ?? null,
-        openingStock: fs?.opening || [],
-        closingStock: fs?.closing || [],
-      })
-    }
-
-    // Also include saved sessions for orchards not in today's pallets
-    for (const s of savedSessions) {
-      if (s.orchard_id && !orchardSet.has(s.orchard_id)) {
-        const orchardName = orchards.find(o => o.id === s.orchard_id)?.name || 'Unknown'
-        const fs = s.id ? sfsBySession.get(s.id) : undefined
-        sessionRows.push({
-          id: s.id,
-          seq: s.seq || ++maxSeq,
-          orchard_id: s.orchard_id,
-          orchard_code: null,
-          variety: s.variety,
-          orchard_name: orchardName,
-          bins_packed: s.bins_packed,
-          start_time: s.start_time || '',
-          end_time: s.end_time || '',
-          smous_weight_kg: s.smous_weight_kg,
-          openingStock: fs?.opening || [],
-          closingStock: fs?.closing || [],
-        })
+        if (prevClosing?.length) {
+          const openingRows = prevClosing.map(c => ({
+            organisation_id: phData.organisation_id,
+            packhouse_id: selectedPackhouse,
+            stock_date: packDate,
+            session_id: newSess.id,
+            stock_type: 'opening',
+            box_type_id: c.box_type_id,
+            size_id: c.size_id,
+            carton_count: c.carton_count,
+          }))
+          await supabase.from('packout_floor_stock').insert(openingRows)
+        }
       }
     }
 
-    // Sort sessions by seq
-    sessionRows.sort((a, b) => a.seq - b.seq)
-    setSessions(sessionRows)
-    setLoading(false)
+    setShowAddRow(false)
+    setAddingSession(false)
+    await loadDayData()
   }
 
-  // ── Session editing ─────────────────────────────────────────────────
+  async function deleteSession(sessionId: string) {
+    if (!confirm('Delete this orchard run? Floor stock entries for this session will also be deleted.')) return
+    await supabase.from('packout_daily_sessions').delete().eq('id', sessionId)
+    await loadDayData()
+  }
+
+  async function moveSession(idx: number, direction: 'up' | 'down') {
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (swapIdx < 0 || swapIdx >= sessions.length) return
+
+    const a = sessions[idx]
+    const b = sessions[swapIdx]
+    if (!a.id || !b.id) return
+
+    // Swap seq values via temp to avoid unique constraint violation
+    const tempSeq = Math.max(...sessions.map(s => s.seq)) + 100
+    await supabase.from('packout_daily_sessions').update({ seq: tempSeq }).eq('id', a.id)
+    await supabase.from('packout_daily_sessions').update({ seq: a.seq }).eq('id', b.id)
+    await supabase.from('packout_daily_sessions').update({ seq: b.seq }).eq('id', a.id)
+
+    await loadDayData()
+  }
+
+  // ── Session editing & save ────────────────────────────────────────
 
   function updateSession(idx: number, field: keyof SessionRow, value: any) {
     setSessions(prev => prev.map((s, i) => i === idx ? { ...s, [field]: value, _dirty: true } : s))
@@ -296,33 +313,16 @@ export default function DailyPackoutPage() {
 
   async function saveSessions() {
     setSavingSessions(true)
-    const dirtyRows = sessions.filter(s => s._dirty)
+    const dirtyRows = sessions.filter(s => s._dirty && s.id)
 
     for (const row of dirtyRows) {
-      const payload: any = {
-        packhouse_id: selectedPackhouse,
-        pack_date: packDate,
-        orchard_id: row.orchard_id,
+      await supabase.from('packout_daily_sessions').update({
         variety: row.variety,
-        seq: row.seq,
         bins_packed: row.bins_packed,
         start_time: row.start_time || null,
         end_time: row.end_time || null,
         smous_weight_kg: row.smous_weight_kg,
-      }
-
-      if (row.id) {
-        await supabase.from('packout_daily_sessions').update(payload).eq('id', row.id)
-      } else {
-        // Need org_id
-        const ph = packhouses.find(p => p.id === selectedPackhouse)
-        const { data: phData } = await supabase.from('packhouses').select('organisation_id').eq('id', selectedPackhouse).single()
-        if (phData) {
-          payload.organisation_id = phData.organisation_id
-          const { data } = await supabase.from('packout_daily_sessions').insert(payload).select('id').single()
-          if (data) row.id = data.id
-        }
-      }
+      }).eq('id', row.id)
     }
 
     setSavingSessions(false)
@@ -340,6 +340,16 @@ export default function DailyPackoutPage() {
 
   const totalBinsPacked = filteredSessions.reduce((s, r) => s + (r.bins_packed || 0), 0)
   const totalSmousKg = filteredSessions.reduce((s, r) => s + (r.smous_weight_kg || 0), 0)
+
+  // ── Unmatched pallets warning ──────────────────────────────────────
+
+  const unmatchedPallets = useMemo(() => {
+    const sessionOrchardIds = new Set(sessions.map(s => s.orchard_id).filter(Boolean))
+    const unmatched = pallets.filter(p => p.orchard_id && !sessionOrchardIds.has(p.orchard_id))
+    if (unmatched.length === 0) return null
+    const codes = [...new Set(unmatched.map(p => p.orchard_code || 'Unknown'))]
+    return { count: unmatched.length, codes }
+  }, [pallets, sessions])
 
   // ── Grid computations ─────────────────────────────────────────────
 
@@ -367,7 +377,6 @@ export default function DailyPackoutPage() {
 
   const filteredFloorToday = useMemo(() => {
     if (!hasSessionFloorStock) return floorStockToday
-    // Aggregate closing stock across filtered sessions
     const cells: StockCell[] = []
     for (const s of filteredSessions) cells.push(...s.closingStock)
     return cells
@@ -375,7 +384,6 @@ export default function DailyPackoutPage() {
 
   const filteredFloorYest = useMemo(() => {
     if (!hasSessionFloorStock) return floorStockYesterday
-    // Aggregate opening stock across filtered sessions
     const cells: StockCell[] = []
     for (const s of filteredSessions) cells.push(...s.openingStock)
     return cells
@@ -550,13 +558,12 @@ export default function DailyPackoutPage() {
     return (binsByCategory[cat] || []).reduce((s, b) => s + b.net_weight_kg, 0)
   }
 
-  // Mass balance: KG In = bins_packed (from session) × avg bin weight (from weighed sample)
-  // Weighed bins are a SAMPLE — not the total bins packed
+  // Mass balance: KG In = bins_packed (from session) x avg bin weight (from weighed sample)
   const avgBinWeight = catAvg('pack')
   const binsWeighed = catTotalBins('pack')
   const totalKgIn = totalBinsPacked > 0 && avgBinWeight > 0
     ? totalBinsPacked * avgBinWeight
-    : 0  // Don't guess — require bins_packed from session header
+    : 0
   const juiceKg = catTotal('juice')
   const rotKg = catTotal('rot')
 
@@ -672,23 +679,37 @@ export default function DailyPackoutPage() {
                   Orchard Runs
                   {sessions.length > 0 && <span style={{ fontWeight: 400, color: '#8a95a0', marginLeft: 8 }}>({sessions.length})</span>}
                 </h3>
-                <button
-                  style={{ ...st.btnPrimary, opacity: sessionsDirty ? 1 : 0.4 }}
-                  onClick={saveSessions}
-                  disabled={!sessionsDirty || savingSessions}
-                >
-                  {savingSessions ? 'Saving...' : 'Save'}
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    style={{ ...st.btnSecondary }}
+                    onClick={() => setShowAddRow(!showAddRow)}
+                  >
+                    + Add Session
+                  </button>
+                  <button
+                    style={{ ...st.btnPrimary, opacity: sessionsDirty ? 1 : 0.4 }}
+                    onClick={saveSessions}
+                    disabled={!sessionsDirty || savingSessions}
+                  >
+                    {savingSessions ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
               </div>
 
-              {sessions.length === 0 ? (
-                <div style={{ color: '#8a95a0', fontSize: 13, padding: '12px 0' }}>
-                  No pallets found for this date. Orchards will appear here automatically from Paltrack data.
+              {sessions.length === 0 && !showAddRow ? (
+                <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                  <div style={{ color: '#8a95a0', fontSize: 14, marginBottom: 12 }}>
+                    No sessions yet — add an orchard run to get started
+                  </div>
+                  <button style={st.btnPrimary} onClick={() => setShowAddRow(true)}>
+                    + Add Orchard Run
+                  </button>
                 </div>
               ) : (
                 <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                      <th style={{ ...st.sessionTh, width: 36 }}>#</th>
                       <th style={st.sessionTh}>Orchard</th>
                       <th style={st.sessionTh}>Variety</th>
                       <th style={st.sessionTh}>Pallets</th>
@@ -696,19 +717,23 @@ export default function DailyPackoutPage() {
                       <th style={st.sessionTh}>Start</th>
                       <th style={st.sessionTh}>End</th>
                       <th style={st.sessionTh}>Smous (kg)</th>
+                      <th style={{ ...st.sessionTh, width: 100 }}></th>
                     </tr>
                   </thead>
                   <tbody>
                     {sessions.map((s, idx) => {
-                      const orchPallets = pallets.filter(p =>
-                        (s.orchard_id && p.orchard_id === s.orchard_id) ||
-                        (!s.orchard_id && p.orchard_code === s.orchard_code)
-                      ).length
+                      const orchPallets = pallets.filter(p => s.orchard_id && p.orchard_id === s.orchard_id).length
                       return (
-                        <tr key={s.orchard_id || s.orchard_code || idx} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                        <tr key={s.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                          <td style={{ ...st.sessionTd, color: '#8a95a0', fontSize: 11 }}>{s.seq}</td>
                           <td style={{ ...st.sessionTd, fontWeight: 600 }}>{s.orchard_name}</td>
                           <td style={st.sessionTd}>
-                            <span style={{ color: '#8a95a0' }}>{s.variety || '-'}</span>
+                            <input
+                              type="text" style={{ ...st.sessionInput, width: 100 }}
+                              value={s.variety || ''}
+                              placeholder="variety"
+                              onChange={e => updateSession(idx, 'variety', e.target.value || null)}
+                            />
                           </td>
                           <td style={{ ...st.sessionTd, textAlign: 'center' }}>
                             <span style={{ background: '#eef2f7', borderRadius: 6, padding: '2px 8px', fontWeight: 600 }}>{orchPallets}</span>
@@ -743,12 +768,61 @@ export default function DailyPackoutPage() {
                               onChange={e => updateSession(idx, 'smous_weight_kg', parseFloat(e.target.value) || null)}
                             />
                           </td>
+                          <td style={{ ...st.sessionTd, whiteSpace: 'nowrap' }}>
+                            <button
+                              onClick={() => moveSession(idx, 'up')}
+                              disabled={idx === 0}
+                              style={{ ...st.tinyBtn, background: '#eef2f7', color: '#2176d9', marginRight: 2, opacity: idx === 0 ? 0.3 : 1 }}
+                              title="Move up"
+                            >{'\u25B2'}</button>
+                            <button
+                              onClick={() => moveSession(idx, 'down')}
+                              disabled={idx === sessions.length - 1}
+                              style={{ ...st.tinyBtn, background: '#eef2f7', color: '#2176d9', marginRight: 4, opacity: idx === sessions.length - 1 ? 0.3 : 1 }}
+                              title="Move down"
+                            >{'\u25BC'}</button>
+                            <button
+                              onClick={() => deleteSession(s.id)}
+                              style={{ ...st.tinyBtn, background: '#fef2f2', color: '#e85a4a' }}
+                              title="Delete"
+                            >Del</button>
+                          </td>
                         </tr>
                       )
                     })}
+                    {showAddRow && (
+                      <tr style={{ borderBottom: '1px solid #f0f0f0', background: '#f0f7ff' }}>
+                        <td style={st.sessionTd}></td>
+                        <td style={st.sessionTd} colSpan={2}>
+                          <select
+                            style={{ ...st.select, width: '100%' }}
+                            value=""
+                            onChange={e => { if (e.target.value) addSession(e.target.value) }}
+                            disabled={addingSession}
+                          >
+                            <option value="">Select orchard...</option>
+                            {orchards.map(o => (
+                              <option key={o.id} value={o.id}>
+                                {o.orchard_nr != null ? `${o.orchard_nr} – ` : ''}{o.name}
+                                {o.variety ? ` (${o.variety})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td style={st.sessionTd} colSpan={5}>
+                          <span style={{ color: '#8a95a0', fontSize: 12 }}>
+                            {addingSession ? 'Adding...' : 'Select an orchard to add a session'}
+                          </span>
+                        </td>
+                        <td style={st.sessionTd}>
+                          <button onClick={() => setShowAddRow(false)} style={{ ...st.tinyBtn, background: '#e5e7eb', color: '#5a6a70' }}>Cancel</button>
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                   <tfoot>
                     <tr style={{ background: '#f8f9fb', fontWeight: 700 }}>
+                      <td style={st.sessionTd}></td>
                       <td style={st.sessionTd}>Total</td>
                       <td style={st.sessionTd} />
                       <td style={{ ...st.sessionTd, textAlign: 'center' }}>{pallets.length}</td>
@@ -756,11 +830,23 @@ export default function DailyPackoutPage() {
                       <td style={st.sessionTd} />
                       <td style={st.sessionTd} />
                       <td style={{ ...st.sessionTd, textAlign: 'center' }}>{totalSmousKg || '-'}</td>
+                      <td style={st.sessionTd} />
                     </tr>
                   </tfoot>
                 </table>
               )}
             </div>
+
+            {/* Unmatched pallets warning */}
+            {unmatchedPallets && (
+              <div style={{
+                background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10,
+                padding: '12px 16px', marginBottom: 16, fontSize: 13, color: '#9a3412',
+              }}>
+                <strong>{unmatchedPallets.count} pallets</strong> for orchards without a session:
+                {' '}{unmatchedPallets.codes.join(', ')}
+              </div>
+            )}
 
             {/* Orchard filter pills */}
             {sessions.length > 0 && (
@@ -771,7 +857,7 @@ export default function DailyPackoutPage() {
                 >All Orchards</button>
                 {sessions.map(s => (
                   <button
-                    key={s.orchard_id || s.orchard_code}
+                    key={s.id}
                     style={{ ...st.pill, ...(selectedOrchard === s.orchard_id ? st.pillActive : {}) }}
                     onClick={() => s.orchard_id && setSelectedOrchard(s.orchard_id)}
                   >
@@ -785,7 +871,7 @@ export default function DailyPackoutPage() {
             {/* KPI strip */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 28 }}>
               <KPI label="Bins Packed" value={totalBinsPacked || '-'} sub={`${binsWeighed} weighed, avg ${avgBinWeight.toFixed(1)} kg`} />
-              <KPI label="Total KG In" value={totalKgIn > 0 ? Math.round(totalKgIn).toLocaleString() : '-'} sub={totalBinsPacked ? `${totalBinsPacked} × ${avgBinWeight.toFixed(1)} kg` : 'enter bins packed above'} color="#2176d9" />
+              <KPI label="Total KG In" value={totalKgIn > 0 ? Math.round(totalKgIn).toLocaleString() : '-'} sub={totalBinsPacked ? `${totalBinsPacked} x ${avgBinWeight.toFixed(1)} kg` : 'enter bins packed above'} color="#2176d9" />
               <KPI label="Net Cartons" value={totalCartonsOut.toLocaleString()} sub="packed today" />
               <KPI label="Conversion" value={totalKgIn > 0 ? `${conversionPct.toFixed(1)}%` : '-'} sub="cartons / KG in" color={conversionPct > 80 ? '#4caf72' : conversionPct > 0 ? '#e6a817' : '#8a95a0'} />
               <KPI label="Loss" value={totalKgIn > 0 ? `${lossPct.toFixed(1)}%` : '-'} sub="unaccounted" color={lossPct < 5 && totalKgIn > 0 ? '#4caf72' : totalKgIn > 0 ? '#e85a4a' : '#8a95a0'} />
@@ -945,7 +1031,7 @@ export default function DailyPackoutPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 600, color: '#8a95a0', textTransform: 'uppercase', marginBottom: 8 }}>KG In</div>
-                  <MBRow label={totalBinsPacked ? `${totalBinsPacked} bins × ${avgBinWeight.toFixed(1)} kg` : 'Bins packed not entered'} value={totalKgIn} />
+                  <MBRow label={totalBinsPacked ? `${totalBinsPacked} bins x ${avgBinWeight.toFixed(1)} kg` : 'Bins packed not entered'} value={totalKgIn} />
                   <MBRow label="Total KG In" value={totalKgIn} bold />
                 </div>
                 <div>
@@ -994,6 +1080,7 @@ function MBRow({ label, value, bold, color }: { label: string; value: number; bo
 const st: Record<string, React.CSSProperties> = {
   select: { padding: '8px 12px', borderRadius: 8, border: '1px solid #d4d8de', fontSize: 13, background: '#fff' },
   btnPrimary: { padding: '8px 20px', borderRadius: 8, border: 'none', background: '#2176d9', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
+  btnSecondary: { padding: '8px 20px', borderRadius: 8, border: '1px solid #d4d8de', background: '#fff', color: '#1a2a3a', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
   pill: { padding: '6px 16px', borderRadius: 20, borderWidth: 1, borderStyle: 'solid' as const, borderColor: '#d4d8de', background: '#fff', color: '#5a6a70', fontSize: 13, fontWeight: 600, cursor: 'pointer' } as React.CSSProperties,
   pillActive: { background: '#2176d9', color: '#fff', borderColor: '#2176d9' } as React.CSSProperties,
   th: { padding: '8px 10px', textAlign: 'left' as const, fontSize: 10, fontWeight: 600, color: '#8a95a0', textTransform: 'uppercase' as const, letterSpacing: '0.05em', borderBottom: '2px solid #e5e7eb' },
