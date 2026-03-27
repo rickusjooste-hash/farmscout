@@ -12,6 +12,7 @@ interface Packhouse { id: string; code: string; name: string }
 interface BoxType { id: string; code: string; name: string; cartons_per_pallet: number }
 interface Size { id: string; label: string; sort_order: number }
 interface ValidCombo { box_type_id: string; size_id: string }
+interface SessionRef { id: string; seq: number; orchard_id: string | null; variety: string | null; orchard_name: string }
 
 export default function FloorStockPage() {
   const supabase = createClient()
@@ -30,6 +31,9 @@ export default function FloorStockPage() {
 
   const [selectedPackhouse, setSelectedPackhouse] = useState('')
   const [stockDate, setStockDate] = useState(new Date().toISOString().split('T')[0])
+  const [daySessions, setDaySessions] = useState<SessionRef[]>([])
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('')
+  const [stockType, setStockType] = useState<'opening' | 'closing'>('closing')
 
   // ── Load reference data ──────────────────────────────────────────────
 
@@ -39,8 +43,12 @@ export default function FloorStockPage() {
   }, [contextLoaded])
 
   useEffect(() => {
-    if (selectedPackhouse && stockDate) loadStockData()
+    if (selectedPackhouse && stockDate) loadSessions()
   }, [selectedPackhouse, stockDate])
+
+  useEffect(() => {
+    if (selectedSessionId) loadStockData()
+  }, [selectedSessionId, stockType])
 
   async function loadReferenceData() {
     const [phRes, btRes, szRes, comboRes] = await Promise.all([
@@ -57,13 +65,34 @@ export default function FloorStockPage() {
     setLoading(false)
   }
 
+  async function loadSessions() {
+    const { data: sessData } = await supabase
+      .from('packout_daily_sessions')
+      .select('id,seq,orchard_id,variety,orchards(name)')
+      .eq('packhouse_id', selectedPackhouse)
+      .eq('pack_date', stockDate)
+      .order('seq')
+
+    const refs: SessionRef[] = (sessData || []).map((s: any) => ({
+      id: s.id,
+      seq: s.seq,
+      orchard_id: s.orchard_id,
+      variety: s.variety,
+      orchard_name: s.orchards?.name || 'Unknown',
+    }))
+    setDaySessions(refs)
+    if (refs.length > 0 && !refs.find(r => r.id === selectedSessionId)) {
+      setSelectedSessionId(refs[refs.length - 1].id) // Default to last session
+    }
+  }
+
   async function loadStockData() {
     setLoading(true)
     const { data } = await supabase
       .from('packout_floor_stock')
       .select('box_type_id,size_id,carton_count')
-      .eq('packhouse_id', selectedPackhouse)
-      .eq('stock_date', stockDate)
+      .eq('session_id', selectedSessionId)
+      .eq('stock_type', stockType)
 
     const cells = new Map<string, number>()
     for (const row of (data || [])) {
@@ -132,19 +161,37 @@ export default function FloorStockPage() {
 
   // ── Copy from yesterday ─────────────────────────────────────────────
 
-  async function copyFromYesterday() {
-    const yesterday = new Date(stockDate)
-    yesterday.setDate(yesterday.getDate() - 1)
-    const yDate = yesterday.toISOString().split('T')[0]
+  async function copyFromPreviousClosing() {
+    const session = daySessions.find(s => s.id === selectedSessionId)
+    if (!session?.variety) {
+      alert('No variety set for this session')
+      return
+    }
+
+    // Find most recent closing stock for same variety (any date)
+    const { data: prevSess } = await supabase
+      .from('packout_daily_sessions')
+      .select('id')
+      .eq('packhouse_id', selectedPackhouse)
+      .eq('variety', session.variety)
+      .neq('id', selectedSessionId)
+      .order('pack_date', { ascending: false })
+      .order('seq', { ascending: false })
+      .limit(1)
+
+    if (!prevSess?.length) {
+      alert(`No previous closing stock found for ${session.variety}`)
+      return
+    }
 
     const { data } = await supabase
       .from('packout_floor_stock')
       .select('box_type_id,size_id,carton_count')
-      .eq('packhouse_id', selectedPackhouse)
-      .eq('stock_date', yDate)
+      .eq('session_id', prevSess[0].id)
+      .eq('stock_type', 'closing')
 
     if (!data || data.length === 0) {
-      alert('No floor stock found for yesterday')
+      alert(`No closing stock found for previous ${session.variety} session`)
       return
     }
 
@@ -165,17 +212,26 @@ export default function FloorStockPage() {
     const orgId = phData?.organisation_id
     if (!orgId) { setSaving(false); return }
 
+    // Delete existing rows for this session + stock_type, then insert fresh
+    await supabase
+      .from('packout_floor_stock')
+      .delete()
+      .eq('session_id', selectedSessionId)
+      .eq('stock_type', stockType)
+
     const rows: any[] = []
     for (const bt of activeBoxTypes) {
       for (const sz of activeSizes) {
         const key = cellKey(bt.id, sz.id)
         if (!validSet.has(key)) continue
         const val = editCells.get(key) || 0
-        if (val === 0 && !stockCells.has(key)) continue
+        if (val === 0) continue
         rows.push({
           organisation_id: orgId,
           packhouse_id: selectedPackhouse,
           stock_date: stockDate,
+          session_id: selectedSessionId,
+          stock_type: stockType,
           box_type_id: bt.id,
           size_id: sz.id,
           carton_count: val,
@@ -186,7 +242,7 @@ export default function FloorStockPage() {
     if (rows.length > 0) {
       const { error } = await supabase
         .from('packout_floor_stock')
-        .upsert(rows, { onConflict: 'organisation_id,packhouse_id,stock_date,box_type_id,size_id' })
+        .insert(rows)
 
       if (error) {
         console.error('Save error:', error)
@@ -213,7 +269,7 @@ export default function FloorStockPage() {
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 700, color: '#1a2a3a', margin: 0 }}>Floor Stock</h1>
             <p style={{ fontSize: 13, color: '#8a95a0', margin: '4px 0 0' }}>
-              Count partial pallets on the floor — shared across orchards
+              Count partial pallets on the floor per session (orchard run)
             </p>
           </div>
 
@@ -224,8 +280,29 @@ export default function FloorStockPage() {
 
             <input type="date" style={s.select} value={stockDate} onChange={e => setStockDate(e.target.value)} />
 
-            <button style={s.btnSecondary} onClick={copyFromYesterday}>
-              Copy Yesterday
+            {daySessions.length > 0 && (
+              <select style={s.select} value={selectedSessionId} onChange={e => setSelectedSessionId(e.target.value)}>
+                {daySessions.map(sess => (
+                  <option key={sess.id} value={sess.id}>
+                    #{sess.seq} {sess.orchard_name} ({sess.variety || '?'})
+                  </option>
+                ))}
+              </select>
+            )}
+
+            <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid #d4d8de' }}>
+              <button
+                style={{ padding: '8px 14px', fontSize: 12, fontWeight: stockType === 'opening' ? 700 : 400, background: stockType === 'opening' ? '#2176d9' : '#fff', color: stockType === 'opening' ? '#fff' : '#5a6a60', border: 'none', cursor: 'pointer' }}
+                onClick={() => setStockType('opening')}
+              >Opening</button>
+              <button
+                style={{ padding: '8px 14px', fontSize: 12, fontWeight: stockType === 'closing' ? 700 : 400, background: stockType === 'closing' ? '#2176d9' : '#fff', color: stockType === 'closing' ? '#fff' : '#5a6a60', border: 'none', cursor: 'pointer', borderLeft: '1px solid #d4d8de' }}
+                onClick={() => setStockType('closing')}
+              >Closing</button>
+            </div>
+
+            <button style={s.btnSecondary} onClick={copyFromPreviousClosing}>
+              Copy Prev Closing
             </button>
 
             <button
