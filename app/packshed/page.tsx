@@ -91,14 +91,22 @@ export default function DailyPackoutPage() {
 
   async function loadDayData() {
     setLoading(true)
-    const yesterday = new Date(packDate)
-    yesterday.setDate(yesterday.getDate() - 1)
-    const yDate = yesterday.toISOString().split('T')[0]
+    // Find the most recent floor stock date before the selected date (handles weekends/holidays)
+    const { data: prevDateRow } = await supabase
+      .from('packout_floor_stock')
+      .select('stock_date')
+      .eq('packhouse_id', selectedPackhouse)
+      .lt('stock_date', packDate)
+      .order('stock_date', { ascending: false })
+      .limit(1)
+    const prevStockDate = prevDateRow?.[0]?.stock_date || null
 
     const [palRes, fsToday, fsYest, bwRes, sessRes] = await Promise.all([
       supabase.from('packout_pallets').select('box_type_id,size_id,carton_count,orchard_id,orchard_code,variety').eq('packhouse_id', selectedPackhouse).eq('pack_date', packDate),
       supabase.from('packout_floor_stock').select('box_type_id,size_id,carton_count').eq('packhouse_id', selectedPackhouse).eq('stock_date', packDate),
-      supabase.from('packout_floor_stock').select('box_type_id,size_id,carton_count').eq('packhouse_id', selectedPackhouse).eq('stock_date', yDate),
+      prevStockDate
+        ? supabase.from('packout_floor_stock').select('box_type_id,size_id,carton_count').eq('packhouse_id', selectedPackhouse).eq('stock_date', prevStockDate)
+        : Promise.resolve({ data: [] }),
       supabase.from('packout_bin_weights').select('id,category,net_weight_kg,seq,bin_type,gross_weight_kg,tare_weight_kg,orchard_id,bin_count').eq('packhouse_id', selectedPackhouse).eq('weigh_date', packDate).order('category').order('seq'),
       supabase.from('packout_daily_sessions').select('id,orchard_id,variety,bins_packed,start_time,end_time,smous_weight_kg').eq('packhouse_id', selectedPackhouse).eq('pack_date', packDate),
     ])
