@@ -2,6 +2,10 @@
 -- Each session (orchard run) has opening + closing floor stock grids.
 -- Closing stock of session N auto-copies to opening of session N+1 (same variety).
 
+-- 0. Drop old date-based unique constraints (block multiple sessions per date)
+ALTER TABLE packout_floor_stock DROP CONSTRAINT IF EXISTS packout_floor_stock_organisation_id_packhouse_id_stock_date_key;
+ALTER TABLE packout_floor_stock DROP CONSTRAINT IF EXISTS packout_floor_stock_ph_date_bt_sz_key;
+
 -- 1. Add session columns to floor stock
 ALTER TABLE packout_floor_stock ADD COLUMN IF NOT EXISTS session_id uuid REFERENCES packout_daily_sessions(id) ON DELETE CASCADE;
 ALTER TABLE packout_floor_stock ADD COLUMN IF NOT EXISTS stock_type text DEFAULT 'closing';

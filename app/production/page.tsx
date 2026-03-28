@@ -295,7 +295,7 @@ export default function ProductionPage() {
   const [teamEmployees, setTeamEmployees] = useState<{ team: string; farm_id: string }[]>([])
   const [pickingSessions, setPickingSessions] = useState<PickingQualityRow[]>([])
   const [avgFruitWeights, setAvgFruitWeights] = useState<Record<string, number>>({})
-  const [workerData, setWorkerData] = useState<WorkerRow[]>([])
+  const [workerRawRows, setWorkerRawRows] = useState<any[]>([])
   const [drilldownTeam, setDrilldownTeam] = useState<string>('')
   const [workerQuality, setWorkerQuality] = useState<{ employee_id: string; bags_sampled: number; fruit_sampled: number; fruit_with_issues: number; issue_pct: number; avg_fruit_weight_g: number | null }[]>([])
   const [workerLoading, setWorkerLoading] = useState(false)
@@ -446,34 +446,7 @@ export default function ProductionPage() {
             .lte('work_date', seasonDateRange(season).to.slice(0, 10))
         }
         const { data } = await q
-        // Aggregate by (employee_id, activity_name)
-        const map: Record<string, { emp: any; supervisor: string; activity: string; units: number; hours: number; umd: number[]; cb: number; cbins: number; orchards: Set<string> }> = {}
-        for (const r of (data || []) as any[]) {
-          const key = `${r.employee_id}|${r.activity_name}`
-          if (!map[key]) {
-            map[key] = { emp: r.employee, supervisor: r.supervisor || '', activity: r.activity_name, units: 0, hours: 0, umd: [], cb: 0, cbins: 0, orchards: new Set() }
-          }
-          map[key].units += r.units || 0
-          map[key].hours += r.hours || 0
-          if (r.units_per_man_day) map[key].umd.push(r.units_per_man_day)
-          map[key].cb += r.corrected_bags || 0
-          map[key].cbins += r.corrected_bins || 0
-          if (r.orchard_id) map[key].orchards.add(r.orchard_id)
-        }
-        const rows: WorkerRow[] = Object.entries(map).map(([key, v]) => ({
-          employee_id: key.split('|')[0],
-          employee_name: v.emp?.full_name || '?',
-          employee_nr: v.emp?.employee_nr || '',
-          supervisor: v.supervisor,
-          activity_name: v.activity,
-          raw_bags: v.units,
-          corrected_bags: v.cb || null,
-          corrected_bins: v.cbins || null,
-          units_per_man_day: v.umd.length > 0 ? v.umd.reduce((a, b) => a + b, 0) / v.umd.length : null,
-          hours: v.hours || null,
-          orchard_count: v.orchards.size,
-        }))
-        setWorkerData(rows)
+        setWorkerRawRows((data || []) as any[])
         // Fetch QC quality per employee
         const qcFrom = filterDate ? `${filterDate}T00:00:00Z` : seasonDateRange(season).from
         const qcTo = filterDate ? `${filterDate}T23:59:59Z` : seasonDateRange(season).to
@@ -575,6 +548,46 @@ export default function ProductionPage() {
       return true
     })
   }, [bruisingRows, selectedCommodityId, selectedVarietyGroup, selectedOrchardId, orchardLookup])
+
+  // Worker data: filter raw rows by commodity/variety/orchard, then aggregate
+  const workerData = useMemo((): WorkerRow[] => {
+    const filtered = workerRawRows.filter((r: any) => {
+      if (selectedOrchardId && r.orchard_id !== selectedOrchardId) return false
+      if (selectedCommodityId || selectedVarietyGroup) {
+        if (!r.orchard_id) return false
+        const o = orchardLookup[r.orchard_id]
+        if (selectedCommodityId && o?.commodity_id !== selectedCommodityId) return false
+        if (selectedVarietyGroup && o?.variety_group !== selectedVarietyGroup) return false
+      }
+      return true
+    })
+    const map: Record<string, { emp: any; supervisor: string; activity: string; units: number; hours: number; umd: number[]; cb: number; cbins: number; orchards: Set<string> }> = {}
+    for (const r of filtered) {
+      const key = `${r.employee_id}|${r.activity_name}`
+      if (!map[key]) {
+        map[key] = { emp: r.employee, supervisor: r.supervisor || '', activity: r.activity_name, units: 0, hours: 0, umd: [], cb: 0, cbins: 0, orchards: new Set() }
+      }
+      map[key].units += r.units || 0
+      map[key].hours += r.hours || 0
+      if (r.units_per_man_day) map[key].umd.push(r.units_per_man_day)
+      map[key].cb += r.corrected_bags || 0
+      map[key].cbins += r.corrected_bins || 0
+      if (r.orchard_id) map[key].orchards.add(r.orchard_id)
+    }
+    return Object.entries(map).map(([key, v]) => ({
+      employee_id: key.split('|')[0],
+      employee_name: v.emp?.full_name || '?',
+      employee_nr: v.emp?.employee_nr || '',
+      supervisor: v.supervisor,
+      activity_name: v.activity,
+      raw_bags: v.units,
+      corrected_bags: v.cb || null,
+      corrected_bins: v.cbins || null,
+      units_per_man_day: v.umd.length > 0 ? v.umd.reduce((a, b) => a + b, 0) / v.umd.length : null,
+      hours: v.hours || null,
+      orchard_count: v.orchards.size,
+    }))
+  }, [workerRawRows, selectedCommodityId, selectedVarietyGroup, selectedOrchardId, orchardLookup])
 
   // Bin weight cascade lookup
   const getBinWeight = useCallback((orchardId: string | null, variety: string | null) => {
@@ -723,10 +736,24 @@ export default function ProductionPage() {
     })
   }, [filteredBins, teamEmployees])
 
+  // Filter picking sessions by commodity + variety group + selected orchard
+  const filteredPickingSessions = useMemo(() => {
+    return pickingSessions.filter(row => {
+      if (selectedOrchardId && row.orchard_id !== selectedOrchardId) return false
+      if (selectedCommodityId || selectedVarietyGroup) {
+        if (!row.orchard_id) return false
+        const o = orchardLookup[row.orchard_id]
+        if (selectedCommodityId && o?.commodity_id !== selectedCommodityId) return false
+        if (selectedVarietyGroup && o?.variety_group !== selectedVarietyGroup) return false
+      }
+      return true
+    })
+  }, [pickingSessions, selectedCommodityId, selectedVarietyGroup, selectedOrchardId, orchardLookup])
+
   // Picking quality aggregation — group by team (per-tree averages)
   const teamPickingAgg = useMemo((): TeamPickingAgg[] => {
     const map: Record<string, { drops: number; shiners: number; trees: number; count: number }> = {}
-    pickingSessions.forEach(row => {
+    filteredPickingSessions.forEach(row => {
       if (!row.team) return
       if (!map[row.team]) map[row.team] = { drops: 0, shiners: 0, trees: 0, count: 0 }
       map[row.team].drops += row.total_drops
@@ -740,7 +767,7 @@ export default function ProductionPage() {
       avgDrops: val.trees > 0 ? val.drops / val.trees : 0,
       avgShiners: val.trees > 0 ? val.shiners / val.trees : 0,
     }))
-  }, [pickingSessions])
+  }, [filteredPickingSessions])
 
   // Summary KPIs for bins/person and drops/shiners
   const teamKpis = useMemo(() => {
@@ -748,9 +775,9 @@ export default function ProductionPage() {
     const totalHc = teamBinAgg.reduce((s, t) => s + t.headcount, 0)
     const avgBinsPerPerson = totalHc > 0 ? totalBins / totalHc : null
 
-    const totalDrops = pickingSessions.reduce((s, r) => s + r.total_drops, 0)
-    const totalShiners = pickingSessions.reduce((s, r) => s + r.total_shiners, 0)
-    const totalTrees = pickingSessions.reduce((s, r) => s + (r.tree_count || 10), 0)
+    const totalDrops = filteredPickingSessions.reduce((s, r) => s + r.total_drops, 0)
+    const totalShiners = filteredPickingSessions.reduce((s, r) => s + r.total_shiners, 0)
+    const totalTrees = filteredPickingSessions.reduce((s, r) => s + (r.tree_count || 10), 0)
     const totalInspections = teamPickingAgg.reduce((s, t) => s + t.inspections, 0)
     const avgDrops = totalTrees > 0 ? totalDrops / totalTrees : null
     const avgShiners = totalTrees > 0 ? totalShiners / totalTrees : null
@@ -762,7 +789,7 @@ export default function ProductionPage() {
   const orchardLoss = useMemo((): OrchardLossRow[] => {
     const orchardMap = Object.fromEntries(allOrchards.map(o => [o.id, o]))
     const map: Record<string, { drops: number; shiners: number; trees: number; count: number }> = {}
-    pickingSessions.forEach(row => {
+    filteredPickingSessions.forEach(row => {
       if (!row.orchard_id) return
       if (!map[row.orchard_id]) map[row.orchard_id] = { drops: 0, shiners: 0, trees: 0, count: 0 }
       map[row.orchard_id].drops += row.total_drops
@@ -792,7 +819,7 @@ export default function ProductionPage() {
         totalTrees: val.trees,
       }
     }).sort((a, b) => (b.tonHaLost ?? 0) - (a.tonHaLost ?? 0))
-  }, [pickingSessions, allOrchards, avgFruitWeights])
+  }, [filteredPickingSessions, allOrchards, avgFruitWeights])
 
   // Farm-wide average ton/ha lost
   const avgTonHaLost = useMemo(() => {
