@@ -550,8 +550,9 @@ export default function ProductivityReviewPage() {
                     const orchardName = r.orchard_id
                       ? orchards.find(o => o.id === r.orchard_id)?.name || '?'
                       : r.fcs_orchard_name || `#${r.fcs_orchard_nr}`
+                    const hasFlags = !isExcluded && rowFlags[r.id]?.length > 0
                     elements.push(
-                      <tr key={r.id} style={isExcluded ? s.excluded : undefined}>
+                      <tr key={r.id} style={isExcluded ? s.excluded : hasFlags ? { background: '#fff5f4' } : undefined}>
                         <td style={{ ...s.td, fontWeight: 500, paddingLeft: 24 }}>{r.employee?.full_name || '?'}</td>
                         <td style={{ ...s.td, color: '#6a7a70' }}>{r.supervisor || '—'}</td>
                         <td style={{ ...s.td, fontSize: 12 }}>{r.activity_name}</td>
@@ -570,9 +571,9 @@ export default function ProductivityReviewPage() {
                             />
                           ) : (
                             <span
-                              onClick={() => { if (r.status === 'pending') { setEditingHoursId(r.id); setEditHoursValue(r.hours?.toFixed(1) || '') } }}
-                              style={{ cursor: r.status === 'pending' ? 'pointer' : 'default', borderBottom: r.status === 'pending' ? '1px dashed #ccc' : 'none' }}
-                              title={r.status === 'pending' ? 'Click to edit' : undefined}
+                              onClick={() => { if (r.status !== 'excluded') { setEditingHoursId(r.id); setEditHoursValue(r.hours?.toFixed(1) || '') } }}
+                              style={{ cursor: r.status !== 'excluded' ? 'pointer' : 'default', borderBottom: r.status !== 'excluded' ? '1px dashed #ccc' : 'none' }}
+                              title={r.status !== 'excluded' ? 'Click to edit' : undefined}
                             >
                               {r.hours?.toFixed(1) || '—'}
                             </span>
@@ -607,6 +608,9 @@ export default function ProductivityReviewPage() {
                           )}
                           {r.status === 'excluded' && (
                             <button style={{ ...s.btnOutline, padding: '4px 10px', fontSize: 12 }} onClick={() => restoreRow(r.id)}>Restore</button>
+                          )}
+                          {r.status === 'approved' && (
+                            <button style={{ ...s.btnOutline, padding: '4px 10px', fontSize: 12, color: '#e6a817', borderColor: '#e6a817' }} onClick={() => restoreRow(r.id)}>Reopen</button>
                           )}
                         </td>
                       </tr>
