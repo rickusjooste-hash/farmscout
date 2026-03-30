@@ -458,6 +458,12 @@ export default function FertilizerPage() {
           >
             + Applicator
           </a>
+          <a
+            href="/orchards/fertilizer/soil-labels"
+            style={{ ...st.viewBtn, textDecoration: 'none', fontSize: 12, color: '#5a6a60', border: '1px solid #d4cfca' }}
+          >
+            Soil Labels
+          </a>
         </div>
 
         {/* KPI strip */}
