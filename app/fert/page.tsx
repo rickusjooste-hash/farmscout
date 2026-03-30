@@ -165,6 +165,7 @@ export default function FertAppPage() {
         line={selectedLine}
         orgId={orgId}
         userId={userId}
+        spreaderOpening={findOpening(selectedLine)}
         onConfirm={handleConfirmed}
         onBack={() => { setView('home'); setSelectedLine(null) }}
       />

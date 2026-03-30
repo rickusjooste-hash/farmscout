@@ -7,11 +7,12 @@ interface Props {
   line: FertDispatchedLine
   orgId: string
   userId: string
+  spreaderOpening: { opening: number; actualKgHa: number } | null
   onConfirm: () => void
   onBack: () => void
 }
 
-export default function ApplicationView({ line, orgId, userId, onConfirm, onBack }: Props) {
+export default function ApplicationView({ line, orgId, userId, spreaderOpening, onConfirm, onBack }: Props) {
   const hasBags = !!(line.bag_weight_kg && line.bag_weight_kg > 0)
   const prescribedBags = hasBags && line.total_qty ? Math.ceil(line.total_qty / line.bag_weight_kg!) : null
 
@@ -93,7 +94,7 @@ export default function ApplicationView({ line, orgId, userId, onConfirm, onBack
       {/* Header */}
       <div style={s.header}>
         <button onClick={onBack} style={s.backBtn}>&#8592; Back</button>
-        <div style={s.headerTitle}>{line.orchard_name}</div>
+        <div style={s.headerTitle}>{line.orchard_nr ? `${line.orchard_nr}. ` : ''}{line.orchard_name}{line.variety ? ` (${line.variety})` : ''}</div>
       </div>
 
       {/* Info strip */}
@@ -125,6 +126,12 @@ export default function ApplicationView({ line, orgId, userId, onConfirm, onBack
           <div style={{ ...s.prescribedRow, borderTop: '1px solid #2e5a2e', marginTop: 4, paddingTop: 8 }}>
             <span style={s.prescribedLabel}>Prescribed bags</span>
             <span style={{ ...s.prescribedValue, color: '#f5c842' }}>{prescribedBags} bags ({line.bag_weight_kg} kg each)</span>
+          </div>
+        )}
+        {spreaderOpening && (
+          <div style={{ ...s.prescribedRow, borderTop: '1px solid #2e5a2e', marginTop: 4, paddingTop: 8 }}>
+            <span style={s.prescribedLabel}>Spreader opening</span>
+            <span style={{ ...s.prescribedValue, color: '#4caf72', fontSize: 18, fontWeight: 800 }}>{spreaderOpening.opening.toFixed(1)}</span>
           </div>
         )}
       </div>
