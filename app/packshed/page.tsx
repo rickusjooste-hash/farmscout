@@ -3,7 +3,8 @@
 import { createClient } from '@/lib/supabase-auth'
 import { usePageGuard } from '@/lib/usePageGuard'
 import { useOrgModules } from '@/lib/useOrgModules'
-import { useEffect, useState, useMemo } from 'react'
+import { Suspense, useEffect, useState, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -32,8 +33,13 @@ interface SessionRow {
   _dirty?: boolean
 }
 
-export default function DailyPackoutPage() {
+export default function DailyPackoutPageWrapper() {
+  return <Suspense><DailyPackoutPage /></Suspense>
+}
+
+function DailyPackoutPage() {
   const supabase = createClient()
+  const searchParams = useSearchParams()
   const { isSuperAdmin, contextLoaded, allowedRoutes } = usePageGuard()
   const modules = useOrgModules()
 
@@ -60,7 +66,7 @@ export default function DailyPackoutPage() {
 
   const [selectedPackhouse, setSelectedPackhouse] = useState('')
   const [selectedOrchard, setSelectedOrchard] = useState<string>('all')
-  const [packDate, setPackDate] = useState(new Date().toISOString().split('T')[0])
+  const [packDate, setPackDate] = useState(() => searchParams.get('date') || new Date().toISOString().split('T')[0])
   const [loading, setLoading] = useState(true)
 
   // Session CRUD state
@@ -665,6 +671,9 @@ export default function DailyPackoutPage() {
               {packhouses.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
             <input type="date" style={st.select} value={packDate} onChange={e => setPackDate(e.target.value)} />
+            <a href={`/packshed/stock?date=${packDate}`} style={{ ...st.btnSecondary, textDecoration: 'none' }}>
+              Floor Stock
+            </a>
             <button style={st.btnPrimary} onClick={handleExportPdf} disabled={activeBoxTypes.length === 0}>
               Export PDF
             </button>

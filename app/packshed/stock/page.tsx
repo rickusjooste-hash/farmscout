@@ -3,7 +3,8 @@
 import { createClient } from '@/lib/supabase-auth'
 import { usePageGuard } from '@/lib/usePageGuard'
 import { useOrgModules } from '@/lib/useOrgModules'
-import { useEffect, useState, useMemo } from 'react'
+import { Suspense, useEffect, useState, useMemo, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import ManagerSidebar, { ManagerSidebarStyles } from '@/app/components/ManagerSidebar'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -14,7 +15,11 @@ interface Size { id: string; label: string; sort_order: number }
 interface ValidCombo { box_type_id: string; size_id: string }
 interface SessionRef { id: string; seq: number; orchard_id: string | null; variety: string | null; orchard_name: string }
 
-export default function FloorStockPage() {
+export default function FloorStockPageWrapper() {
+  return <Suspense><FloorStockPage /></Suspense>
+}
+
+function FloorStockPage() {
   const supabase = createClient()
   const { isSuperAdmin, contextLoaded, allowedRoutes } = usePageGuard()
   const modules = useOrgModules()
@@ -29,8 +34,9 @@ export default function FloorStockPage() {
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
 
+  const searchParams = useSearchParams()
   const [selectedPackhouse, setSelectedPackhouse] = useState('')
-  const [stockDate, setStockDate] = useState(new Date().toISOString().split('T')[0])
+  const [stockDate, setStockDate] = useState(() => searchParams.get('date') || new Date().toISOString().split('T')[0])
   const [daySessions, setDaySessions] = useState<SessionRef[]>([])
   const [selectedSessionId, setSelectedSessionId] = useState<string>('')
   const [stockType, setStockType] = useState<'opening' | 'closing'>('closing')
@@ -278,6 +284,9 @@ export default function FloorStockPage() {
               {packhouses.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
 
+            <a href={`/packshed?date=${stockDate}`} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #d4d8de', background: '#fff', color: '#1a2a3a', fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }}>
+              Daily Packout
+            </a>
             <input type="date" style={s.select} value={stockDate} onChange={e => setStockDate(e.target.value)} />
 
             {daySessions.length > 0 && (
@@ -345,7 +354,7 @@ export default function FloorStockPage() {
                     {activeSizes.map(sz => {
                       const key = cellKey(bt.id, sz.id)
                       const isValid = validSet.has(key)
-                      if (!isValid) return <td key={sz.id} style={{ ...s.td, background: '#f8f8f8' }} />
+                      if (!isValid) return <td key={sz.id} style={{ ...s.td, background: '#e8e8e8' }} />
                       const val = getCellValue(bt.id, sz.id)
                       return (
                         <td key={sz.id} style={s.td}>
@@ -389,5 +398,5 @@ const s: Record<string, React.CSSProperties> = {
   btnSecondary: { padding: '8px 16px', borderRadius: 8, border: '1px solid #d4d8de', background: '#fff', color: '#1a2a3a', fontSize: 13, fontWeight: 500, cursor: 'pointer' },
   th: { padding: '10px 12px', textAlign: 'left' as const, fontSize: 11, fontWeight: 600, color: '#8a95a0', textTransform: 'uppercase' as const, letterSpacing: '0.05em', borderBottom: '2px solid #e5e7eb' },
   td: { padding: '6px 8px', fontSize: 13 },
-  cellInput: { width: 56, padding: '6px 4px', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: 13, textAlign: 'center' as const, outline: 'none', background: '#fafbfc' },
+  cellInput: { width: 56, padding: '6px 4px', borderRadius: 6, border: '1px solid #c0c8d0', fontSize: 13, textAlign: 'center' as const, outline: 'none', background: '#fff', fontWeight: 600 },
 }
